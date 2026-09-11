@@ -1,3 +1,6 @@
+
+
+Gpa companion · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +9,7 @@
 <title>GPA Companion</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&display=swap');
-
+ 
 :root{
   --paper:#EDE8DE; --paper-line:#D9D2C2; --panel:#F7F4EC;
   --ink:#22291F; --ink-soft:#5B6255;
@@ -90,7 +93,7 @@ img.thumb{max-width:100%;border-radius:var(--radius);margin-top:6px;}
   <div class="panel" id="content"></div>
   <div class="footer-note">Data saves automatically to your account. Use Export in Profile to back it up.</div>
 </div>
-
+ 
 <script>
 // If running outside Claude (e.g. published on GitHub Pages), window.storage won't
 // exist. This fills it in with an equivalent backed by the browser's own IndexedDB,
@@ -144,13 +147,13 @@ if (typeof window.storage === 'undefined') {
     }
   };
 }
-
+ 
 const STORE_KEY = 'gpa-data';
 let state = { profile:{}, sessions:[], words:[], orientationDone:{}, audioIndex:[], meetingComplete:{} };
 let activeTab = 'dashboard';
 let loaded = false;
 let mediaRecorder, audioChunks=[], recTarget=null;
-
+ 
 const TABS = [
   {id:'dashboard', label:'Dashboard'},
   {id:'orientation', label:'Orientation'},
@@ -160,7 +163,7 @@ const TABS = [
   {id:'audio', label:'Audio Notes'},
   {id:'profile', label:'Profile'},
 ];
-
+ 
 // ---- Real data from Greg Thomson's Growing Participator Approach / Six-Phase Program materials ----
 const PHASE_TARGETS = [
   {phase:1, hours:100, understand:"Understand speech about things I can see and do.", talk:"Talking ability mainly limited to special activities in language sessions."},
@@ -171,7 +174,7 @@ const PHASE_TARGETS = [
   {phase:6, hours:null, understand:"Understand almost all I hear.", talk:"Can talk about most of what local people can talk about, much the way they do."},
 ];
 const CUM_HOURS = [0,100,250,500,1000,1500]; // cumulative hours at start of each phase (phase 6 = 1500+)
-
+ 
 const ORIENTATION_TASKS = [
   {id:'o1', section:'Getting Started (before Meeting Plan 1)', title:"Hopes & fears", minutes:10,
    purpose:"Everyone shares one hope and one worry about starting, then the group agrees how to be sensitive to each person's needs."},
@@ -214,7 +217,8 @@ const ORIENTATION_TASKS = [
   {id:'t8', section:'Starting to Talk (before Meeting Plan 16)', title:"Talking can be scary!", minutes:null,
    purpose:"Name what makes speaking feel more frightening than listening — and that this is completely normal."},
 ];
-
+ 
+const GRAPHICS_MANIFEST = [{c:'p1-0',f:'p1-0.jpg',p:1},{c:'1A',f:'1A.jpg',p:4},{c:'1B',f:'1B.jpg',p:4},{c:'1C',f:'1C.jpg',p:4},{c:'2A',f:'2A.jpg',p:4},{c:'2B',f:'2B.jpg',p:4},{c:'2C',f:'2C.jpg',p:4},{c:'2D',f:'2D.jpg',p:5},{c:'3',f:'3.jpg',p:5},{c:'3A',f:'3A.jpg',p:5},{c:'3B',f:'3B.jpg',p:5},{c:'3D',f:'3D.jpg',p:5},{c:'4',f:'4.jpg',p:5},{c:'5A',f:'5A.jpg',p:6},{c:'5B',f:'5B.jpg',p:6},{c:'5C',f:'5C.jpg',p:6},{c:'5D',f:'5D.jpg',p:6},{c:'6',f:'6.jpg',p:6},{c:'7',f:'7.jpg',p:6},{c:'8A',f:'8A.jpg',p:7},{c:'8B',f:'8B.jpg',p:7},{c:'8C',f:'8C.jpg',p:7},{c:'8D',f:'8D.jpg',p:7},{c:'9A',f:'9A.jpg',p:7},{c:'9B',f:'9B.jpg',p:7},{c:'10',f:'10.jpg',p:8},{c:'11',f:'11.jpg',p:8},{c:'11B',f:'11B.jpg',p:8},{c:'12A',f:'12A.jpg',p:8},{c:'12B',f:'12B.jpg',p:8},{c:'9C',f:'9C.jpg',p:8},{c:'13',f:'13.jpg',p:9},{c:'14',f:'14.jpg',p:9},{c:'15',f:'15.jpg',p:9},{c:'16',f:'16.jpg',p:9},{c:'17',f:'17.jpg',p:9},{c:'18',f:'18.jpg',p:9},{c:'19',f:'19.jpg',p:10},{c:'20',f:'20.jpg',p:10},{c:'p11-0',f:'p11-0.jpg',p:11},{c:'p11-1',f:'p11-1.jpg',p:11},{c:'p11-2',f:'p11-2.jpg',p:11},{c:'p11-3',f:'p11-3.jpg',p:11},{c:'p11-4',f:'p11-4.jpg',p:11},{c:'p11-5',f:'p11-5.jpg',p:11},{c:'p11-6',f:'p11-6.jpg',p:11},{c:'p11-7',f:'p11-7.jpg',p:11},{c:'p12-0',f:'p12-0.jpg',p:12},{c:'p12-1',f:'p12-1.jpg',p:12},{c:'p12-2',f:'p12-2.jpg',p:12},{c:'p12-3',f:'p12-3.jpg',p:12},{c:'p12-4',f:'p12-4.jpg',p:12},{c:'p12-5',f:'p12-5.jpg',p:12},{c:'p12-6',f:'p12-6.jpg',p:12},{c:'p12-7',f:'p12-7.jpg',p:12},{c:'p13-0',f:'p13-0.jpg',p:13},{c:'p13-1',f:'p13-1.jpg',p:13},{c:'p13-10',f:'p13-10.jpg',p:13},{c:'p13-2',f:'p13-2.jpg',p:13},{c:'p13-3',f:'p13-3.jpg',p:13},{c:'p13-4',f:'p13-4.jpg',p:13},{c:'p13-5',f:'p13-5.jpg',p:13},{c:'p13-6',f:'p13-6.jpg',p:13},{c:'p13-7',f:'p13-7.jpg',p:13},{c:'p13-8',f:'p13-8.jpg',p:13},{c:'p13-9',f:'p13-9.jpg',p:13},{c:'p14-0',f:'p14-0.jpg',p:14},{c:'p14-1',f:'p14-1.jpg',p:14},{c:'p14-2',f:'p14-2.jpg',p:14},{c:'p14-3',f:'p14-3.jpg',p:14},{c:'p14-4',f:'p14-4.jpg',p:14},{c:'p14-5',f:'p14-5.jpg',p:14},{c:'p14-6',f:'p14-6.jpg',p:14},{c:'p14-7',f:'p14-7.jpg',p:14},{c:'2',f:'2.jpg',p:15},{c:'p15-0',f:'p15-0.jpg',p:15},{c:'p15-1',f:'p15-1.jpg',p:15},{c:'p15-2',f:'p15-2.jpg',p:15},{c:'p15-3',f:'p15-3.jpg',p:15},{c:'p15-4',f:'p15-4.jpg',p:15},{c:'p15-5',f:'p15-5.jpg',p:15},{c:'p15-6',f:'p15-6.jpg',p:15},{c:'p15-7',f:'p15-7.jpg',p:15},{c:'p16-0',f:'p16-0.jpg',p:16},{c:'p16-1',f:'p16-1.jpg',p:16},{c:'p16-10',f:'p16-10.jpg',p:16},{c:'p16-11',f:'p16-11.jpg',p:16},{c:'p16-2',f:'p16-2.jpg',p:16},{c:'p16-3',f:'p16-3.jpg',p:16},{c:'p16-4',f:'p16-4.jpg',p:16},{c:'p16-5',f:'p16-5.jpg',p:16},{c:'p16-6',f:'p16-6.jpg',p:16},{c:'p16-7',f:'p16-7.jpg',p:16},{c:'p16-8',f:'p16-8.jpg',p:16},{c:'p16-9',f:'p16-9.jpg',p:16},{c:'1',f:'1.jpg',p:17},{c:'p17-0',f:'p17-0.jpg',p:17},{c:'p17-1',f:'p17-1.jpg',p:17},{c:'p17-2',f:'p17-2.jpg',p:17},{c:'p17-3',f:'p17-3.jpg',p:17},{c:'p17-4',f:'p17-4.jpg',p:17},{c:'p17-5',f:'p17-5.jpg',p:17},{c:'p17-6',f:'p17-6.jpg',p:17},{c:'p17-7',f:'p17-7.jpg',p:17},{c:'p17-8',f:'p17-8.jpg',p:17},{c:'p17-9',f:'p17-9.jpg',p:17},{c:'p18-0',f:'p18-0.jpg',p:18},{c:'p18-1',f:'p18-1.jpg',p:18},{c:'p18-10',f:'p18-10.jpg',p:18},{c:'p18-11',f:'p18-11.jpg',p:18},{c:'p18-12',f:'p18-12.jpg',p:18},{c:'p18-13',f:'p18-13.jpg',p:18},{c:'p18-14',f:'p18-14.jpg',p:18},{c:'p18-15',f:'p18-15.jpg',p:18},{c:'p18-16',f:'p18-16.jpg',p:18},{c:'p18-17',f:'p18-17.jpg',p:18},{c:'p18-18',f:'p18-18.jpg',p:18},{c:'p18-19',f:'p18-19.jpg',p:18},{c:'p18-2',f:'p18-2.jpg',p:18},{c:'p18-20',f:'p18-20.jpg',p:18},{c:'p18-21',f:'p18-21.jpg',p:18},{c:'p18-22',f:'p18-22.jpg',p:18},{c:'p18-23',f:'p18-23.jpg',p:18},{c:'p18-24',f:'p18-24.jpg',p:18},{c:'p18-3',f:'p18-3.jpg',p:18},{c:'p18-4',f:'p18-4.jpg',p:18},{c:'p18-5',f:'p18-5.jpg',p:18},{c:'p18-6',f:'p18-6.jpg',p:18},{c:'p18-7',f:'p18-7.jpg',p:18},{c:'p18-8',f:'p18-8.jpg',p:18},{c:'p18-9',f:'p18-9.jpg',p:18},{c:'p19-0',f:'p19-0.jpg',p:19},{c:'p19-1',f:'p19-1.jpg',p:19},{c:'p19-2',f:'p19-2.jpg',p:19},{c:'p19-3',f:'p19-3.jpg',p:19},{c:'p19-4',f:'p19-4.jpg',p:19},{c:'p20-0',f:'p20-0.jpg',p:20},{c:'p20-1',f:'p20-1.jpg',p:20},{c:'p20-10',f:'p20-10.jpg',p:20},{c:'p20-11',f:'p20-11.jpg',p:20},{c:'p20-2',f:'p20-2.jpg',p:20},{c:'p20-3',f:'p20-3.jpg',p:20},{c:'p20-4',f:'p20-4.jpg',p:20},{c:'p20-5',f:'p20-5.jpg',p:20},{c:'p20-6',f:'p20-6.jpg',p:20},{c:'p20-7',f:'p20-7.jpg',p:20},{c:'p20-8',f:'p20-8.jpg',p:20},{c:'p20-9',f:'p20-9.jpg',p:20},{c:'p21-0',f:'p21-0.jpg',p:21},{c:'p21-1',f:'p21-1.jpg',p:21},{c:'p21-2',f:'p21-2.jpg',p:21},{c:'p21-3',f:'p21-3.jpg',p:21},{c:'p21-4',f:'p21-4.jpg',p:21},{c:'p21-5',f:'p21-5.jpg',p:21},{c:'p21-6',f:'p21-6.jpg',p:21},{c:'p21-7',f:'p21-7.jpg',p:21},{c:'p21-8',f:'p21-8.jpg',p:21},{c:'p22-0',f:'p22-0.jpg',p:22},{c:'p22-1',f:'p22-1.jpg',p:22},{c:'p22-10',f:'p22-10.jpg',p:22},{c:'p22-11',f:'p22-11.jpg',p:22},{c:'p22-2',f:'p22-2.jpg',p:22},{c:'p22-3',f:'p22-3.jpg',p:22},{c:'p22-4',f:'p22-4.jpg',p:22},{c:'p22-5',f:'p22-5.jpg',p:22},{c:'p22-6',f:'p22-6.jpg',p:22},{c:'p22-7',f:'p22-7.jpg',p:22},{c:'p22-8',f:'p22-8.jpg',p:22},{c:'p22-9',f:'p22-9.jpg',p:22},{c:'p23-0',f:'p23-0.jpg',p:23},{c:'p23-1',f:'p23-1.jpg',p:23},{c:'1_p24',f:'1_p24.jpg',p:24},{c:'p24-0',f:'p24-0.jpg',p:24},{c:'p24-1',f:'p24-1.jpg',p:24},{c:'p25-0',f:'p25-0.jpg',p:25},{c:'p25-1',f:'p25-1.jpg',p:25},{c:'p25-10',f:'p25-10.jpg',p:25},{c:'p25-2',f:'p25-2.jpg',p:25},{c:'p25-3',f:'p25-3.jpg',p:25},{c:'p25-4',f:'p25-4.jpg',p:25},{c:'p25-5',f:'p25-5.jpg',p:25},{c:'p25-6',f:'p25-6.jpg',p:25},{c:'p25-7',f:'p25-7.jpg',p:25},{c:'p25-8',f:'p25-8.jpg',p:25},{c:'p25-9',f:'p25-9.jpg',p:25},{c:'p26-0',f:'p26-0.jpg',p:26},{c:'p27-0',f:'p27-0.jpg',p:27},{c:'p27-1',f:'p27-1.jpg',p:27},{c:'p27-2',f:'p27-2.jpg',p:27},{c:'p27-3',f:'p27-3.jpg',p:27},{c:'p27-4',f:'p27-4.jpg',p:27},{c:'p27-5',f:'p27-5.jpg',p:27},{c:'p27-6',f:'p27-6.jpg',p:27},{c:'p27-7',f:'p27-7.jpg',p:27},{c:'p27-8',f:'p27-8.jpg',p:27},{c:'p28-0',f:'p28-0.jpg',p:28},{c:'p29-0',f:'p29-0.jpg',p:29},{c:'p30-0',f:'p30-0.jpg',p:30},{c:'p30-1',f:'p30-1.jpg',p:30},{c:'p30-10',f:'p30-10.jpg',p:30},{c:'p30-11',f:'p30-11.jpg',p:30},{c:'p30-12',f:'p30-12.jpg',p:30},{c:'p30-13',f:'p30-13.jpg',p:30},{c:'p30-14',f:'p30-14.jpg',p:30},{c:'p30-2',f:'p30-2.jpg',p:30},{c:'p30-3',f:'p30-3.jpg',p:30},{c:'p30-4',f:'p30-4.jpg',p:30},{c:'p30-5',f:'p30-5.jpg',p:30},{c:'p30-6',f:'p30-6.jpg',p:30},{c:'p30-7',f:'p30-7.jpg',p:30},{c:'p30-8',f:'p30-8.jpg',p:30},{c:'p30-9',f:'p30-9.jpg',p:30},{c:'p31-0',f:'p31-0.jpg',p:31},{c:'p31-1',f:'p31-1.jpg',p:31},{c:'p31-10',f:'p31-10.jpg',p:31},{c:'p31-11',f:'p31-11.jpg',p:31},{c:'p31-12',f:'p31-12.jpg',p:31},{c:'p31-2',f:'p31-2.jpg',p:31},{c:'p31-3',f:'p31-3.jpg',p:31},{c:'p31-4',f:'p31-4.jpg',p:31},{c:'p31-5',f:'p31-5.jpg',p:31},{c:'p31-6',f:'p31-6.jpg',p:31},{c:'p31-7',f:'p31-7.jpg',p:31},{c:'p31-8',f:'p31-8.jpg',p:31},{c:'p31-9',f:'p31-9.jpg',p:31},{c:'p32-0',f:'p32-0.jpg',p:32},{c:'p32-1',f:'p32-1.jpg',p:32},{c:'p32-2',f:'p32-2.jpg',p:32},{c:'p32-3',f:'p32-3.jpg',p:32},{c:'p32-4',f:'p32-4.jpg',p:32},{c:'p32-5',f:'p32-5.jpg',p:32},{c:'p32-6',f:'p32-6.jpg',p:32},{c:'p32-7',f:'p32-7.jpg',p:32},{c:'p33-0',f:'p33-0.jpg',p:33},{c:'p33-1',f:'p33-1.jpg',p:33},{c:'p33-10',f:'p33-10.jpg',p:33},{c:'p33-11',f:'p33-11.jpg',p:33},{c:'p33-2',f:'p33-2.jpg',p:33},{c:'p33-3',f:'p33-3.jpg',p:33},{c:'p33-4',f:'p33-4.jpg',p:33},{c:'p33-5',f:'p33-5.jpg',p:33},{c:'p33-6',f:'p33-6.jpg',p:33},{c:'p33-7',f:'p33-7.jpg',p:33},{c:'p33-8',f:'p33-8.jpg',p:33},{c:'p33-9',f:'p33-9.jpg',p:33},{c:'p34-0',f:'p34-0.jpg',p:34},{c:'p35-0',f:'p35-0.jpg',p:35},{c:'p35-1',f:'p35-1.jpg',p:35},{c:'p35-10',f:'p35-10.jpg',p:35},{c:'p35-11',f:'p35-11.jpg',p:35},{c:'p35-12',f:'p35-12.jpg',p:35},{c:'p35-13',f:'p35-13.jpg',p:35},{c:'p35-2',f:'p35-2.jpg',p:35},{c:'p35-3',f:'p35-3.jpg',p:35},{c:'p35-4',f:'p35-4.jpg',p:35},{c:'p35-5',f:'p35-5.jpg',p:35},{c:'p35-6',f:'p35-6.jpg',p:35},{c:'p35-7',f:'p35-7.jpg',p:35},{c:'p35-8',f:'p35-8.jpg',p:35},{c:'p35-9',f:'p35-9.jpg',p:35},{c:'p36-0',f:'p36-0.jpg',p:36},{c:'p36-1',f:'p36-1.jpg',p:36},{c:'p36-10',f:'p36-10.jpg',p:36},{c:'p36-11',f:'p36-11.jpg',p:36},{c:'p36-12',f:'p36-12.jpg',p:36},{c:'p36-13',f:'p36-13.jpg',p:36},{c:'p36-2',f:'p36-2.jpg',p:36},{c:'p36-3',f:'p36-3.jpg',p:36},{c:'p36-4',f:'p36-4.jpg',p:36},{c:'p36-5',f:'p36-5.jpg',p:36},{c:'p36-6',f:'p36-6.jpg',p:36},{c:'p36-7',f:'p36-7.jpg',p:36},{c:'p36-8',f:'p36-8.jpg',p:36},{c:'p36-9',f:'p36-9.jpg',p:36},{c:'p37-0',f:'p37-0.jpg',p:37},{c:'p37-1',f:'p37-1.jpg',p:37},{c:'p37-2',f:'p37-2.jpg',p:37},{c:'p37-3',f:'p37-3.jpg',p:37},{c:'p37-4',f:'p37-4.jpg',p:37},{c:'p37-5',f:'p37-5.jpg',p:37},{c:'p38-0',f:'p38-0.jpg',p:38},{c:'p38-1',f:'p38-1.jpg',p:38},{c:'p38-10',f:'p38-10.jpg',p:38},{c:'p38-11',f:'p38-11.jpg',p:38},{c:'p38-2',f:'p38-2.jpg',p:38},{c:'p38-3',f:'p38-3.jpg',p:38},{c:'p38-4',f:'p38-4.jpg',p:38},{c:'p38-5',f:'p38-5.jpg',p:38},{c:'p38-6',f:'p38-6.jpg',p:38},{c:'p38-7',f:'p38-7.jpg',p:38},{c:'p38-8',f:'p38-8.jpg',p:38},{c:'p38-9',f:'p38-9.jpg',p:38},{c:'p39-0',f:'p39-0.jpg',p:39},{c:'p39-1',f:'p39-1.jpg',p:39},{c:'p39-2',f:'p39-2.jpg',p:39},{c:'p39-3',f:'p39-3.jpg',p:39},{c:'p39-4',f:'p39-4.jpg',p:39},{c:'p39-5',f:'p39-5.jpg',p:39},{c:'p40-0',f:'p40-0.jpg',p:40},{c:'p40-1',f:'p40-1.jpg',p:40},{c:'p40-10',f:'p40-10.jpg',p:40},{c:'p40-11',f:'p40-11.jpg',p:40},{c:'p40-2',f:'p40-2.jpg',p:40},{c:'p40-3',f:'p40-3.jpg',p:40},{c:'p40-4',f:'p40-4.jpg',p:40},{c:'p40-5',f:'p40-5.jpg',p:40},{c:'p40-6',f:'p40-6.jpg',p:40},{c:'p40-7',f:'p40-7.jpg',p:40},{c:'p40-8',f:'p40-8.jpg',p:40},{c:'p40-9',f:'p40-9.jpg',p:40},{c:'p41-0',f:'p41-0.jpg',p:41},{c:'p41-1',f:'p41-1.jpg',p:41},{c:'p41-10',f:'p41-10.jpg',p:41},{c:'p41-11',f:'p41-11.jpg',p:41},{c:'p41-2',f:'p41-2.jpg',p:41},{c:'p41-3',f:'p41-3.jpg',p:41},{c:'p41-4',f:'p41-4.jpg',p:41},{c:'p41-5',f:'p41-5.jpg',p:41},{c:'p41-6',f:'p41-6.jpg',p:41},{c:'p41-7',f:'p41-7.jpg',p:41},{c:'p41-8',f:'p41-8.jpg',p:41},{c:'p41-9',f:'p41-9.jpg',p:41},{c:'p42-0',f:'p42-0.jpg',p:42},{c:'p42-1',f:'p42-1.jpg',p:42},{c:'p42-10',f:'p42-10.jpg',p:42},{c:'p42-11',f:'p42-11.jpg',p:42},{c:'p42-2',f:'p42-2.jpg',p:42},{c:'p42-3',f:'p42-3.jpg',p:42},{c:'p42-4',f:'p42-4.jpg',p:42},{c:'p42-5',f:'p42-5.jpg',p:42},{c:'p42-6',f:'p42-6.jpg',p:42},{c:'p42-7',f:'p42-7.jpg',p:42},{c:'p42-8',f:'p42-8.jpg',p:42},{c:'p42-9',f:'p42-9.jpg',p:42},{c:'p43-0',f:'p43-0.jpg',p:43},{c:'p43-1',f:'p43-1.jpg',p:43},{c:'p43-2',f:'p43-2.jpg',p:43},{c:'p43-3',f:'p43-3.jpg',p:43},{c:'p43-4',f:'p43-4.jpg',p:43},{c:'p43-5',f:'p43-5.jpg',p:43},{c:'p43-6',f:'p43-6.jpg',p:43},{c:'p44-0',f:'p44-0.jpg',p:44},{c:'p44-1',f:'p44-1.jpg',p:44},{c:'p44-2',f:'p44-2.jpg',p:44},{c:'p44-3',f:'p44-3.jpg',p:44},{c:'p44-4',f:'p44-4.jpg',p:44},{c:'p45-0',f:'p45-0.jpg',p:45},{c:'p46-0',f:'p46-0.jpg',p:46},{c:'p47-0',f:'p47-0.jpg',p:47},{c:'3_p48',f:'3_p48.jpg',p:48},{c:'p48-0',f:'p48-0.jpg',p:48},{c:'p48-1',f:'p48-1.jpg',p:48},{c:'p48-10',f:'p48-10.jpg',p:48},{c:'p48-2',f:'p48-2.jpg',p:48},{c:'p48-3',f:'p48-3.jpg',p:48},{c:'p48-4',f:'p48-4.jpg',p:48},{c:'p48-5',f:'p48-5.jpg',p:48},{c:'p48-6',f:'p48-6.jpg',p:48},{c:'p48-7',f:'p48-7.jpg',p:48},{c:'p48-8',f:'p48-8.jpg',p:48},{c:'p48-9',f:'p48-9.jpg',p:48},{c:'p49-0',f:'p49-0.jpg',p:49},{c:'p49-1',f:'p49-1.jpg',p:49},{c:'p49-10',f:'p49-10.jpg',p:49},{c:'p49-11',f:'p49-11.jpg',p:49},{c:'p49-2',f:'p49-2.jpg',p:49},{c:'p49-3',f:'p49-3.jpg',p:49},{c:'p49-4',f:'p49-4.jpg',p:49},{c:'p49-5',f:'p49-5.jpg',p:49},{c:'p49-6',f:'p49-6.jpg',p:49},{c:'p49-7',f:'p49-7.jpg',p:49},{c:'p49-8',f:'p49-8.jpg',p:49},{c:'p49-9',f:'p49-9.jpg',p:49},{c:'p50-0',f:'p50-0.jpg',p:50},{c:'p50-1',f:'p50-1.jpg',p:50},{c:'p50-10',f:'p50-10.jpg',p:50},{c:'p50-11',f:'p50-11.jpg',p:50},{c:'p50-12',f:'p50-12.jpg',p:50},{c:'p50-13',f:'p50-13.jpg',p:50},{c:'p50-14',f:'p50-14.jpg',p:50},{c:'p50-15',f:'p50-15.jpg',p:50},{c:'p50-16',f:'p50-16.jpg',p:50},{c:'p50-17',f:'p50-17.jpg',p:50},{c:'p50-18',f:'p50-18.jpg',p:50},{c:'p50-19',f:'p50-19.jpg',p:50},{c:'p50-2',f:'p50-2.jpg',p:50},{c:'p50-20',f:'p50-20.jpg',p:50},{c:'p50-21',f:'p50-21.jpg',p:50},{c:'p50-22',f:'p50-22.jpg',p:50},{c:'p50-23',f:'p50-23.jpg',p:50},{c:'p50-24',f:'p50-24.jpg',p:50},{c:'p50-3',f:'p50-3.jpg',p:50},{c:'p50-4',f:'p50-4.jpg',p:50},{c:'p50-5',f:'p50-5.jpg',p:50},{c:'p50-6',f:'p50-6.jpg',p:50},{c:'p50-7',f:'p50-7.jpg',p:50},{c:'p50-8',f:'p50-8.jpg',p:50},{c:'p50-9',f:'p50-9.jpg',p:50},{c:'p51-0',f:'p51-0.jpg',p:51},{c:'p51-1',f:'p51-1.jpg',p:51},{c:'p51-10',f:'p51-10.jpg',p:51},{c:'p51-11',f:'p51-11.jpg',p:51},{c:'p51-2',f:'p51-2.jpg',p:51},{c:'p51-3',f:'p51-3.jpg',p:51},{c:'p51-4',f:'p51-4.jpg',p:51},{c:'p51-5',f:'p51-5.jpg',p:51},{c:'p51-6',f:'p51-6.jpg',p:51},{c:'p51-7',f:'p51-7.jpg',p:51},{c:'p51-8',f:'p51-8.jpg',p:51},{c:'p51-9',f:'p51-9.jpg',p:51},{c:'p52-0',f:'p52-0.jpg',p:52},{c:'p52-1',f:'p52-1.jpg',p:52},{c:'p52-10',f:'p52-10.jpg',p:52},{c:'p52-11',f:'p52-11.jpg',p:52},{c:'p52-2',f:'p52-2.jpg',p:52},{c:'p52-3',f:'p52-3.jpg',p:52},{c:'p52-4',f:'p52-4.jpg',p:52},{c:'p52-5',f:'p52-5.jpg',p:52},{c:'p52-6',f:'p52-6.jpg',p:52},{c:'p52-7',f:'p52-7.jpg',p:52},{c:'p52-8',f:'p52-8.jpg',p:52},{c:'p52-9',f:'p52-9.jpg',p:52},{c:'p53-0',f:'p53-0.jpg',p:53},{c:'p53-1',f:'p53-1.jpg',p:53},{c:'p53-2',f:'p53-2.jpg',p:53},{c:'p53-3',f:'p53-3.jpg',p:53},{c:'p53-4',f:'p53-4.jpg',p:53},{c:'p53-5',f:'p53-5.jpg',p:53},{c:'p53-6',f:'p53-6.jpg',p:53},{c:'p53-7',f:'p53-7.jpg',p:53},{c:'p53-8',f:'p53-8.jpg',p:53},{c:'7_p54',f:'7_p54.jpg',p:54},{c:'p54-0',f:'p54-0.jpg',p:54},{c:'p54-1',f:'p54-1.jpg',p:54},{c:'p54-2',f:'p54-2.jpg',p:54},{c:'p54-3',f:'p54-3.jpg',p:54},{c:'p54-5',f:'p54-5.jpg',p:54},{c:'p55-0',f:'p55-0.jpg',p:55},{c:'p55-1',f:'p55-1.jpg',p:55},{c:'p55-2',f:'p55-2.jpg',p:55},{c:'p55-3',f:'p55-3.jpg',p:55},{c:'p55-4',f:'p55-4.jpg',p:55},{c:'p55-5',f:'p55-5.jpg',p:55},{c:'p55-6',f:'p55-6.jpg',p:55},{c:'p55-7',f:'p55-7.jpg',p:55},{c:'p56-0',f:'p56-0.jpg',p:56},{c:'p56-1',f:'p56-1.jpg',p:56},{c:'p56-10',f:'p56-10.jpg',p:56},{c:'p56-11',f:'p56-11.jpg',p:56},{c:'p56-2',f:'p56-2.jpg',p:56},{c:'p56-3',f:'p56-3.jpg',p:56},{c:'p56-4',f:'p56-4.jpg',p:56},{c:'p56-5',f:'p56-5.jpg',p:56},{c:'p56-6',f:'p56-6.jpg',p:56},{c:'p56-7',f:'p56-7.jpg',p:56},{c:'p56-8',f:'p56-8.jpg',p:56},{c:'p56-9',f:'p56-9.jpg',p:56},{c:'p57-0',f:'p57-0.jpg',p:57},{c:'p57-1',f:'p57-1.jpg',p:57},{c:'p57-2',f:'p57-2.jpg',p:57},{c:'p57-3',f:'p57-3.jpg',p:57},{c:'p57-4',f:'p57-4.jpg',p:57},{c:'p57-5',f:'p57-5.jpg',p:57},{c:'p57-6',f:'p57-6.jpg',p:57},{c:'p58-0',f:'p58-0.jpg',p:58},{c:'p58-1',f:'p58-1.jpg',p:58},{c:'p58-10',f:'p58-10.jpg',p:58},{c:'p58-11',f:'p58-11.jpg',p:58},{c:'p58-2',f:'p58-2.jpg',p:58},{c:'p58-3',f:'p58-3.jpg',p:58},{c:'p58-4',f:'p58-4.jpg',p:58},{c:'p58-5',f:'p58-5.jpg',p:58},{c:'p58-6',f:'p58-6.jpg',p:58},{c:'p58-7',f:'p58-7.jpg',p:58},{c:'p58-8',f:'p58-8.jpg',p:58},{c:'p58-9',f:'p58-9.jpg',p:58},{c:'p59-0',f:'p59-0.jpg',p:59},{c:'p60-0',f:'p60-0.jpg',p:60},{c:'p61-0',f:'p61-0.jpg',p:61},{c:'p62-0',f:'p62-0.jpg',p:62},{c:'p63-0',f:'p63-0.jpg',p:63},{c:'p64-0',f:'p64-0.jpg',p:64},{c:'p64-1',f:'p64-1.jpg',p:64},{c:'p64-10',f:'p64-10.jpg',p:64},{c:'p64-11',f:'p64-11.jpg',p:64},{c:'p64-12',f:'p64-12.jpg',p:64},{c:'p64-13',f:'p64-13.jpg',p:64},{c:'p64-14',f:'p64-14.jpg',p:64},{c:'p64-15',f:'p64-15.jpg',p:64},{c:'p64-16',f:'p64-16.jpg',p:64},{c:'p64-17',f:'p64-17.jpg',p:64},{c:'p64-18',f:'p64-18.jpg',p:64},{c:'p64-19',f:'p64-19.jpg',p:64},{c:'p64-2',f:'p64-2.jpg',p:64},{c:'p64-20',f:'p64-20.jpg',p:64},{c:'p64-21',f:'p64-21.jpg',p:64},{c:'p64-22',f:'p64-22.jpg',p:64},{c:'p64-23',f:'p64-23.jpg',p:64},{c:'p64-3',f:'p64-3.jpg',p:64},{c:'p64-4',f:'p64-4.jpg',p:64},{c:'p64-5',f:'p64-5.jpg',p:64},{c:'p64-6',f:'p64-6.jpg',p:64},{c:'p64-7',f:'p64-7.jpg',p:64},{c:'p64-8',f:'p64-8.jpg',p:64},{c:'p64-9',f:'p64-9.jpg',p:64},{c:'p65-0',f:'p65-0.jpg',p:65},{c:'p66-0',f:'p66-0.jpg',p:66},{c:'p67-0',f:'p67-0.jpg',p:67},{c:'p67-1',f:'p67-1.jpg',p:67},{c:'p67-10',f:'p67-10.jpg',p:67},{c:'p67-11',f:'p67-11.jpg',p:67},{c:'p67-12',f:'p67-12.jpg',p:67},{c:'p67-13',f:'p67-13.jpg',p:67},{c:'p67-14',f:'p67-14.jpg',p:67},{c:'p67-2',f:'p67-2.jpg',p:67},{c:'p67-3',f:'p67-3.jpg',p:67},{c:'p67-4',f:'p67-4.jpg',p:67},{c:'p67-5',f:'p67-5.jpg',p:67},{c:'p67-6',f:'p67-6.jpg',p:67},{c:'p67-7',f:'p67-7.jpg',p:67},{c:'p67-8',f:'p67-8.jpg',p:67},{c:'p67-9',f:'p67-9.jpg',p:67},{c:'p68-0',f:'p68-0.jpg',p:68},{c:'p68-1',f:'p68-1.jpg',p:68},{c:'p68-10',f:'p68-10.jpg',p:68},{c:'p68-11',f:'p68-11.jpg',p:68},{c:'p68-12',f:'p68-12.jpg',p:68},{c:'p68-13',f:'p68-13.jpg',p:68},{c:'p68-14',f:'p68-14.jpg',p:68},{c:'p68-2',f:'p68-2.jpg',p:68},{c:'p68-3',f:'p68-3.jpg',p:68},{c:'p68-4',f:'p68-4.jpg',p:68},{c:'p68-5',f:'p68-5.jpg',p:68},{c:'p68-6',f:'p68-6.jpg',p:68},{c:'p68-7',f:'p68-7.jpg',p:68},{c:'p68-8',f:'p68-8.jpg',p:68},{c:'p68-9',f:'p68-9.jpg',p:68},{c:'p69-0',f:'p69-0.jpg',p:69},{c:'p69-1',f:'p69-1.jpg',p:69},{c:'p69-10',f:'p69-10.jpg',p:69},{c:'p69-11',f:'p69-11.jpg',p:69},{c:'p69-2',f:'p69-2.jpg',p:69},{c:'p69-3',f:'p69-3.jpg',p:69},{c:'p69-4',f:'p69-4.jpg',p:69},{c:'p69-5',f:'p69-5.jpg',p:69},{c:'p69-6',f:'p69-6.jpg',p:69},{c:'p69-7',f:'p69-7.jpg',p:69},{c:'p69-8',f:'p69-8.jpg',p:69},{c:'p69-9',f:'p69-9.jpg',p:69},{c:'p70-0',f:'p70-0.jpg',p:70},{c:'p70-1',f:'p70-1.jpg',p:70},{c:'p70-2',f:'p70-2.jpg',p:70},{c:'p71-0',f:'p71-0.jpg',p:71},{c:'p71-1',f:'p71-1.jpg',p:71},{c:'p71-2',f:'p71-2.jpg',p:71},{c:'p71-3',f:'p71-3.jpg',p:71},{c:'p71-4',f:'p71-4.jpg',p:71},{c:'p71-5',f:'p71-5.jpg',p:71},{c:'p71-6',f:'p71-6.jpg',p:71},{c:'p71-7',f:'p71-7.jpg',p:71},{c:'p72-0',f:'p72-0.jpg',p:72},{c:'p72-1',f:'p72-1.jpg',p:72},{c:'p72-2',f:'p72-2.jpg',p:72},{c:'p72-3',f:'p72-3.jpg',p:72},{c:'p72-4',f:'p72-4.jpg',p:72},{c:'p72-5',f:'p72-5.jpg',p:72},{c:'p72-6',f:'p72-6.jpg',p:72},{c:'p72-7',f:'p72-7.jpg',p:72},{c:'p73-0',f:'p73-0.jpg',p:73},{c:'p73-1',f:'p73-1.jpg',p:73},{c:'p73-2',f:'p73-2.jpg',p:73},{c:'p73-3',f:'p73-3.jpg',p:73},{c:'p73-4',f:'p73-4.jpg',p:73},{c:'p73-5',f:'p73-5.jpg',p:73},{c:'p73-6',f:'p73-6.jpg',p:73},{c:'p73-7',f:'p73-7.jpg',p:73},{c:'p74-0',f:'p74-0.jpg',p:74},{c:'p74-1',f:'p74-1.jpg',p:74},{c:'p74-2',f:'p74-2.jpg',p:74},{c:'p74-3',f:'p74-3.jpg',p:74},{c:'p74-4',f:'p74-4.jpg',p:74},{c:'p74-5',f:'p74-5.jpg',p:74},{c:'p74-6',f:'p74-6.jpg',p:74},{c:'p74-7',f:'p74-7.jpg',p:74},{c:'p75-0',f:'p75-0.jpg',p:75},{c:'p75-1',f:'p75-1.jpg',p:75},{c:'p75-10',f:'p75-10.jpg',p:75},{c:'p75-11',f:'p75-11.jpg',p:75},{c:'p75-2',f:'p75-2.jpg',p:75},{c:'p75-3',f:'p75-3.jpg',p:75},{c:'p75-4',f:'p75-4.jpg',p:75},{c:'p75-5',f:'p75-5.jpg',p:75},{c:'p75-6',f:'p75-6.jpg',p:75},{c:'p75-7',f:'p75-7.jpg',p:75},{c:'p75-8',f:'p75-8.jpg',p:75},{c:'p75-9',f:'p75-9.jpg',p:75},{c:'p76-0',f:'p76-0.jpg',p:76},{c:'p76-1',f:'p76-1.jpg',p:76},{c:'p76-10',f:'p76-10.jpg',p:76},{c:'p76-11',f:'p76-11.jpg',p:76},{c:'p76-2',f:'p76-2.jpg',p:76},{c:'p76-3',f:'p76-3.jpg',p:76},{c:'p76-4',f:'p76-4.jpg',p:76},{c:'p76-5',f:'p76-5.jpg',p:76},{c:'p76-6',f:'p76-6.jpg',p:76},{c:'p76-7',f:'p76-7.jpg',p:76},{c:'p76-8',f:'p76-8.jpg',p:76},{c:'p76-9',f:'p76-9.jpg',p:76},{c:'p77-0',f:'p77-0.jpg',p:77},{c:'p78-0',f:'p78-0.jpg',p:78},{c:'1_p79',f:'1_p79.jpg',p:79},{c:'2_p80',f:'2_p80.jpg',p:80},{c:'p81-0',f:'p81-0.jpg',p:81},{c:'p82-0',f:'p82-0.jpg',p:82},{c:'p83-0',f:'p83-0.jpg',p:83},{c:'p83-1',f:'p83-1.jpg',p:83},{c:'p83-10',f:'p83-10.jpg',p:83},{c:'p83-11',f:'p83-11.jpg',p:83},{c:'p83-2',f:'p83-2.jpg',p:83},{c:'p83-3',f:'p83-3.jpg',p:83},{c:'p83-4',f:'p83-4.jpg',p:83},{c:'p83-5',f:'p83-5.jpg',p:83},{c:'p83-6',f:'p83-6.jpg',p:83},{c:'p83-7',f:'p83-7.jpg',p:83},{c:'p83-8',f:'p83-8.jpg',p:83},{c:'p83-9',f:'p83-9.jpg',p:83},{c:'p84-0',f:'p84-0.jpg',p:84},{c:'p84-1',f:'p84-1.jpg',p:84},{c:'p84-10',f:'p84-10.jpg',p:84},{c:'p84-11',f:'p84-11.jpg',p:84},{c:'p84-12',f:'p84-12.jpg',p:84},{c:'p84-13',f:'p84-13.jpg',p:84},{c:'p84-14',f:'p84-14.jpg',p:84},{c:'p84-15',f:'p84-15.jpg',p:84},{c:'p84-16',f:'p84-16.jpg',p:84},{c:'p84-17',f:'p84-17.jpg',p:84},{c:'p84-18',f:'p84-18.jpg',p:84},{c:'p84-19',f:'p84-19.jpg',p:84},{c:'p84-2',f:'p84-2.jpg',p:84},{c:'p84-20',f:'p84-20.jpg',p:84},{c:'p84-21',f:'p84-21.jpg',p:84},{c:'p84-22',f:'p84-22.jpg',p:84},{c:'p84-23',f:'p84-23.jpg',p:84},{c:'p84-24',f:'p84-24.jpg',p:84},{c:'p84-25',f:'p84-25.jpg',p:84},{c:'p84-26',f:'p84-26.jpg',p:84},{c:'p84-27',f:'p84-27.jpg',p:84},{c:'p84-28',f:'p84-28.jpg',p:84},{c:'p84-29',f:'p84-29.jpg',p:84},{c:'p84-3',f:'p84-3.jpg',p:84},{c:'p84-30',f:'p84-30.jpg',p:84},{c:'p84-31',f:'p84-31.jpg',p:84},{c:'p84-32',f:'p84-32.jpg',p:84},{c:'p84-33',f:'p84-33.jpg',p:84},{c:'p84-34',f:'p84-34.jpg',p:84},{c:'p84-35',f:'p84-35.jpg',p:84},{c:'p84-36',f:'p84-36.jpg',p:84},{c:'p84-37',f:'p84-37.jpg',p:84},{c:'p84-38',f:'p84-38.jpg',p:84},{c:'p84-39',f:'p84-39.jpg',p:84},{c:'p84-4',f:'p84-4.jpg',p:84},{c:'p84-40',f:'p84-40.jpg',p:84},{c:'p84-41',f:'p84-41.jpg',p:84},{c:'p84-42',f:'p84-42.jpg',p:84},{c:'p84-43',f:'p84-43.jpg',p:84},{c:'p84-44',f:'p84-44.jpg',p:84},{c:'p84-45',f:'p84-45.jpg',p:84},{c:'p84-46',f:'p84-46.jpg',p:84},{c:'p84-47',f:'p84-47.jpg',p:84},{c:'p84-5',f:'p84-5.jpg',p:84},{c:'p84-6',f:'p84-6.jpg',p:84},{c:'p84-7',f:'p84-7.jpg',p:84},{c:'p84-8',f:'p84-8.jpg',p:84},{c:'p84-9',f:'p84-9.jpg',p:84},{c:'p85-0',f:'p85-0.jpg',p:85},{c:'p85-1',f:'p85-1.jpg',p:85},{c:'p85-10',f:'p85-10.jpg',p:85},{c:'p85-11',f:'p85-11.jpg',p:85},{c:'p85-12',f:'p85-12.jpg',p:85},{c:'p85-13',f:'p85-13.jpg',p:85},{c:'p85-14',f:'p85-14.jpg',p:85},{c:'p85-15',f:'p85-15.jpg',p:85},{c:'p85-16',f:'p85-16.jpg',p:85},{c:'p85-17',f:'p85-17.jpg',p:85},{c:'p85-18',f:'p85-18.jpg',p:85},{c:'p85-19',f:'p85-19.jpg',p:85},{c:'p85-2',f:'p85-2.jpg',p:85},{c:'p85-20',f:'p85-20.jpg',p:85},{c:'p85-21',f:'p85-21.jpg',p:85},{c:'p85-22',f:'p85-22.jpg',p:85},{c:'p85-23',f:'p85-23.jpg',p:85},{c:'p85-24',f:'p85-24.jpg',p:85},{c:'p85-25',f:'p85-25.jpg',p:85},{c:'p85-26',f:'p85-26.jpg',p:85},{c:'p85-27',f:'p85-27.jpg',p:85},{c:'p85-28',f:'p85-28.jpg',p:85},{c:'p85-29',f:'p85-29.jpg',p:85},{c:'p85-3',f:'p85-3.jpg',p:85},{c:'p85-30',f:'p85-30.jpg',p:85},{c:'p85-31',f:'p85-31.jpg',p:85},{c:'p85-32',f:'p85-32.jpg',p:85},{c:'p85-33',f:'p85-33.jpg',p:85},{c:'p85-34',f:'p85-34.jpg',p:85},{c:'p85-35',f:'p85-35.jpg',p:85},{c:'p85-36',f:'p85-36.jpg',p:85},{c:'p85-37',f:'p85-37.jpg',p:85},{c:'p85-38',f:'p85-38.jpg',p:85},{c:'p85-39',f:'p85-39.jpg',p:85},{c:'p85-4',f:'p85-4.jpg',p:85},{c:'p85-40',f:'p85-40.jpg',p:85},{c:'p85-41',f:'p85-41.jpg',p:85},{c:'p85-42',f:'p85-42.jpg',p:85},{c:'p85-43',f:'p85-43.jpg',p:85},{c:'p85-44',f:'p85-44.jpg',p:85},{c:'p85-45',f:'p85-45.jpg',p:85},{c:'p85-46',f:'p85-46.jpg',p:85},{c:'p85-47',f:'p85-47.jpg',p:85},{c:'p85-5',f:'p85-5.jpg',p:85},{c:'p85-6',f:'p85-6.jpg',p:85},{c:'p85-7',f:'p85-7.jpg',p:85},{c:'p85-8',f:'p85-8.jpg',p:85},{c:'p85-9',f:'p85-9.jpg',p:85},{c:'5',f:'5.jpg',p:86},{c:'p87-0',f:'p87-0.jpg',p:87},{c:'p87-1',f:'p87-1.jpg',p:87},{c:'p87-10',f:'p87-10.jpg',p:87},{c:'p87-11',f:'p87-11.jpg',p:87},{c:'p87-2',f:'p87-2.jpg',p:87},{c:'p87-3',f:'p87-3.jpg',p:87},{c:'p87-4',f:'p87-4.jpg',p:87},{c:'p87-5',f:'p87-5.jpg',p:87},{c:'p87-6',f:'p87-6.jpg',p:87},{c:'p87-7',f:'p87-7.jpg',p:87},{c:'p87-8',f:'p87-8.jpg',p:87},{c:'p87-9',f:'p87-9.jpg',p:87},{c:'p88-0',f:'p88-0.jpg',p:88},{c:'p88-1',f:'p88-1.jpg',p:88},{c:'p88-2',f:'p88-2.jpg',p:88},{c:'p88-3',f:'p88-3.jpg',p:88},{c:'p88-4',f:'p88-4.jpg',p:88},{c:'p88-5',f:'p88-5.jpg',p:88},{c:'p88-6',f:'p88-6.jpg',p:88},{c:'p88-7',f:'p88-7.jpg',p:88},{c:'p88-8',f:'p88-8.jpg',p:88},{c:'p89-0',f:'p89-0.jpg',p:89},{c:'p89-1',f:'p89-1.jpg',p:89},{c:'p89-2',f:'p89-2.jpg',p:89},{c:'p89-3',f:'p89-3.jpg',p:89},{c:'p89-4',f:'p89-4.jpg',p:89},{c:'p89-5',f:'p89-5.jpg',p:89},{c:'p89-6',f:'p89-6.jpg',p:89},{c:'p89-7',f:'p89-7.jpg',p:89},{c:'p89-8',f:'p89-8.jpg',p:89},{c:'6_p90',f:'6_p90.jpg',p:90},{c:'p90-0',f:'p90-0.jpg',p:90},{c:'p90-1',f:'p90-1.jpg',p:90},{c:'p90-10',f:'p90-10.jpg',p:90},{c:'p90-11',f:'p90-11.jpg',p:90},{c:'p90-3',f:'p90-3.jpg',p:90},{c:'p90-4',f:'p90-4.jpg',p:90},{c:'p90-5',f:'p90-5.jpg',p:90},{c:'p90-6',f:'p90-6.jpg',p:90},{c:'p90-7',f:'p90-7.jpg',p:90},{c:'p90-8',f:'p90-8.jpg',p:90},{c:'p90-9',f:'p90-9.jpg',p:90},{c:'p91-0',f:'p91-0.jpg',p:91},{c:'p91-1',f:'p91-1.jpg',p:91},{c:'p91-2',f:'p91-2.jpg',p:91},{c:'p91-3',f:'p91-3.jpg',p:91},{c:'p91-4',f:'p91-4.jpg',p:91},{c:'p91-5',f:'p91-5.jpg',p:91},{c:'p91-6',f:'p91-6.jpg',p:91},{c:'p91-7',f:'p91-7.jpg',p:91},{c:'p91-8',f:'p91-8.jpg',p:91},{c:'p92-0',f:'p92-0.jpg',p:92},{c:'p93-0',f:'p93-0.jpg',p:93},{c:'p93-1',f:'p93-1.jpg',p:93},{c:'p93-2',f:'p93-2.jpg',p:93},{c:'p93-3',f:'p93-3.jpg',p:93},{c:'4_p94',f:'4_p94.jpg',p:94},{c:'p94-0',f:'p94-0.jpg',p:94},{c:'p94-1',f:'p94-1.jpg',p:94},{c:'4_p95',f:'4_p95.jpg',p:95},{c:'p96-0',f:'p96-0.jpg',p:96},{c:'p96-1',f:'p96-1.jpg',p:96},{c:'p96-2',f:'p96-2.jpg',p:96},{c:'p96-3',f:'p96-3.jpg',p:96},{c:'p96-4',f:'p96-4.jpg',p:96},{c:'p96-5',f:'p96-5.jpg',p:96},{c:'p97-0',f:'p97-0.jpg',p:97},{c:'p97-1',f:'p97-1.jpg',p:97},{c:'p97-2',f:'p97-2.jpg',p:97},{c:'p97-3',f:'p97-3.jpg',p:97},{c:'p97-4',f:'p97-4.jpg',p:97},{c:'p97-5',f:'p97-5.jpg',p:97},{c:'p97-6',f:'p97-6.jpg',p:97},{c:'p97-7',f:'p97-7.jpg',p:97},{c:'p98-0',f:'p98-0.jpg',p:98},{c:'p98-1',f:'p98-1.jpg',p:98},{c:'p98-10',f:'p98-10.jpg',p:98},{c:'p98-11',f:'p98-11.jpg',p:98},{c:'p98-2',f:'p98-2.jpg',p:98},{c:'p98-3',f:'p98-3.jpg',p:98},{c:'p98-4',f:'p98-4.jpg',p:98},{c:'p98-5',f:'p98-5.jpg',p:98},{c:'p98-6',f:'p98-6.jpg',p:98},{c:'p98-7',f:'p98-7.jpg',p:98},{c:'p98-8',f:'p98-8.jpg',p:98},{c:'p98-9',f:'p98-9.jpg',p:98},{c:'p99-0',f:'p99-0.jpg',p:99},{c:'p99-1',f:'p99-1.jpg',p:99},{c:'p99-10',f:'p99-10.jpg',p:99},{c:'p99-2',f:'p99-2.jpg',p:99},{c:'p99-3',f:'p99-3.jpg',p:99},{c:'p99-4',f:'p99-4.jpg',p:99},{c:'p99-5',f:'p99-5.jpg',p:99},{c:'p99-6',f:'p99-6.jpg',p:99},{c:'p99-7',f:'p99-7.jpg',p:99},{c:'p99-8',f:'p99-8.jpg',p:99},{c:'p99-9',f:'p99-9.jpg',p:99},{c:'6_p100',f:'6_p100.jpg',p:100},{c:'p101-0',f:'p101-0.jpg',p:101},{c:'p101-1',f:'p101-1.jpg',p:101},{c:'p101-2',f:'p101-2.jpg',p:101},{c:'p101-3',f:'p101-3.jpg',p:101},{c:'p101-4',f:'p101-4.jpg',p:101},{c:'p101-5',f:'p101-5.jpg',p:101},{c:'p101-6',f:'p101-6.jpg',p:101},{c:'p101-7',f:'p101-7.jpg',p:101},{c:'p101-8',f:'p101-8.jpg',p:101}].map(x=>({code:x.c,file:x.f,page:x.p}));
 const MEETING_PLANS = [
   {n:1, phase:'1A', title:"The Us Game", topics:"People words (man, woman, you, I, he, she), common movements, greetings, some animals", detailed:true},
   {n:2, phase:'1A', title:"Around Us", topics:"Furniture, schoolroom/office/kitchen objects, put/in/on/take, \"how are you?\""},
@@ -258,22 +262,28 @@ const MEETING_PLANS = [
   {n:40, phase:'1B', title:"Wrap-Up", topics:"Negations, verbs like bend/break/fold — closes out Phase 1"},
 ];
 const MP1_DETAIL = {
-  purpose:"Build the very first connection with your nurturer while learning simple pointing-words (man, woman, you, I, boy, girl...) through pure listening — no talking at all.",
-  materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room). The Graphics Packet's Rough-and-Ready Dozen pictures for reference.",
+  purpose:"Build the very first connection with your nurturer while learning simple pointing-words — first people-words (man, woman, you, I, boy, girl...) in Game 1A, then animal words in Game 1B — through pure listening, no talking at all.",
+  technique:"Both games use the \"Rough-and-Ready Dozen\" technique: the nurturer names something once, then immediately quizzes you on it by asking where it is, mixing in everything learned so far, at random. You never repeat words back — you just point. Two ground rules sit above everything else here: stay connected to your nurturer as a real person, not a machine dispensing vocabulary, and have fun — laughing is a good sign, not a distraction. There are three possible roles in the room: the nurturer (your host companion), the growing participators (2-6 of you), and optionally a coach — another growing participator, beginner or advanced, whose presence helps train a new nurturer.",
+  materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room), plus toy animals or animal pictures (bird, fish, frog, dog, cat, cow, mouse, horse, goat, etc. — local, familiar animals are fine). The Graphics Packet's Rough-and-Ready Dozen pictures for reference and its Talking Picture Dictionary page for recording new words.",
   steps:[
-    "Nurturer sets out two dolls and says \"This is a man / This is a woman,\" then asks \"Where is the woman? Where is the man?\" repeatedly, in random order.",
-    "Nurturer introduces \"I\" (pointing to herself) and mixes it into the same random question pattern.",
-    "One new word is added at a time — stated once, then folded straight into the \"Where is...?\" questioning.",
-    "GPs respond only by pointing. No talking, no repeating words aloud, no English.",
-    "If a GP points wrong, the nurturer corrects naturally in the target language (\"No, that's not the man, that's the woman. Where is the man?\") rather than explaining grammar.",
-    "Once everyone points correctly and confidently, the next new word is introduced the same way.",
-    "Near the end, a short (about one minute) recording is made of the random \"Where is...?\" questioning covering everything learned."
+    {name:"Set the scene", description:"Your nurturer lays out two dolls (or uses two real people in the room) — a man and a woman. From this point on, only the nurturer speaks the target language, and she keeps speaking it the entire game. Growing participators (GPs) never talk during this game — you only listen and point."},
+    {name:"Introduce the first two words", description:"Nurturer says the equivalent of \"This is a man. This is a woman\" — each just once. She does not repeat these naming sentences again. Instead, she immediately starts asking, over and over in random order, something like \"Where is the woman? Where is the man?\" You respond purely by pointing at the correct doll or person."},
+    {name:"Add yourself into the mix", description:"Nurturer introduces \"I\" by pointing to herself, then folds it straight into the same random questioning — \"Where am I? Where is the man? Where is the woman? Where am I?\" — mixing it in with everything already learned rather than asking about it alone."},
+    {name:"One new word at a time — the core rule", description:"This is the rule the whole technique depends on: every time a new word is added, the nurturer says it in a sentence exactly once, then goes straight back to quiz-style \"Where is...?\" questioning. She never repeats the new word by itself over and over (never \"man, man, man\"). The repetition you need comes from being asked about it repeatedly in different random combinations, not from hearing the word chanted. Add \"boy\" this way, then fold it into the questioning alongside everything else."},
+    {name:"Keep growing the set", description:"Keep adding one word at a time — you, they, child, person, girl, baby, old man, old woman, and so on — always folding each new word into the same random \"Where is...?\" pattern covering everything learned so far. Only move on to a new word once the group can reliably point to everything already introduced."},
+    {name:"Correcting mistakes the right way", description:"If a GP points to the wrong person, the nurturer corrects it only in the target language — naturally and kindly, the way you'd gently correct a small child, never by switching to English or explaining grammar. For example: you're asked where the man is, you point at the woman by mistake, and the nurturer simply says (in her language) something like \"no, that's not the man, that's the woman — where is the man?\" and keeps going. You'll pick up the gist of what she means even without understanding every word of the correction itself — that's normal and fine."},
+    {name:"Record a sample", description:"As soon as the last word for this round has been added, start your recording device and let it run while the nurturer runs back through the full \"Where is...?\" questioning, covering every word learned in the game so far in random order. Since the order is random some words get asked more than others — that's fine. The whole recording shouldn't run more than about a minute."},
+    {name:"Build your talking picture dictionary", description:"After recording the sample, turn to the Resource Packet's Talking Picture Dictionary page (or make quick simple drawings for anything it's missing — don't worry about artistic quality). Number every picture you used this round, continuing from wherever your running count left off last time. Then record yourself naming each one in order — \"One. This is an old man. Old man. Two. This is an old woman...\" and so on. You'll keep adding to this same running numbered set after every Rough-and-Ready Dozen game for the rest of Phase 1 — by the end it typically holds 800 or more numbered, recorded entries."},
+    {name:"Repeat the technique with animals", description:"Game 1B uses the exact same Rough-and-Ready Dozen pattern as Game 1A, just with animals instead of people. Nurturer brings out two toy animals or pictures, names each once (\"This is a cat. This is a dog\"), then immediately starts the random \"Where is...?\" questioning, same as before."},
+    {name:"Add animals one at a time", description:"Continue adding one new animal at a time — goat, bird, fish, frog, spider, cow, mouse, horse, and so on (local, familiar animals are perfectly fine, they don't need to be exotic) — always folding each new addition into the same random questioning covering everything already learned in this game."},
+    {name:"Introduce the general word for \"animals\"", description:"Once several animals are known, introduce a general category word for \"animals\" itself, and contrast it against the general word for \"people\" you already learned in Game 1A — this starts building the category-level vocabulary alongside the specific items."},
+    {name:"Record and log again", description:"Exactly as in Game 1A: once the final animal has been added, record about a minute of random questioning covering every animal learned. Then add all the new animal words to your same running numbered Talking Picture Dictionary, continuing the numbering from where Game 1A left off."}
   ],
   checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
 };
-
+ 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-
+ 
 async function loadData(){
   try{
     const res = await window.storage.get(STORE_KEY, false);
@@ -296,7 +306,7 @@ async function saveData(){
   try{ await window.storage.set(STORE_KEY, JSON.stringify(state), false); }
   catch(e){ console.error('Storage error', e); }
 }
-
+ 
 function totalHours(){ return state.sessions.reduce((a,s)=>a+(Number(s.duration)||0),0)/60; }
 function currentPhaseInfo(){
   const h = totalHours();
@@ -318,7 +328,7 @@ function getGaps(){
   return computeWordStats().filter(w => w.level<2 || w.daysSince===null || w.daysSince>=10)
     .sort((a,b)=> (a.level-b.level) || ((b.daysSince||999)-(a.daysSince||999)));
 }
-
+ 
 function render(){
   const tabsEl = document.getElementById('tabs');
   tabsEl.innerHTML = TABS.map(t=>`<button class="${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join('');
@@ -334,14 +344,25 @@ function render(){
 }
 function setTab(id){ activeTab=id; render(); }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-
+function entryTypeTag(w){
+  const t = w.entryType || 'word';
+  if(t==='word') return '';
+  const labels = {phrase:'phrase', description:'description', story:'story'};
+  return `<span class="tag">${labels[t]||t}</span>`;
+}
+function entryTypeBreakdown(){
+  const counts = {word:0, phrase:0, description:0, story:0};
+  state.words.forEach(w=>{ const t = w.entryType || 'word'; if(counts[t]!==undefined) counts[t]++; });
+  return `Words: ${counts.word} · Phrases: ${counts.phrase} · Descriptions: ${counts.description} · Stories: ${counts.story}`;
+}
+ 
 // ---------- Dashboard ----------
 function renderDashboard(c){
   const h = totalHours();
   const {phase, info, startH, endH, hoursIntoPhase} = currentPhaseInfo();
   const meetingsTouched = Object.values(state.meetingComplete).filter(s=>s==='done').length;
   const gaps = getGaps();
-
+ 
   // Actual pace from logged session history (self-adjusting as you log more)
   const sessDates = state.sessions.map(s=>s.date).filter(Boolean).sort();
   let actualPace = null;
@@ -352,7 +373,7 @@ function renderDashboard(c){
   }
   const statedPace = Number(state.profile.hoursPerWeek)||0;
   const pace = actualPace || statedPace;
-
+ 
   let forecastLine = 'Log a couple of sessions (or add your weekly hours in Profile) to see a forecast.';
   if(endH && pace>0){
     const remaining = Math.max(endH-h,0);
@@ -368,14 +389,28 @@ function renderDashboard(c){
   } else if(!endH){
     forecastLine = 'Phase 6 has no fixed hour target — this is the open-ended final stretch.';
   }
-
+ 
+  const p = state.profile;
+  let title;
+  if(p.name && p.language) title = `${escapeHtml(p.name)}'s ${escapeHtml(p.language)} learning companion`;
+  else if(p.language) title = `Your ${escapeHtml(p.language)} learning companion`;
+  else if(p.name) title = `${escapeHtml(p.name)}'s learning companion`;
+  else title = 'Your learning companion';
+ 
   c.innerHTML = `
+    <div style="margin-bottom:18px;">
+      <h2 style="font-size:1.25rem;margin-bottom:8px;">${title}</h2>
+      ${p.why ? `<div style="margin-bottom:4px;"><strong>Why?</strong> ${escapeHtml(p.why)}</div>` : ''}
+      ${p.remember ? `<div><strong>Remember:</strong> <em>${escapeHtml(p.remember)}</em></div>` : ''}
+      ${(!p.why && !p.remember) ? `<div class="empty">Add "why" and "what to remember" in Profile to see them here.</div>` : ''}
+    </div>
     <div class="stat-row">
       <div class="stat"><div class="num">${h.toFixed(1)}</div><div class="label">hours logged</div></div>
       <div class="stat"><div class="num">${meetingsTouched}/40</div><div class="label">meeting plans completed</div></div>
-      <div class="stat"><div class="num">${state.words.length}</div><div class="label">words in log</div></div>
-      <div class="stat"><div class="num">${state.words.filter(w=>w.level===2).length}</div><div class="label">words you can say</div></div>
+      <div class="stat"><div class="num">${state.words.length}</div><div class="label">log entries</div></div>
+      <div class="stat"><div class="num">${state.words.filter(w=>w.level===2).length}</div><div class="label">ready to say</div></div>
     </div>
+    <div class="empty" style="margin-bottom:16px;">${entryTypeBreakdown()}</div>
     <h3>Phase ${phase}${endH?` (${hoursIntoPhase.toFixed(0)} / ${endH-startH} hrs)`:''}</h3>
     <div class="meta" style="margin-bottom:4px;"><strong>Understanding:</strong> ${info.understand}</div>
     <div class="meta" style="margin-bottom:10px;"><strong>Talking:</strong> ${info.talk}</div>
@@ -394,7 +429,7 @@ function renderDashboard(c){
     if(gaps.length>8) list.innerHTML += `<div class="empty">+${gaps.length-8} more in Word Log</div>`;
   }
 }
-
+ 
 // ---------- Orientation ----------
 function renderOrientation(c){
   let html = '';
@@ -417,25 +452,25 @@ function toggleOrientation(id){
   state.orientationDone[id] = !state.orientationDone[id];
   saveData(); renderOrientation(document.getElementById('content'));
 }
-
+ 
 // ---------- Meeting Plans ----------
 let expandedPlan = null;
 const DEFAULT_NURTURER_SCRIPT = `Hi, and thank you for being my nurturer! Before we start, here are a few quick reminders that really help me learn.
-
+ 
 Please only add one new word at a time. Say it once or twice, then move to asking me things like "Where is...?" or quizzing me on it — please don't just keep repeating the word itself, since I learn best from being asked, not from hearing it repeated.
-
+ 
 When I get something right — even just by pointing correctly — please tell me! A simple "good job" or "that's right" every single time really helps me know I'm on track. It's easy to forget this once we're both focused on the activity, so please try to make it a habit.
-
+ 
 If I get something wrong, please don't explain it in English or stop to teach me the grammar. Just correct me naturally, the way you'd correct a child — say it the right way and keep going.
-
+ 
 Please try to speak only in the language we're learning during our activities, even if I don't understand everything yet — that's actually the point.
-
+ 
 And please, let's keep this relaxed and fun. I'd rather laugh through a mistake than feel like this is a test.
-
+ 
 Near the end of each activity, let's make a short recording together of everything new we covered, so I can listen back at home.
-
+ 
 Thank you so much — I'm really glad to be learning with you today.`;
-
+ 
 function renderMeetings(c){
   let html = `<div class="mp-detail" style="margin-bottom:16px;">
     <h4 style="margin-top:0;">Reminder for your nurturer</h4>
@@ -469,21 +504,22 @@ function renderMeetings(c){
         const stepProg = (state.stepProgress && state.stepProgress[mp.n]) || [];
         const perStepEst = Math.round(150 / MP1_DETAIL.steps.length);
         html += `<div><strong>Purpose:</strong> ${MP1_DETAIL.purpose}</div>
+          <div style="margin-top:8px;"><strong>How this technique works:</strong> ${MP1_DETAIL.technique}</div>
           <h4>Materials</h4><div>${MP1_DETAIL.materials}</div>
-          <h4>Steps</h4>
-          <div class="empty" style="margin-bottom:4px;">Per-step times are a rough even split of the 2-3 hr total — not from the original material, just a planning guide. Time each one to see if you're pacing ahead, behind, or on track.</div>`;
+          <h4>Activities</h4>
+          <div class="empty" style="margin-bottom:4px;">Per-activity times are a rough even split of the 2-3 hr total — not from the original material, just a planning guide. Time each one to see if you're pacing ahead, behind, or on track.</div>`;
         MP1_DETAIL.steps.forEach((s,i)=>{
           const key = mp.n+'-'+i;
           const storedMin = (state.stepDurations && state.stepDurations[mp.n] && state.stepDurations[mp.n][i]!=null) ? state.stepDurations[mp.n][i] : null;
           const isActive = activeTimer.planN===mp.n && activeTimer.stepIdx===i;
           const running = isActive && activeTimer.running;
           const initialDisplay = isActive ? formatTimer(activeTimer.ms) : (storedMin!=null ? formatTimer(storedMin*60000) : '00:00');
-          html += `<div style="border-top:1px solid var(--paper-line); padding:8px 0;">
+          html += `<div style="border-top:1px solid var(--paper-line); padding:10px 0;">
             <label style="display:flex;align-items:flex-start;gap:8px;font-size:.85rem;">
               <input type="checkbox" style="margin-top:3px;" ${stepProg[i]?'checked':''} onchange="toggleStep(${mp.n},${i})">
-              <span>${s} <span class="tm">(~${perStepEst} min)</span></span>
+              <span><strong>${i+1}. ${escapeHtml(s.name)}</strong> <span class="tm">(~${perStepEst} min)</span><br><span style="display:block;margin-top:3px;line-height:1.5;">${s.description}</span></span>
             </label>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 0 24px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 0 24px;">
               <span id="stepTimerDisp-${key}" style="font-family:'Lora',serif;font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
               <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},${i})">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
               <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},${i})" ${running?'':'disabled'}>Pause</button>
@@ -507,7 +543,22 @@ function renderMeetings(c){
             <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},'whole')">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
             <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},'whole')" ${running?'':'disabled'}>Pause</button>
             <button class="ghost" onclick="stopStepTimer(${mp.n},'whole')">Stop &amp; fill minutes</button>
+          </div>
+          <div style="margin:8px 0;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+            ${wordFormHTML('mpword'+mp.n+'_', mp.n)}
           </div>`;
+      }
+      const recsForPlan = state.words.filter(w=>Number(w.meetingPlan)===mp.n);
+      if(recsForPlan.length){
+        html += `<h4>Recordings for this meeting (${recsForPlan.length})</h4>`;
+        recsForPlan.slice().reverse().forEach(w=>{
+          html += `<div class="entry">
+            <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
+            <div class="meta">${entryTypeTag(w)}${w.category?`<span class="tag">${escapeHtml(w.category)}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
+            ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
+            <div id="mprec-${w.id}" class="meta"></div>
+          </div>`;
+        });
       }
       const mat = suggestedMaterials(mp);
       if(mat.status==='ok'){
@@ -544,7 +595,10 @@ function renderMeetings(c){
     const mp = MEETING_PLANS.find(m=>m.n===expandedPlan);
     if(mp && mp.detailed){
       MP1_DETAIL.steps.forEach((s,i)=> renderDisplayInputFor('step'+mp.n+'-'+i+'_'));
+    } else if(mp){
+      renderDisplayInputFor('mpword'+mp.n+'_');
     }
+    state.words.filter(w=>Number(w.meetingPlan)===expandedPlan && w.hasAudio).forEach(w=> loadPlayerInto('mprec-'+w.id, 'word', w.id));
   }
 }
 function saveNurturerScript(){
@@ -559,7 +613,7 @@ function recordNurturerAudio(){
     renderMeetings(document.getElementById('content'));
   });
 }
-
+ 
 // ---------- Per-activity timer ----------
 let activeTimer = {planN:null, stepIdx:null, ms:0, running:false, startedAt:null};
 function formatTimer(ms){
@@ -626,14 +680,27 @@ function useStepTotal(planN){
   const durEl = document.getElementById('mpDuration');
   if(durEl) durEl.value = total;
 }
-
+ 
 // ---------- Shared "add a word/phrase" form, reused in Word Log and inside each activity ----------
 function wordFormHTML(prefix, presetMeetingPlan){
   const showMeetingField = presetMeetingPlan===null || presetMeetingPlan===undefined;
+  const existingCategories = [...new Set(state.words.map(w=>w.category).filter(Boolean))];
   return `
     <div class="row">
       <div class="field"><label>Title (optional)</label><input id="${prefix}Text" placeholder="leave blank if you'd rather title it later"></div>
-      ${showMeetingField ? `<div class="field"><label>Meeting plan (optional)</label><input id="${prefix}Meeting" type="number" min="1" max="40" placeholder="e.g. 3"></div>` : ''}
+      <div class="field"><label>Type</label>
+        <select id="${prefix}EntryType">
+          <option value="word" selected>Word</option>
+          <option value="phrase">Phrase</option>
+          <option value="description">Description</option>
+          <option value="story">Story</option>
+        </select>
+      </div>
+    </div>
+    ${showMeetingField ? `<div class="field"><label>Meeting plan (optional)</label><input id="${prefix}Meeting" type="number" min="1" max="40" placeholder="e.g. 3"></div>` : ''}
+    <div class="field"><label>Custom category (optional)</label>
+      <input id="${prefix}Category" list="${prefix}CategoryList" placeholder="e.g. greetings, market day, family names">
+      <datalist id="${prefix}CategoryList">${existingCategories.map(cat=>`<option value="${escapeHtml(cat)}">`).join('')}</datalist>
     </div>
     <div class="field"><label>Power phrase</label>
       <select id="${prefix}Power"><option value="">No</option><option value="yes">Yes — one I really want to nail</option></select>
@@ -654,6 +721,8 @@ function wordFormHTML(prefix, presetMeetingPlan){
     <div id="${prefix}Status" class="meta" style="margin-top:6px;"></div>
   `;
 }
+let graphicsBrowsePage = {};
+let graphicsSelection = {};
 function renderDisplayInputFor(prefix){
   const typeEl = document.getElementById(prefix+'DisplayType');
   if(!typeEl) return;
@@ -664,10 +733,54 @@ function renderDisplayInputFor(prefix){
   } else if(type==='device'){
     el.innerHTML = `<div class="field"><label>Choose a photo</label><input type="file" id="${prefix}Photo" accept="image/*"></div>`;
   } else if(type==='graphics'){
-    el.innerHTML = `<div class="empty">Graphics pack not loaded yet — falls back to text for now.</div>`;
+    if(!graphicsBrowsePage[prefix]) graphicsBrowsePage[prefix] = (GRAPHICS_MANIFEST[0] ? GRAPHICS_MANIFEST[0].page : 1);
+    el.innerHTML = `<div id="${prefix}GraphicsPicker"></div>`;
+    renderGraphicsPicker(prefix);
   } else {
     el.innerHTML = `<div class="empty">This entry will display as text only.</div>`;
   }
+}
+function graphicsPages(){ return [...new Set(GRAPHICS_MANIFEST.map(g=>g.page))].sort((a,b)=>a-b); }
+function graphicsPageNav(prefix, delta){
+  const pages = graphicsPages();
+  const idx = pages.indexOf(graphicsBrowsePage[prefix]);
+  const newIdx = Math.min(Math.max(idx+delta, 0), pages.length-1);
+  graphicsBrowsePage[prefix] = pages[newIdx];
+  renderGraphicsPicker(prefix);
+}
+function graphicsJumpPage(prefix, val){
+  const pages = graphicsPages();
+  const n = Number(val);
+  graphicsBrowsePage[prefix] = pages.includes(n) ? n : pages[0];
+  renderGraphicsPicker(prefix);
+}
+function selectGraphicsImage(prefix, file, code){
+  graphicsSelection[prefix] = {file, code};
+  renderGraphicsPicker(prefix);
+}
+function renderGraphicsPicker(prefix){
+  const el = document.getElementById(prefix+'GraphicsPicker');
+  if(!el) return;
+  const page = graphicsBrowsePage[prefix];
+  const pages = graphicsPages();
+  const items = GRAPHICS_MANIFEST.filter(g=>g.page===page);
+  const sel = graphicsSelection[prefix];
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="ghost" onclick="graphicsPageNav('${prefix}',-1)">&laquo; Prev page</button>
+      <span class="meta">Page <input type="number" style="width:55px;display:inline-block;padding:3px;" value="${page}" onchange="graphicsJumpPage('${prefix}', this.value)"> of ${pages[pages.length-1]}</span>
+      <button class="ghost" onclick="graphicsPageNav('${prefix}',1)">Next page &raquo;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:260px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+      ${items.map(g=>`
+        <div onclick="selectGraphicsImage('${prefix}','${g.file}','${g.code}')" style="cursor:pointer;text-align:center;border:2px solid ${sel&&sel.file===g.file?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+          <img src="graphics/${g.file}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+          <div class="tm">${escapeHtml(g.code)}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="empty" style="margin-top:6px;">${sel ? `Selected: ${escapeHtml(sel.code)}` : 'Tap a picture to select it.'}</div>
+  `;
 }
 async function addAndMaybeRecord(prefix, presetMeetingPlan, shouldRecord){
   const textEl = document.getElementById(prefix+'Text');
@@ -675,11 +788,15 @@ async function addAndMaybeRecord(prefix, presetMeetingPlan, shouldRecord){
   const meetingEl = document.getElementById(prefix+'Meeting');
   const meetingPlan = presetMeetingPlan!=null ? presetMeetingPlan : (meetingEl ? (meetingEl.value||null) : null);
   const powerEl = document.getElementById(prefix+'Power');
+  const categoryEl = document.getElementById(prefix+'Category');
+  const entryTypeEl = document.getElementById(prefix+'EntryType');
   const displayType = document.getElementById(prefix+'DisplayType').value;
   const fileInput = document.getElementById(prefix+'Photo');
   const id = uid();
   const entry = {
     id, text, meetingPlan,
+    entryType: entryTypeEl ? entryTypeEl.value : 'word',
+    category: categoryEl ? (categoryEl.value.trim() || null) : null,
     isPower: powerEl.value==='yes',
     level:0,
     dateAdded:new Date().toISOString().slice(0,10),
@@ -692,16 +809,26 @@ async function addAndMaybeRecord(prefix, presetMeetingPlan, shouldRecord){
   const finish = async ()=>{
     state.words.push(entry);
     await saveData();
+    delete graphicsSelection[prefix];
     if(shouldRecord){
       startWordRecording(id, prefix+'Status', rerender);
     } else {
       rerender();
     }
   };
+  if(displayType==='graphics' && graphicsSelection[prefix]){
+    entry.photo = 'graphics/' + graphicsSelection[prefix].file;
+    finish();
+    return;
+  }
   if(fileInput && fileInput.files && fileInput.files[0]){
     const reader = new FileReader();
     reader.onload = ()=>{
       const img = new Image();
+      img.onerror = ()=>{
+        console.error('Photo failed to load/decode — saving entry without photo.');
+        finish();
+      };
       img.onload = ()=>{
         const canvas = document.createElement('canvas');
         const maxW = 500;
@@ -713,10 +840,11 @@ async function addAndMaybeRecord(prefix, presetMeetingPlan, shouldRecord){
       };
       img.src = reader.result;
     };
+    reader.onerror = ()=>{ console.error('File read failed — saving entry without photo.'); finish(); };
     reader.readAsDataURL(fileInput.files[0]);
   } else { finish(); }
 }
-
+ 
 function toggleExpand(n){
   if(activeTimer.running){ activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false; }
   expandedPlan = expandedPlan===n ? null : n;
@@ -805,7 +933,7 @@ function logMeetingSession(n){
   });
   saveData(); renderMeetings(document.getElementById('content'));
 }
-
+ 
 // ---------- Word Log ----------
 function renderWords(c){
   c.innerHTML = `
@@ -822,19 +950,49 @@ function renderWords(c){
     return `
     <div class="entry" id="word-${w.id}">
       <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
-      <div class="meta">${w.meetingPlan?`<span class="tag">Meeting ${w.meetingPlan}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
+      <div class="meta">${entryTypeTag(w)}${w.meetingPlan?`<span class="tag">Meeting ${w.meetingPlan}</span>`:''}${w.category?`<span class="tag">${escapeHtml(w.category)}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
       <div class="iceberg">
         ${[0,1,2].map(i=>`<button class="${w.level===i?'on':''}" onclick="setLevel('${w.id}',${i})">${lvl[i]}</button>`).join('')}
       </div>
       ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
       <div id="wAudio-${w.id}"></div>
+      <div id="wPhotoEdit-${w.id}"></div>
       <div class="actions">
         <button class="ghost" onclick="startWordRecording('${w.id}')">Record audio</button>
+        <button class="ghost" onclick="togglePhotoEdit('${w.id}')">${w.photo?'Change photo':'Add photo'}</button>
         <button class="ghost danger" onclick="deleteWord('${w.id}')">Delete</button>
       </div>
     </div>`;
   }).join('') : '<div class="empty">No words yet.</div>';
   sorted.forEach(w=>{ if(w.hasAudio) loadWordAudio(w.id); });
+}
+function togglePhotoEdit(wordId){
+  const el = document.getElementById('wPhotoEdit-'+wordId);
+  if(!el) return;
+  if(el.innerHTML){ el.innerHTML=''; return; }
+  el.innerHTML = `<div class="field" style="margin-top:6px;"><input type="file" id="photoEdit-${wordId}" accept="image/*"></div>
+    <button class="ghost" onclick="savePhotoEdit('${wordId}')">Save photo</button>`;
+}
+function savePhotoEdit(wordId){
+  const fileInput = document.getElementById('photoEdit-'+wordId);
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 500;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const w = state.words.find(w=>w.id===wordId);
+      if(w){ w.photo = canvas.toDataURL('image/jpeg', 0.7); await saveData(); }
+      renderWords(document.getElementById('content'));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
 }
 function setLevel(id, level){
   const w = state.words.find(w=>w.id===id);
@@ -894,34 +1052,39 @@ async function startWordRecording(wordId, targetElId, onDone){
 function stopActiveRecording(){
   if(activeRecorder && activeRecorder.state==='recording'){ activeRecorder.stop(); }
 }
-
+ 
 // ---------- Review (spaced-repetition audio drill) ----------
 let reviewActive = false, reviewSelected = null, reviewCurrent = null, reviewRevealed = false, reviewStats = {seen:0, known:0};
-function availableReviewPlans(){
-  const plans = new Set();
-  let hasUnassigned = false;
+function reviewGroups(){
+  const groups = {};
   state.words.filter(w=>w.hasAudio).forEach(w=>{
-    if(w.meetingPlan) plans.add(Number(w.meetingPlan)); else hasUnassigned = true;
+    const label = w.meetingPlan ? `Meeting Plan ${w.meetingPlan}` : (w.category ? w.category : 'Uncategorized');
+    if(!groups[label]) groups[label] = [];
+    groups[label].push(w);
   });
-  return {plans:[...plans].sort((a,b)=>a-b), hasUnassigned};
+  return groups;
 }
 function renderReview(c){
   if(!reviewActive){
-    const {plans, hasUnassigned} = availableReviewPlans();
-    const totalWithAudio = state.words.filter(w=>w.hasAudio).length;
-    if(totalWithAudio===0){
-      c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or use the Record button inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
+    const groups = reviewGroups();
+    const groupLabels = Object.keys(groups).sort();
+    if(groupLabels.length===0){
+      c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or from inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
       return;
     }
     c.innerHTML = `
       <h3>Choose what to review</h3>
-      <div class="empty" style="margin-bottom:8px;">Pick which activities' recordings to pull from. Words you struggle with come up more often; words you know well still show up, just less often.</div>
-      <div id="planChecks">
-        ${plans.map(p=>`<label style="display:block;font-size:.85rem;margin:4px 0;"><input type="checkbox" class="revPlanCheck" value="${p}" checked> Meeting Plan ${p}</label>`).join('')}
-        ${hasUnassigned?`<label style="display:block;font-size:.85rem;margin:4px 0;"><input type="checkbox" class="revPlanCheck" value="none" checked> Not tagged to a meeting plan</label>`:''}
+      <div class="empty" style="margin-bottom:8px;">Check individual recordings — mix and match across meetings or categories however you like. Words you struggle with come up more often; words you know well still show up, just less often.</div>
+      <div style="margin-bottom:10px;"><button class="ghost" onclick="selectAllReviewWords(true)">Select all</button> <button class="ghost" onclick="selectAllReviewWords(false)">Select none</button></div>
+      <div id="reviewChecks">
+        ${groupLabels.map(label=>`
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">${escapeHtml(label)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectGroup('${escapeHtml(label).replace(/'/g,"\\'")}',true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectGroup('${escapeHtml(label).replace(/'/g,"\\'")}',false)">none</button></div>
+            ${groups[label].map(w=>`<label style="display:block;font-size:.83rem;margin:3px 0 3px 10px;"><input type="checkbox" class="revWordCheck" data-group="${escapeHtml(label)}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
+          </div>
+        `).join('')}
       </div>
-      <div style="margin-top:10px;"><button class="ghost" onclick="selectAllReviewPlans(true)">Select all</button> <button class="ghost" onclick="selectAllReviewPlans(false)">Select none</button></div>
-      <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
+      <button class="primary" style="margin-top:8px;" onclick="startReview()">Start review</button>
     `;
     return;
   }
@@ -942,7 +1105,7 @@ function renderReview(c){
         </div>
       ` : `
         <div style="margin-top:14px;font-family:'Lora',serif;font-size:1.3rem;">${escapeHtml(w.text)}</div>
-        <div class="empty" style="margin-top:4px;">${w.meetingPlan?'Meeting Plan '+w.meetingPlan:'No meeting plan tagged'}</div>
+        <div class="empty" style="margin-top:4px;">${w.meetingPlan?'Meeting Plan '+w.meetingPlan:(w.category?escapeHtml(w.category):'Uncategorized')}</div>
         <button class="primary" style="margin-top:14px;" onclick="nextReview()">Next</button>
       `}
     </div>
@@ -950,11 +1113,14 @@ function renderReview(c){
   `;
   loadPlayerInto('reviewPlayer', 'word', w.id);
 }
-function selectAllReviewPlans(val){
-  document.querySelectorAll('.revPlanCheck').forEach(cb=>cb.checked=val);
+function selectAllReviewWords(val){
+  document.querySelectorAll('.revWordCheck').forEach(cb=>cb.checked=val);
+}
+function selectGroup(label, val){
+  document.querySelectorAll('.revWordCheck').forEach(cb=>{ if(cb.dataset.group===label) cb.checked=val; });
 }
 function startReview(){
-  const checked = [...document.querySelectorAll('.revPlanCheck:checked')].map(cb=>cb.value);
+  const checked = [...document.querySelectorAll('.revWordCheck:checked')].map(cb=>cb.value);
   reviewSelected = new Set(checked);
   reviewActive = true;
   reviewStats = {seen:0, known:0};
@@ -962,11 +1128,7 @@ function startReview(){
   renderReview(document.getElementById('content'));
 }
 function reviewPool(){
-  return state.words.filter(w=>{
-    if(!w.hasAudio) return false;
-    const key = w.meetingPlan ? String(Number(w.meetingPlan)) : 'none';
-    return reviewSelected.has(key);
-  });
+  return state.words.filter(w=> w.hasAudio && reviewSelected.has(w.id));
 }
 function pickNextReviewWord(){
   const pool = reviewPool();
@@ -999,7 +1161,7 @@ function endReview(){
   reviewActive = false; reviewCurrent = null; reviewSelected = null;
   renderReview(document.getElementById('content'));
 }
-
+ 
 // ---------- Audio Notes (general, not tied to a word) ----------
 function renderAudio(c){
   c.innerHTML = `
@@ -1008,11 +1170,11 @@ function renderAudio(c){
     <button class="record" id="recBtn" onclick="toggleGeneralRecord()">Start recording</button>
     <div class="meta" id="recStatus" style="margin-top:8px;"></div>
     <div class="empty" style="margin-top:8px;">Voice-optimized (mono, compressed) — auto-stops at 90s.</div>
-
+ 
     <h3 style="margin-top:24px;">To review</h3>
     <div class="empty" style="margin-bottom:8px;">Recordings you haven't reviewed in a while, or word recordings still low on the Iceberg.</div>
     <div id="reviewList"></div>
-
+ 
     <h3 style="margin-top:22px;">All recordings</h3>
     <div id="audioList"></div>
   `;
@@ -1036,7 +1198,7 @@ function renderAudio(c){
       <div class="actions"><button class="ghost" onclick="markReviewed('${item.kind}','${item.id}')">Mark reviewed</button></div>
     </div>`).join('') : '<div class="empty">Nothing needs review right now.</div>';
   toReview.forEach(item=> loadPlayerInto('revplayer-'+item.kind+'-'+item.id, item.kind, item.id));
-
+ 
   const list = document.getElementById('audioList');
   const sortedAll = [...all].sort((a,b)=>b.date.localeCompare(a.date));
   list.innerHTML = sortedAll.length ? sortedAll.map(item=>`
@@ -1107,21 +1269,26 @@ async function deleteGeneralAudio(id){
   try{ await window.storage.delete('audio:'+id, false); }catch(e){}
   renderAudio(document.getElementById('content'));
 }
-
+ 
 // ---------- Profile ----------
 function renderProfile(c){
   const p = state.profile;
   c.innerHTML = `
     <h3>About you</h3>
     <div class="row">
+      <div class="field"><label>Your name</label><input id="pName" value="${escapeHtml(p.name||'')}"></div>
       <div class="field"><label>Language you're learning</label><input id="pLang" value="${escapeHtml(p.language||'')}"></div>
+    </div>
+    <div class="field"><label>Why am I learning this language?</label><textarea id="pWhy" placeholder="the reason you'll want to see every day">${escapeHtml(p.why||'')}</textarea></div>
+    <div class="field"><label>What to remember when it gets tough</label><textarea id="pRemember" placeholder="a truth or encouragement to hold onto">${escapeHtml(p.remember||'')}</textarea></div>
+    <div class="row">
       <div class="field"><label>Where you'll live</label><input id="pLocation" value="${escapeHtml(p.location||'')}"></div>
+      <div class="field"><label>Profession</label><input id="pProfession" value="${escapeHtml(p.profession||'')}"></div>
     </div>
     <div class="row">
-      <div class="field"><label>Profession</label><input id="pProfession" value="${escapeHtml(p.profession||'')}"></div>
       <div class="field"><label>Interests</label><input id="pInterests" value="${escapeHtml(p.interests||'')}"></div>
+      <div class="field"><label>Hours you can study per week</label><input id="pHours" type="number" min="0" value="${escapeHtml(p.hoursPerWeek||'')}"></div>
     </div>
-    <div class="field"><label>Hours you can study per week</label><input id="pHours" type="number" min="0" value="${escapeHtml(p.hoursPerWeek||'')}"></div>
     <button class="primary" onclick="saveProfile()">Save</button>
     <h3 style="margin-top:26px;">Backup</h3>
     <div class="empty" style="margin-bottom:8px;">Export everything (lessons, words, sessions — not audio, which is too large for a text file) as a backup you control.</div>
@@ -1130,7 +1297,10 @@ function renderProfile(c){
 }
 function saveProfile(){
   state.profile = {
+    name: document.getElementById('pName').value.trim(),
     language: document.getElementById('pLang').value.trim(),
+    why: document.getElementById('pWhy').value.trim(),
+    remember: document.getElementById('pRemember').value.trim(),
     location: document.getElementById('pLocation').value.trim(),
     profession: document.getElementById('pProfession').value.trim(),
     interests: document.getElementById('pInterests').value.trim(),
@@ -1146,8 +1316,21 @@ function exportData(){
   a.click();
   URL.revokeObjectURL(url);
 }
-
+ 
 loadData();
 </script>
 </body>
 </html>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
