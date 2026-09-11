@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPA Companion</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&display=swap');
+
+:root{
+  --paper:#EDE8DE; --paper-line:#D9D2C2; --panel:#F7F4EC;
+  --ink:#22291F; --ink-soft:#5B6255;
+  --teal:#3D6B63; --teal-dim:#B7CBC5;
+  --ochre:#B5813A; --ochre-bg:#F1E3C9;
+  --red:#A64B36; --radius:3px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:'Lora',serif;font-weight:600;margin:0 0 .3em 0;}
+#app{max-width:820px;margin:0 auto;padding:26px 18px 80px;}
+header.top{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--paper-line);padding-bottom:14px;margin-bottom:16px;}
+header.top h1{font-size:1.4rem;}
+header.top .sub{color:var(--ink-soft);font-size:.82rem;}
+nav.tabs{display:flex;gap:2px;margin-bottom:18px;flex-wrap:wrap;}
+nav.tabs button{font-family:'Work Sans',sans-serif;font-size:.82rem;padding:8px 13px 7px;border:1px solid var(--paper-line);border-bottom:none;background:var(--paper);color:var(--ink-soft);cursor:pointer;border-radius:var(--radius) var(--radius) 0 0;position:relative;top:1px;}
+nav.tabs button.active{background:var(--panel);color:var(--ink);border-bottom:1px solid var(--panel);font-weight:600;}
+.panel{background:var(--panel);border:1px solid var(--paper-line);border-radius:0 var(--radius) var(--radius) var(--radius);padding:20px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:.78rem;color:var(--ink-soft);margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:.9rem;padding:8px 10px;border:1px solid var(--paper-line);border-radius:var(--radius);background:#fff;color:var(--ink);}
+.field textarea{min-height:56px;resize:vertical;}
+.row{display:flex;gap:12px;flex-wrap:wrap;}
+.row > .field{flex:1;min-width:140px;}
+button.primary{background:var(--teal);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
+button.primary:hover{opacity:.9;}
+button.ghost{background:none;border:1px solid var(--paper-line);color:var(--ink-soft);padding:6px 11px;border-radius:var(--radius);font-size:.76rem;cursor:pointer;font-family:inherit;}
+button.danger{color:var(--red);border-color:var(--red);}
+button.record{background:var(--red);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;cursor:pointer;}
+button.record.recording{background:var(--ink);}
+.entry{border-top:1px solid var(--paper-line);padding:12px 0;}
+.entry:first-child{border-top:none;}
+.entry-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.entry-top .title{font-weight:600;}
+.entry-top .date{font-size:.73rem;color:var(--ink-soft);white-space:nowrap;}
+.entry .meta{font-size:.77rem;color:var(--ink-soft);margin-top:2px;}
+.entry .notes{font-size:.84rem;margin-top:6px;}
+.entry .actions{margin-top:7px;}
+.tag{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:10px;background:var(--teal-dim);color:var(--teal);margin-right:5px;}
+.tag.ochre{background:var(--ochre-bg);color:var(--ochre);}
+.gap-item{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--ochre-bg);border-left:3px solid var(--ochre);border-radius:0 var(--radius) var(--radius) 0;margin-bottom:7px;font-size:.87rem;}
+.gap-item .days{font-size:.73rem;color:var(--ink-soft);}
+.empty{color:var(--ink-soft);font-size:.84rem;font-style:italic;padding:6px 0;}
+.stat-row{display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.stat{flex:1;min-width:100px;}
+.stat .num{font-family:'Lora',serif;font-size:1.6rem;font-weight:600;}
+.stat .label{font-size:.72rem;color:var(--ink-soft);}
+audio{width:100%;margin-top:6px;height:32px;}
+.footer-note{font-size:.7rem;color:var(--ink-soft);margin-top:26px;text-align:center;}
+.mp-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--paper-line);cursor:pointer;}
+.mp-row:first-child{border-top:none;}
+.mp-row .num{width:28px;height:28px;border-radius:50%;background:var(--teal-dim);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;flex-shrink:0;}
+.mp-row.done .num{background:var(--teal);color:#fff;}
+.mp-row .info{flex:1;}
+.mp-row .info .t{font-weight:600;font-size:.88rem;}
+.mp-row .info .topics{font-size:.76rem;color:var(--ink-soft);}
+.mp-detail{background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);padding:14px;margin:6px 0 14px;font-size:.85rem;}
+.mp-detail h4{font-size:.85rem;margin:10px 0 4px;}
+.mp-detail ol,.mp-detail ul{margin:4px 0;padding-left:20px;}
+.phase-divider{font-size:.76rem;text-transform:none;color:var(--ink-soft);padding:10px 0 4px;border-top:2px solid var(--paper-line);margin-top:6px;}
+.iceberg{display:flex;gap:4px;margin-top:2px;}
+.iceberg button{flex:1;font-size:.7rem;padding:5px 4px;border:1px solid var(--paper-line);background:#fff;border-radius:var(--radius);cursor:pointer;color:var(--ink-soft);}
+.iceberg button.on{background:var(--teal);color:#fff;border-color:var(--teal);}
+.task-item{border-top:1px solid var(--paper-line);padding:10px 0;display:flex;gap:10px;}
+.task-item:first-child{border-top:none;}
+.task-item input[type=checkbox]{margin-top:3px;}
+.task-item .tt{font-weight:600;font-size:.87rem;}
+.task-item .tm{font-size:.72rem;color:var(--ink-soft);}
+.task-item .tp{font-size:.82rem;margin-top:3px;}
+.section-label{font-size:.76rem;color:var(--ink-soft);margin:16px 0 4px;}
+.section-label:first-child{margin-top:0;}
+img.thumb{max-width:100%;border-radius:var(--radius);margin-top:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div><h1>GPA Companion</h1><div class="sub">your whole Phase 1 journey, one place</div></div>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <div class="panel" id="content"></div>
+  <div class="footer-note">Data saves automatically to your account. Use Export in Profile to back it up.</div>
+</div>
+
+<script>
+// If running outside Claude (e.g. published on GitHub Pages), window.storage won't
+// exist. This fills it in with an equivalent backed by the browser's own IndexedDB,
+// so the exact same file works standalone with zero code changes needed.
+if (typeof window.storage === 'undefined') {
+  const DB_NAME = 'gpaCompanionDB', STORE = 'kv';
+  const dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  window.storage = {
+    async get(key, shared){
+      const db = await dbPromise;
+      return new Promise((resolve,reject)=>{
+        const req = db.transaction(STORE,'readonly').objectStore(STORE).get(key);
+        req.onsuccess = ()=> req.result===undefined ? reject(new Error('not found')) : resolve({key, value:req.result, shared:!!shared});
+        req.onerror = ()=>reject(req.error);
+      });
+    },
+    async set(key, value, shared){
+      const db = await dbPromise;
+      return new Promise((resolve,reject)=>{
+        const tx = db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).put(value, key);
+        tx.oncomplete = ()=>resolve({key, value, shared:!!shared});
+        tx.onerror = ()=>reject(tx.error);
+      });
+    },
+    async delete(key, shared){
+      const db = await dbPromise;
+      return new Promise((resolve,reject)=>{
+        const tx = db.transaction(STORE,'readwrite');
+        tx.objectStore(STORE).delete(key);
+        tx.oncomplete = ()=>resolve({key, deleted:true, shared:!!shared});
+        tx.onerror = ()=>reject(tx.error);
+      });
+    },
+    async list(prefix, shared){
+      const db = await dbPromise;
+      return new Promise((resolve,reject)=>{
+        const req = db.transaction(STORE,'readonly').objectStore(STORE).getAllKeys();
+        req.onsuccess = ()=>{
+          let keys = req.result;
+          if(prefix) keys = keys.filter(k=>String(k).startsWith(prefix));
+          resolve({keys, prefix, shared:!!shared});
+        };
+        req.onerror = ()=>reject(req.error);
+      });
+    }
+  };
+}
+
+const STORE_KEY = 'gpa-data';
+let state = { profile:{}, sessions:[], words:[], orientationDone:{}, audioIndex:[], meetingComplete:{} };
+let activeTab = 'dashboard';
+let loaded = false;
+let mediaRecorder, audioChunks=[], recTarget=null;
+
+const TABS = [
+  {id:'dashboard', label:'Dashboard'},
+  {id:'orientation', label:'Orientation'},
+  {id:'meetings', label:'Meeting Plans'},
+  {id:'words', label:'Word Log'},
+  {id:'review', label:'Review'},
+  {id:'audio', label:'Audio Notes'},
+  {id:'profile', label:'Profile'},
+];
+
+// ---- Real data from Greg Thomson's Growing Participator Approach / Six-Phase Program materials ----
+const PHASE_TARGETS = [
+  {phase:1, hours:100, understand:"Understand speech about things I can see and do.", talk:"Talking ability mainly limited to special activities in language sessions."},
+  {phase:2, hours:150, understand:"Understand simple stories I helped build.", talk:"Can talk a lot about what I see and do. Not much conversation ability."},
+  {phase:3, hours:250, understand:"Understand complicated stories if I already know what happens in advance; understand simple explanations.", talk:"Can tell simple stories. Conversations on a growing variety of topics."},
+  {phase:4, hours:500, understand:"Understand most speech directed to me on a large range of topics, and much that isn't.", talk:"Can talk about much of what local people can talk about."},
+  {phase:5, hours:500, understand:"Understand complicated explanations directed to me; can get to know people's lives deeply.", talk:"Can tell complicated stories and give simple explanations. Lots of conversation ability."},
+  {phase:6, hours:null, understand:"Understand almost all I hear.", talk:"Can talk about most of what local people can talk about, much the way they do."},
+];
+const CUM_HOURS = [0,100,250,500,1000,1500]; // cumulative hours at start of each phase (phase 6 = 1500+)
+
+const ORIENTATION_TASKS = [
+  {id:'o1', section:'Getting Started (before Meeting Plan 1)', title:"Hopes & fears", minutes:10,
+   purpose:"Everyone shares one hope and one worry about starting, then the group agrees how to be sensitive to each person's needs."},
+  {id:'o2', section:'Getting Started (before Meeting Plan 1)', title:"Who's responsible for what", minutes:10,
+   purpose:"Agree on roles between growing participators and nurturer — who preps materials, keeps the Word Log, listens to recordings before the next session, stays on time, and more."},
+  {id:'o3', section:'Getting Started (before Meeting Plan 1)', title:"Listening intensively", minutes:5,
+   purpose:"Learn the core rule of Phase 1A: \"Listen furiously.\" Identify which habits help you listen (pointing, concentrating on meaning) versus which distract (translating aloud, asking for English explanations)."},
+  {id:'o4', section:'Getting Started (before Meeting Plan 1)', title:"Let's get going", minutes:30,
+   purpose:"Actually do the first activity for real, with your nurturer."},
+  {id:'o5', section:'Getting Started (before Meeting Plan 1)', title:"Reflecting on our listening", minutes:10,
+   purpose:"Talk together about what the activity felt like."},
+  {id:'o6', section:'Getting Started (before Meeting Plan 1)', title:"Reflecting on how we learned together", minutes:10,
+   purpose:"Check the activity against the real checklist — was only one new word added at a time? Was a recording made? Did the nurturer keep it natural rather than grammar-lesson style?"},
+  {id:'o7', section:'Getting Started (before Meeting Plan 1)', title:"The Iceberg Principle", minutes:10,
+   purpose:"Learn the model this whole tool's Word Log is built on: a word can be recognized, understood when heard, or recalled/said — all three are real progress."},
+  {id:'o8', section:'Getting Started (before Meeting Plan 1)', title:"Why learn to listen first?", minutes:10,
+   purpose:"Rank the reasons listening comes before talking in this method — pronunciation, stress, speed of learning."},
+  {id:'o9', section:'Getting Started (before Meeting Plan 1)', title:"Purpose of the graphics packet", minutes:5,
+   purpose:"Understand which pictures are for use during sessions versus for home review, and why you shouldn't write words directly on them."},
+  {id:'o10', section:'Getting Started (before Meeting Plan 1)', title:"Your choices at the language centre", minutes:5,
+   purpose:"Confirm you're committing to the intensive-listening philosophy rather than mixing in a traditional grammar-first approach."},
+  {id:'o12', section:'Getting Started (before Meeting Plan 1)', title:"Phase 1A, Activity 4", minutes:20,
+   purpose:"Continue into the greetings & farewells listening activity."},
+  {id:'o13', section:'Getting Started (before Meeting Plan 1)', title:"Phase 1A, Activity 2", minutes:25,
+   purpose:"Continue further, with growing participators taking over responsibility for making the summary recording."},
+  {id:'t1', section:'Starting to Talk (before Meeting Plan 16)', title:"What do we mean by \"talking\"?", minutes:null,
+   purpose:"Understand that talking activities mean expressing yourself in your own words — not reciting a memorized line."},
+  {id:'t2', section:'Starting to Talk (before Meeting Plan 16)', title:"But what if I make a mistake?", minutes:null,
+   purpose:"Commit to \"struggle, make mistakes, keep growing\" over \"get it right from the beginning.\" If you aren't making mistakes, you aren't growing."},
+  {id:'t3', section:'Starting to Talk (before Meeting Plan 16)', title:"Three keys to better talking", minutes:null,
+   purpose:"Understand the three things that build speaking ability: lots of understandable input, lots of talking, and a nurturer who helps you finish or repair your sentences naturally."},
+  {id:'t4', section:'Starting to Talk (before Meeting Plan 16)', title:"Nurturers take note!", minutes:null,
+   purpose:"Learn the difference between a good correction (natural, inside the flow of conversation) and a poor one (grammar-lesson style)."},
+  {id:'t5', section:'Starting to Talk (before Meeting Plan 16)', title:"Getting my mouth around those sounds", minutes:null,
+   purpose:"Identify which sounds are hardest for you to hear or say, and set realistic expectations for how pronunciation improves over time."},
+  {id:'t6', section:'Starting to Talk (before Meeting Plan 16)', title:"Realistic expectations", minutes:null,
+   purpose:"See the real hour-by-phase targets for understanding and talking ability, so you know what's realistic at each stage — this is exactly what powers your Dashboard's forecast."},
+  {id:'t7', section:'Starting to Talk (before Meeting Plan 16)', title:"Listening vs. talking activities", minutes:null,
+   purpose:"Learn to recognize which upcoming activities are listening-only and which now require you to talk."},
+  {id:'t8', section:'Starting to Talk (before Meeting Plan 16)', title:"Talking can be scary!", minutes:null,
+   purpose:"Name what makes speaking feel more frightening than listening — and that this is completely normal."},
+];
+
+const MEETING_PLANS = [
+  {n:1, phase:'1A', title:"The Us Game", topics:"People words (man, woman, you, I, he, she), common movements, greetings, some animals", detailed:true},
+  {n:2, phase:'1A', title:"Around Us", topics:"Furniture, schoolroom/office/kitchen objects, put/in/on/take, \"how are you?\""},
+  {n:3, phase:'1A', title:"Around Us, More", topics:"Parts of a room, animals, containers, point to/next to/on/beside"},
+  {n:4, phase:'1A', title:"House & Home", topics:"Household objects, \"show me\", locations of objects relative to each other"},
+  {n:5, phase:'1A', title:"Body & Family", topics:"Body parts, possessives, family relationships"},
+  {n:6, phase:'1A', title:"Touch & Care", topics:"Touch, look at, wash, pat, stroke, each other / yourself"},
+  {n:7, phase:'1A', title:"Grand Refreshing", topics:"Colors, sizes — review of roughly 150 words gained so far"},
+  {n:8, phase:'1A', title:"Give & Take", topics:"Give, take, object pronouns, throw, show, numbers, drink, pour, liquids, foods, eat"},
+  {n:9, phase:'1A', title:"Everyday Actions", topics:"Wash, cut, cook, prepare, use, clothing, yes/no"},
+  {n:10, phase:'1A', title:"More Verbs", topics:"Listen, read, etc., to/from, singular/plural"},
+  {n:11, phase:'1A', title:"Emotions & Tools", topics:"Emotion words, tools, language \"power tools\""},
+  {n:12, phase:'1A', title:"Bugs", topics:"Insect and small-creature vocabulary"},
+  {n:13, phase:'1A', title:"Numbers & Nations", topics:"Ordinal numbers, countries, nationalities, languages"},
+  {n:14, phase:'1A', title:"Geography", topics:"Geographical features"},
+  {n:15, phase:'1A', title:"Wants & Needs", topics:"Want, have, see — closes out Phase 1A"},
+  {n:16, phase:'1B', title:"Understanding More", topics:"Body parts, family, objects — talking activities begin"},
+  {n:17, phase:'1B', title:"Speaking Practice", topics:"Body parts, possessive pronouns, objects, countryside"},
+  {n:18, phase:'1B', title:"More Household", topics:"Basic household objects; describing scenery"},
+  {n:19, phase:'1B', title:"Around the Neighborhood", topics:"Places, needs, \"take\", power tools, scenery"},
+  {n:20, phase:'1B', title:"Neighborhood, Continued", topics:"More places around the neighborhood"},
+  {n:21, phase:'1B', title:"Box Actions", topics:"Open, close, drop, push, etc."},
+  {n:22, phase:'1B', title:"More Household Actions", topics:"Lamp, radio, objects, peel, turn on/off"},
+  {n:23, phase:'1B', title:"Cut Out", topics:"Cutting-related vocabulary and activities"},
+  {n:24, phase:'1B', title:"Question Words", topics:"Asking questions"},
+  {n:25, phase:'1B', title:"Describing Things", topics:"Adjectives, places in a book, if/then"},
+  {n:26, phase:'1B', title:"Shapes & Grammar", topics:"Shapes, lengths, grammar-focused activities"},
+  {n:27, phase:'1B', title:"Quantities", topics:"Amounts and counting"},
+  {n:28, phase:'1B', title:"Around the House", topics:"Rooms, end/beginning, \"was born in\", \"grew up in\", more countries"},
+  {n:29, phase:'1B', title:"Water Words", topics:"Full, wet, etc., \"doesn't have\""},
+  {n:30, phase:'1B', title:"Time & Weather", topics:"Days of the week, weather, numbers 11-20"},
+  {n:31, phase:'1B', title:"Money & Numbers", topics:"Large numbers, money, buy/sell, can/can't, because"},
+  {n:32, phase:'1B', title:"Directions", topics:"Through, under, around, past; take/bring/lead/follow"},
+  {n:33, phase:'1B', title:"Likes & Actions", topics:"Like/don't like, work, rest, more actions"},
+  {n:34, phase:'1B', title:"More Actions", topics:"Cough, sneeze, etc."},
+  {n:35, phase:'1B', title:"Double-Action Commands", topics:"\"After this, do that\"; new objects and actions"},
+  {n:36, phase:'1B', title:"Refreshing", topics:"New Activity Re-Run — review and fill in gaps"},
+  {n:37, phase:'1B', title:"Motion Words", topics:"Climb, fly, swim, drive, outside motions"},
+  {n:38, phase:'1B', title:"Negatives", topics:"False statements, \"he isn't\", negative commands"},
+  {n:39, phase:'1B', title:"Relative Clauses", topics:"\"The one who / that\""},
+  {n:40, phase:'1B', title:"Wrap-Up", topics:"Negations, verbs like bend/break/fold — closes out Phase 1"},
+];
+const MP1_DETAIL = {
+  purpose:"Build the very first connection with your nurturer while learning simple pointing-words (man, woman, you, I, boy, girl...) through pure listening — no talking at all.",
+  materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room). The Graphics Packet's Rough-and-Ready Dozen pictures for reference.",
+  steps:[
+    "Nurturer sets out two dolls and says \"This is a man / This is a woman,\" then asks \"Where is the woman? Where is the man?\" repeatedly, in random order.",
+    "Nurturer introduces \"I\" (pointing to herself) and mixes it into the same random question pattern.",
+    "One new word is added at a time — stated once, then folded straight into the \"Where is...?\" questioning.",
+    "GPs respond only by pointing. No talking, no repeating words aloud, no English.",
+    "If a GP points wrong, the nurturer corrects naturally in the target language (\"No, that's not the man, that's the woman. Where is the man?\") rather than explaining grammar.",
+    "Once everyone points correctly and confidently, the next new word is introduced the same way.",
+    "Near the end, a short (about one minute) recording is made of the random \"Where is...?\" questioning covering everything learned."
+  ],
+  checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
+};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORE_KEY, false);
+    if(res && res.value){
+      state = JSON.parse(res.value);
+      state.profile = state.profile || {};
+      state.sessions = state.sessions || [];
+      state.words = state.words || [];
+      state.orientationDone = state.orientationDone || {};
+      state.audioIndex = state.audioIndex || [];
+      state.meetingComplete = state.meetingComplete || {};
+      state.stepProgress = state.stepProgress || {};
+      state.stepDurations = state.stepDurations || {};
+    }
+  }catch(e){}
+  loaded = true;
+  render();
+}
+async function saveData(){
+  try{ await window.storage.set(STORE_KEY, JSON.stringify(state), false); }
+  catch(e){ console.error('Storage error', e); }
+}
+
+function totalHours(){ return state.sessions.reduce((a,s)=>a+(Number(s.duration)||0),0)/60; }
+function currentPhaseInfo(){
+  const h = totalHours();
+  let phase = 1;
+  for(let i=1;i<CUM_HOURS.length;i++){ if(h >= CUM_HOURS[i]) phase = i+1; }
+  if(phase>6) phase=6;
+  const info = PHASE_TARGETS[phase-1];
+  const startH = CUM_HOURS[phase-1];
+  const endH = phase<6 ? CUM_HOURS[phase] : null;
+  return {phase, info, startH, endH, hoursIntoPhase: h-startH};
+}
+function computeWordStats(){
+  return state.words.map(w=>{
+    const daysSince = w.lastReview ? Math.floor((Date.now()-new Date(w.lastReview))/86400000) : null;
+    return {...w, daysSince};
+  });
+}
+function getGaps(){
+  return computeWordStats().filter(w => w.level<2 || w.daysSince===null || w.daysSince>=10)
+    .sort((a,b)=> (a.level-b.level) || ((b.daysSince||999)-(a.daysSince||999)));
+}
+
+function render(){
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = TABS.map(t=>`<button class="${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join('');
+  const c = document.getElementById('content');
+  if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
+  if(activeTab==='dashboard') renderDashboard(c);
+  else if(activeTab==='orientation') renderOrientation(c);
+  else if(activeTab==='meetings') renderMeetings(c);
+  else if(activeTab==='words') renderWords(c);
+  else if(activeTab==='review') renderReview(c);
+  else if(activeTab==='audio') renderAudio(c);
+  else if(activeTab==='profile') renderProfile(c);
+}
+function setTab(id){ activeTab=id; render(); }
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// ---------- Dashboard ----------
+function renderDashboard(c){
+  const h = totalHours();
+  const {phase, info, startH, endH, hoursIntoPhase} = currentPhaseInfo();
+  const meetingsTouched = Object.values(state.meetingComplete).filter(s=>s==='done').length;
+  const gaps = getGaps();
+
+  // Actual pace from logged session history (self-adjusting as you log more)
+  const sessDates = state.sessions.map(s=>s.date).filter(Boolean).sort();
+  let actualPace = null;
+  if(sessDates.length>=2){
+    const first = new Date(sessDates[0]), last = new Date();
+    const weeksElapsed = Math.max((last-first)/(7*86400000), 1/7);
+    actualPace = h/weeksElapsed;
+  }
+  const statedPace = Number(state.profile.hoursPerWeek)||0;
+  const pace = actualPace || statedPace;
+
+  let forecastLine = 'Log a couple of sessions (or add your weekly hours in Profile) to see a forecast.';
+  if(endH && pace>0){
+    const remaining = Math.max(endH-h,0);
+    if(remaining<=0){
+      forecastLine = `Phase ${phase}'s ${endH-startH}-hour target is reached!`;
+    } else {
+      const weeksNeeded = remaining/pace;
+      const finishDate = new Date(Date.now() + weeksNeeded*7*86400000);
+      const dateStr = finishDate.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+      const paceSource = actualPace ? `your actual pace so far (~${actualPace.toFixed(1)} hrs/week)` : `the ${statedPace} hrs/week you set in Profile`;
+      forecastLine = `At ${paceSource}, you're on track to finish Phase ${phase} around <strong>${dateStr}</strong>.`;
+    }
+  } else if(!endH){
+    forecastLine = 'Phase 6 has no fixed hour target — this is the open-ended final stretch.';
+  }
+
+  c.innerHTML = `
+    <div class="stat-row">
+      <div class="stat"><div class="num">${h.toFixed(1)}</div><div class="label">hours logged</div></div>
+      <div class="stat"><div class="num">${meetingsTouched}/40</div><div class="label">meeting plans completed</div></div>
+      <div class="stat"><div class="num">${state.words.length}</div><div class="label">words in log</div></div>
+      <div class="stat"><div class="num">${state.words.filter(w=>w.level===2).length}</div><div class="label">words you can say</div></div>
+    </div>
+    <h3>Phase ${phase}${endH?` (${hoursIntoPhase.toFixed(0)} / ${endH-startH} hrs)`:''}</h3>
+    <div class="meta" style="margin-bottom:4px;"><strong>Understanding:</strong> ${info.understand}</div>
+    <div class="meta" style="margin-bottom:10px;"><strong>Talking:</strong> ${info.talk}</div>
+    <div class="empty" style="margin-bottom:16px;">${forecastLine}</div>
+    <h3>Needs review</h3>
+    <div id="gapList"></div>
+  `;
+  const list = document.getElementById('gapList');
+  if(gaps.length===0){
+    list.innerHTML = '<div class="empty">No flagged words yet — add some to your Word Log and I\'ll start tracking what needs a repeat.</div>';
+  } else {
+    list.innerHTML = gaps.slice(0,8).map(w=>{
+      const lvl = ['recognize only','understand it','can say it'][w.level];
+      return `<div class="gap-item"><div><strong>${escapeHtml(w.text)}</strong> — ${lvl}</div><div class="days">${w.daysSince===null?'never reviewed':w.daysSince+' days ago'}</div></div>`;
+    }).join('');
+    if(gaps.length>8) list.innerHTML += `<div class="empty">+${gaps.length-8} more in Word Log</div>`;
+  }
+}
+
+// ---------- Orientation ----------
+function renderOrientation(c){
+  let html = '';
+  let lastSection = null;
+  ORIENTATION_TASKS.forEach(t=>{
+    if(t.section !== lastSection){ html += `<div class="section-label">${t.section}</div>`; lastSection = t.section; }
+    const done = !!state.orientationDone[t.id];
+    html += `
+      <div class="task-item">
+        <input type="checkbox" ${done?'checked':''} onchange="toggleOrientation('${t.id}')">
+        <div>
+          <div class="tt">${escapeHtml(t.title)}${t.minutes?` <span class="tm">(${t.minutes} min)</span>`:''}</div>
+          <div class="tp">${escapeHtml(t.purpose)}</div>
+        </div>
+      </div>`;
+  });
+  c.innerHTML = html;
+}
+function toggleOrientation(id){
+  state.orientationDone[id] = !state.orientationDone[id];
+  saveData(); renderOrientation(document.getElementById('content'));
+}
+
+// ---------- Meeting Plans ----------
+let expandedPlan = null;
+const DEFAULT_NURTURER_SCRIPT = `Hi, and thank you for being my nurturer! Before we start, here are a few quick reminders that really help me learn.
+
+Please only add one new word at a time. Say it once or twice, then move to asking me things like "Where is...?" or quizzing me on it — please don't just keep repeating the word itself, since I learn best from being asked, not from hearing it repeated.
+
+When I get something right — even just by pointing correctly — please tell me! A simple "good job" or "that's right" every single time really helps me know I'm on track. It's easy to forget this once we're both focused on the activity, so please try to make it a habit.
+
+If I get something wrong, please don't explain it in English or stop to teach me the grammar. Just correct me naturally, the way you'd correct a child — say it the right way and keep going.
+
+Please try to speak only in the language we're learning during our activities, even if I don't understand everything yet — that's actually the point.
+
+And please, let's keep this relaxed and fun. I'd rather laugh through a mistake than feel like this is a test.
+
+Near the end of each activity, let's make a short recording together of everything new we covered, so I can listen back at home.
+
+Thank you so much — I'm really glad to be learning with you today.`;
+
+function renderMeetings(c){
+  let html = `<div class="mp-detail" style="margin-bottom:16px;">
+    <h4 style="margin-top:0;">Reminder for your nurturer</h4>
+    <div class="empty" style="margin-bottom:6px;">Record this once, then play it for your nurturer at the start of a session. Edit the script to fit you first.</div>
+    <textarea id="nurturerScript" style="min-height:140px;font-size:.83rem;">${escapeHtml(state.nurturerScript!==undefined?state.nurturerScript:DEFAULT_NURTURER_SCRIPT)}</textarea>
+    <div style="margin-top:6px;"><button class="ghost" onclick="saveNurturerScript()">Save script</button></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <button class="record" onclick="recordNurturerAudio()">${state.hasNurturerAudio?'Re-record':'Record'}</button>
+      <div id="nurturerPlayer" style="flex:1;min-width:180px;">${state.hasNurturerAudio?'':''}</div>
+    </div>
+  </div>
+  <div class="empty" style="margin-bottom:10px;">Meeting Plans run 2-3 hours each. About 2/day, 5 days/week ≈ 4 weeks for all 40. Full step-by-step detail is filled in for Meeting Plan 1 so far — more get added as we go.</div>`;
+  let lastPhase = null;
+  MEETING_PLANS.forEach(mp=>{
+    if(mp.phase!==lastPhase){
+      html += `<div class="phase-divider">Phase ${mp.phase} ${mp.phase==='1A'?'(listening only)':'(listening + talking)'}</div>`;
+      lastPhase = mp.phase;
+    }
+    const status = state.meetingComplete[mp.n] || 'none';
+    const hasSession = state.sessions.some(s=>Number(s.meetingPlan)===mp.n);
+    const dotClass = status==='done' ? 'done' : '';
+    html += `
+      <div class="mp-row ${dotClass}">
+        <div class="num" onclick="toggleExpand(${mp.n})" style="cursor:pointer;">${status==='progress'?'~':mp.n}</div>
+        <div class="info" onclick="toggleExpand(${mp.n})" style="cursor:pointer;"><div class="t">${escapeHtml(mp.title)}${hasSession&&status!=='done'?' <span class="tm">(session logged)</span>':''}</div><div class="topics">${escapeHtml(mp.topics)}</div></div>
+        <span class="tag ${status==='done'?'':'ochre'}" style="flex-shrink:0;">${status==='done'?'completed':status==='progress'?'in progress':'not started'}</span>
+      </div>`;
+    if(expandedPlan===mp.n){
+      html += `<div class="mp-detail">`;
+      if(mp.detailed){
+        const stepProg = (state.stepProgress && state.stepProgress[mp.n]) || [];
+        const perStepEst = Math.round(150 / MP1_DETAIL.steps.length);
+        html += `<div><strong>Purpose:</strong> ${MP1_DETAIL.purpose}</div>
+          <h4>Materials</h4><div>${MP1_DETAIL.materials}</div>
+          <h4>Steps</h4>
+          <div class="empty" style="margin-bottom:4px;">Per-step times are a rough even split of the 2-3 hr total — not from the original material, just a planning guide. Time each one to see if you're pacing ahead, behind, or on track.</div>`;
+        MP1_DETAIL.steps.forEach((s,i)=>{
+          const key = mp.n+'-'+i;
+          const storedMin = (state.stepDurations && state.stepDurations[mp.n] && state.stepDurations[mp.n][i]!=null) ? state.stepDurations[mp.n][i] : null;
+          const isActive = activeTimer.planN===mp.n && activeTimer.stepIdx===i;
+          const running = isActive && activeTimer.running;
+          const initialDisplay = isActive ? formatTimer(activeTimer.ms) : (storedMin!=null ? formatTimer(storedMin*60000) : '00:00');
+          html += `<div style="border-top:1px solid var(--paper-line); padding:8px 0;">
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:.85rem;">
+              <input type="checkbox" style="margin-top:3px;" ${stepProg[i]?'checked':''} onchange="toggleStep(${mp.n},${i})">
+              <span>${s} <span class="tm">(~${perStepEst} min)</span></span>
+            </label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 0 24px;">
+              <span id="stepTimerDisp-${key}" style="font-family:'Lora',serif;font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
+              <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},${i})">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
+              <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},${i})" ${running?'':'disabled'}>Pause</button>
+              <button class="ghost" onclick="stopStepTimer(${mp.n},${i})">Stop</button>
+              <span id="stepTimerPace-${key}" class="tm" data-est="${perStepEst}">${storedMin!=null?paceComment(storedMin,perStepEst):''}</span>
+            </div>
+            <div style="margin:8px 0 0 24px;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+              ${wordFormHTML('step'+key+'_', mp.n)}
+            </div>
+          </div>`;
+        });
+        html += `<h4>Check yourself</h4><div>${MP1_DETAIL.checkup}</div>`;
+      } else {
+        const key = mp.n+'-whole';
+        const isActive = activeTimer.planN===mp.n && activeTimer.stepIdx==='whole';
+        const running = isActive && activeTimer.running;
+        const initialDisplay = isActive ? formatTimer(activeTimer.ms) : '00:00';
+        html += `<div class="empty">Full activity script not yet added for this meeting plan. Time it as one block for now — once it's broken into activities you'll get per-activity pacing like Meeting Plan 1.</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;">
+            <span id="stepTimerDisp-${key}" style="font-family:'Lora',serif;font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
+            <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},'whole')">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
+            <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},'whole')" ${running?'':'disabled'}>Pause</button>
+            <button class="ghost" onclick="stopStepTimer(${mp.n},'whole')">Stop &amp; fill minutes</button>
+          </div>`;
+      }
+      const mat = suggestedMaterials(mp);
+      if(mat.status==='ok'){
+        html += `<div style="margin-top:10px;"><strong>From your world for this activity:</strong>
+          <div class="empty" style="margin:2px 0 4px;">Swap these in for the generic examples where they fit.</div>
+          <ul>${mat.items.map(i=>`<li>${escapeHtml(i)}</li>`).join('')}</ul></div>`;
+      } else if(mat.status==='no-match'){
+        html += `<div class="empty" style="margin-top:10px;">Nothing matched your profile for this activity — the object bank currently covers photography/video, faith, teaching, medical, farming, business, music, sports, and cooking. Tell me your field if it's missing and I'll add it.</div>`;
+      }
+      html += `
+        <div class="field" style="margin-top:12px;"><label>Status</label>
+          <select onchange="setMeetingStatus(${mp.n}, this.value)">
+            <option value="none" ${status==='none'?'selected':''}>Not started</option>
+            <option value="progress" ${status==='progress'?'selected':''}>In progress</option>
+            <option value="done" ${status==='done'?'selected':''}>Completed</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field"><label>Date</label><input type="date" id="mpDate">
+          </div>
+          <div class="field"><label>Minutes spent ${mp.detailed?'<button class=\"ghost\" style=\"font-size:.68rem;padding:2px 7px;\" onclick=\"useStepTotal('+mp.n+')\">use step total</button>':''}</label><input type="number" id="mpDuration" min="0" placeholder="e.g. 150">
+          </div>
+        </div>
+        <div class="field"><label>Notes</label><textarea id="mpNotes"></textarea></div>
+        <button class="primary" onclick="logMeetingSession(${mp.n})">Log this session</button>
+      </div>`;
+    }
+  });
+  c.innerHTML = html;
+  const dEl = document.getElementById('mpDate');
+  if(dEl) dEl.value = new Date().toISOString().slice(0,10);
+  if(state.hasNurturerAudio) loadPlayerInto('nurturerPlayer', 'nurturer', 'nurturer');
+  if(expandedPlan!=null){
+    const mp = MEETING_PLANS.find(m=>m.n===expandedPlan);
+    if(mp && mp.detailed){
+      MP1_DETAIL.steps.forEach((s,i)=> renderDisplayInputFor('step'+mp.n+'-'+i+'_'));
+    }
+  }
+}
+function saveNurturerScript(){
+  state.nurturerScript = document.getElementById('nurturerScript').value;
+  saveData();
+}
+function recordNurturerAudio(){
+  saveNurturerScript();
+  startWordRecording('nurturer', 'nurturerPlayer', ()=>{
+    state.hasNurturerAudio = true;
+    saveData();
+    renderMeetings(document.getElementById('content'));
+  });
+}
+
+// ---------- Per-activity timer ----------
+let activeTimer = {planN:null, stepIdx:null, ms:0, running:false, startedAt:null};
+function formatTimer(ms){
+  const totalSec=Math.floor(ms/1000);
+  const m=Math.floor(totalSec/60), s=totalSec%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function paceComment(actualMin, estMin){
+  const diff = actualMin-estMin;
+  if(Math.abs(diff)<=2) return `logged ${actualMin} min — right on pace`;
+  if(diff>0) return `logged ${actualMin} min — ${diff} min over the estimate`;
+  return `logged ${actualMin} min — ${Math.abs(diff)} min under the estimate`;
+}
+function tickActiveTimer(){
+  if(!activeTimer.running) return;
+  const key = activeTimer.planN+'-'+activeTimer.stepIdx;
+  const el = document.getElementById('stepTimerDisp-'+key);
+  if(!el) return;
+  const elapsedMs = activeTimer.ms + (Date.now()-activeTimer.startedAt);
+  el.textContent = formatTimer(elapsedMs);
+  const paceEl = document.getElementById('stepTimerPace-'+key);
+  if(paceEl && paceEl.dataset.est){
+    const est = Number(paceEl.dataset.est);
+    const diff = (elapsedMs/60000)-est;
+    if(Math.abs(diff)<1){ paceEl.textContent='on pace so far'; paceEl.style.color='var(--ink-soft)'; }
+    else if(diff>0){ paceEl.textContent=`${diff.toFixed(1)} min over so far`; paceEl.style.color='var(--red)'; }
+    else { paceEl.textContent=`${Math.abs(diff).toFixed(1)} min under so far`; paceEl.style.color='var(--teal)'; }
+  }
+}
+setInterval(tickActiveTimer, 1000);
+function startStepTimer(planN, stepIdx){
+  if(activeTimer.running && (activeTimer.planN!==planN || activeTimer.stepIdx!==stepIdx)){
+    activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false;
+  }
+  if(activeTimer.planN!==planN || activeTimer.stepIdx!==stepIdx){ activeTimer = {planN, stepIdx, ms:0, running:false, startedAt:null}; }
+  activeTimer.running = true; activeTimer.startedAt = Date.now();
+  renderMeetings(document.getElementById('content'));
+}
+function pauseStepTimer(planN, stepIdx){
+  if(activeTimer.planN===planN && activeTimer.stepIdx===stepIdx && activeTimer.running){
+    activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false;
+  }
+  renderMeetings(document.getElementById('content'));
+}
+function stopStepTimer(planN, stepIdx){
+  if(activeTimer.planN===planN && activeTimer.stepIdx===stepIdx){
+    if(activeTimer.running){ activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false; }
+    const minutes = Math.round(activeTimer.ms/60000);
+    if(stepIdx==='whole'){
+      const durEl=document.getElementById('mpDuration'); if(durEl) durEl.value=minutes;
+    } else {
+      state.stepDurations = state.stepDurations || {};
+      state.stepDurations[planN] = state.stepDurations[planN] || {};
+      state.stepDurations[planN][stepIdx] = minutes;
+      saveData();
+    }
+    activeTimer = {planN:null, stepIdx:null, ms:0, running:false, startedAt:null};
+  }
+  renderMeetings(document.getElementById('content'));
+}
+function useStepTotal(planN){
+  const durs = (state.stepDurations && state.stepDurations[planN]) || {};
+  const total = Object.values(durs).reduce((a,b)=>a+(Number(b)||0),0);
+  const durEl = document.getElementById('mpDuration');
+  if(durEl) durEl.value = total;
+}
+
+// ---------- Shared "add a word/phrase" form, reused in Word Log and inside each activity ----------
+function wordFormHTML(prefix, presetMeetingPlan){
+  const showMeetingField = presetMeetingPlan===null || presetMeetingPlan===undefined;
+  return `
+    <div class="row">
+      <div class="field"><label>Title (optional)</label><input id="${prefix}Text" placeholder="leave blank if you'd rather title it later"></div>
+      ${showMeetingField ? `<div class="field"><label>Meeting plan (optional)</label><input id="${prefix}Meeting" type="number" min="1" max="40" placeholder="e.g. 3"></div>` : ''}
+    </div>
+    <div class="field"><label>Power phrase</label>
+      <select id="${prefix}Power"><option value="">No</option><option value="yes">Yes — one I really want to nail</option></select>
+    </div>
+    <div class="field"><label>Display</label>
+      <select id="${prefix}DisplayType" onchange="renderDisplayInputFor('${prefix}')">
+        <option value="text" selected>Text only</option>
+        <option value="camera">Photo taken with camera</option>
+        <option value="device">Photo on device</option>
+        <option value="graphics">Standard photo from graphics pack</option>
+      </select>
+    </div>
+    <div id="${prefix}DisplayInput"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <button class="ghost" onclick="addAndMaybeRecord('${prefix}', ${presetMeetingPlan==null?'null':presetMeetingPlan}, false)">Add</button>
+      <button class="record" onclick="addAndMaybeRecord('${prefix}', ${presetMeetingPlan==null?'null':presetMeetingPlan}, true)">Add &amp; Record</button>
+    </div>
+    <div id="${prefix}Status" class="meta" style="margin-top:6px;"></div>
+  `;
+}
+function renderDisplayInputFor(prefix){
+  const typeEl = document.getElementById(prefix+'DisplayType');
+  if(!typeEl) return;
+  const type = typeEl.value;
+  const el = document.getElementById(prefix+'DisplayInput');
+  if(type==='camera'){
+    el.innerHTML = `<div class="field"><label>Take a photo</label><input type="file" id="${prefix}Photo" accept="image/*" capture="environment"></div>`;
+  } else if(type==='device'){
+    el.innerHTML = `<div class="field"><label>Choose a photo</label><input type="file" id="${prefix}Photo" accept="image/*"></div>`;
+  } else if(type==='graphics'){
+    el.innerHTML = `<div class="empty">Graphics pack not loaded yet — falls back to text for now.</div>`;
+  } else {
+    el.innerHTML = `<div class="empty">This entry will display as text only.</div>`;
+  }
+}
+async function addAndMaybeRecord(prefix, presetMeetingPlan, shouldRecord){
+  const textEl = document.getElementById(prefix+'Text');
+  const text = textEl.value.trim();
+  const meetingEl = document.getElementById(prefix+'Meeting');
+  const meetingPlan = presetMeetingPlan!=null ? presetMeetingPlan : (meetingEl ? (meetingEl.value||null) : null);
+  const powerEl = document.getElementById(prefix+'Power');
+  const displayType = document.getElementById(prefix+'DisplayType').value;
+  const fileInput = document.getElementById(prefix+'Photo');
+  const id = uid();
+  const entry = {
+    id, text, meetingPlan,
+    isPower: powerEl.value==='yes',
+    level:0,
+    dateAdded:new Date().toISOString().slice(0,10),
+    lastReview:null,
+    photo:null,
+    displayType,
+    hasAudio:false,
+  };
+  const rerender = ()=>{ if(activeTab==='words') renderWords(document.getElementById('content')); else renderMeetings(document.getElementById('content')); };
+  const finish = async ()=>{
+    state.words.push(entry);
+    await saveData();
+    if(shouldRecord){
+      startWordRecording(id, prefix+'Status', rerender);
+    } else {
+      rerender();
+    }
+  };
+  if(fileInput && fileInput.files && fileInput.files[0]){
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        const maxW = 500;
+        const scale = Math.min(1, maxW/img.width);
+        canvas.width = img.width*scale; canvas.height = img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        entry.photo = canvas.toDataURL('image/jpeg', 0.7);
+        finish();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else { finish(); }
+}
+
+function toggleExpand(n){
+  if(activeTimer.running){ activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false; }
+  expandedPlan = expandedPlan===n ? null : n;
+  renderMeetings(document.getElementById('content'));
+}
+function setMeetingStatus(n, status){
+  state.meetingComplete[n] = status;
+  saveData(); renderMeetings(document.getElementById('content'));
+}
+function toggleStep(planN, stepIdx){
+  state.stepProgress = state.stepProgress || {};
+  const arr = state.stepProgress[planN] || [];
+  arr[stepIdx] = !arr[stepIdx];
+  state.stepProgress[planN] = arr;
+  saveData(); renderMeetings(document.getElementById('content'));
+}
+const OBJECT_BANKS = {
+  photography: {match:['video','photo','camera','film'],
+    objects:['camera','tripod','lens','memory card','light stand','reflector','microphone','gimbal','photo print','camera bag'],
+    actions:['zoom in/out','focus the lens','point the camera at','adjust the light','press the shutter','review the footage'],
+    places:['the studio','the editing desk','a shoot location']},
+  faith: {match:['bible','christian','christianity','church','faith','pastor'],
+    objects:['Bible','cross','hymnal','candle','offering basket','worship song sheet'],
+    actions:['pray','read aloud','sing','light a candle'],
+    places:['the church','a Bible study']},
+  teaching: {match:['teach','teacher','educat'],
+    objects:['textbook','whiteboard marker','notebook','pencil case','student roster','grade book'],
+    actions:['grade papers','write on the board','hand out worksheets','call on a student'],
+    places:['the classroom','the staff room']},
+  medical: {match:['nurse','doctor','medic','health'],
+    objects:['stethoscope','bandage','syringe','clipboard','medicine bottle','thermometer'],
+    actions:['check the pulse','take temperature','bandage the wound','give an injection'],
+    places:['the clinic','the hospital ward']},
+  farming: {match:['farm','agricult','livestock'],
+    objects:['hoe','seed bag','bucket','rope','watering can'],
+    actions:['plant','water','harvest','feed the animals'],
+    places:['the field','the barn']},
+  business: {match:['business','office','account','manage'],
+    objects:['laptop','stapler','invoice','pen','folder','calculator'],
+    actions:['sign the paper','send an email','make a call','file the document'],
+    places:['the office','a meeting room']},
+  music: {match:['music','musician','sing','instrument'],
+    objects:['guitar','drum','songbook','microphone','sheet music'],
+    actions:['tune the instrument','sing','play a note','practice'],
+    places:['the studio','the stage']},
+  sports: {match:['sport','coach','athlet','football','soccer','basketball'],
+    objects:['ball','whistle','water bottle','scoreboard','jersey'],
+    actions:['kick','throw','run','score a point'],
+    places:['the field','the gym']},
+  cooking: {match:['cook','chef','culinary','kitchen','bak'],
+    objects:['knife','pot','spoon','cutting board','recipe card'],
+    actions:['chop','stir','boil','season'],
+    places:['the kitchen','the market']},
+};
+function meetingCategory(mp){
+  const t = (mp.topics+' '+mp.title).toLowerCase();
+  if(/color|size|shape|length/.test(t)) return 'attribute';
+  if(/number|quantity|money|buy|sell/.test(t)) return 'number';
+  if(/room|house|neighbo(u)?rhood|geographical|countryside|places/.test(t)) return 'place';
+  if(/family|body|emotion|people|nation|countr(y|ies)/.test(t)) return 'people';
+  if(/verb|action|wash|cut|cook|open|close|push|climb|fly|swim|drive|touch|look|give|take|throw|show|listen|read|want|have|see|like|rest|work|cough|sneeze|bend|break|fold/.test(t)) return 'action';
+  return 'object';
+}
+function suggestedMaterials(mp){
+  const profileText = ((state.profile.profession||'')+' '+(state.profile.interests||'')).toLowerCase();
+  if(!profileText.trim()) return {status:'no-profile'};
+  const matched = Object.entries(OBJECT_BANKS).filter(([k,b])=> b.match.some(m=>profileText.includes(m)));
+  if(matched.length===0) return {status:'no-match'};
+  const cat = meetingCategory(mp);
+  let items = [];
+  matched.forEach(([k,b])=>{
+    const sub = cat==='action' ? (b.actions||b.objects) : cat==='place' ? (b.places||b.objects) : b.objects;
+    items = items.concat(sub);
+  });
+  return {status:'ok', items:[...new Set(items)].slice(0,6)};
+}
+function logMeetingSession(n){
+  const duration = Number(document.getElementById('mpDuration').value)||0;
+  if(duration<=0) return;
+  state.sessions.push({
+    id: uid(),
+    date: document.getElementById('mpDate').value || new Date().toISOString().slice(0,10),
+    duration,
+    meetingPlan: n,
+    notes: document.getElementById('mpNotes').value.trim(),
+  });
+  saveData(); renderMeetings(document.getElementById('content'));
+}
+
+// ---------- Word Log ----------
+function renderWords(c){
+  c.innerHTML = `
+    <h3>Add a word or phrase</h3>
+    ${wordFormHTML('w', null)}
+    <h3 style="margin-top:22px;">Your words</h3>
+    <div id="wordList"></div>
+  `;
+  renderDisplayInputFor('w');
+  const list = document.getElementById('wordList');
+  const sorted = [...state.words].sort((a,b)=> b.dateAdded.localeCompare(a.dateAdded));
+  list.innerHTML = sorted.length ? sorted.map(w=>{
+    const lvl = ['Recognize','Understand','Recall / Say'];
+    return `
+    <div class="entry" id="word-${w.id}">
+      <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
+      <div class="meta">${w.meetingPlan?`<span class="tag">Meeting ${w.meetingPlan}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
+      <div class="iceberg">
+        ${[0,1,2].map(i=>`<button class="${w.level===i?'on':''}" onclick="setLevel('${w.id}',${i})">${lvl[i]}</button>`).join('')}
+      </div>
+      ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
+      <div id="wAudio-${w.id}"></div>
+      <div class="actions">
+        <button class="ghost" onclick="startWordRecording('${w.id}')">Record audio</button>
+        <button class="ghost danger" onclick="deleteWord('${w.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">No words yet.</div>';
+  sorted.forEach(w=>{ if(w.hasAudio) loadWordAudio(w.id); });
+}
+function setLevel(id, level){
+  const w = state.words.find(w=>w.id===id);
+  if(!w) return;
+  w.level = level;
+  w.lastReview = new Date().toISOString().slice(0,10);
+  saveData(); renderWords(document.getElementById('content'));
+}
+function deleteWord(id){
+  state.words = state.words.filter(w=>w.id!==id);
+  saveData();
+  try{ window.storage.delete('wordaudio:'+id, false); }catch(e){}
+  renderWords(document.getElementById('content'));
+}
+async function loadWordAudio(id){
+  const el = document.getElementById('wAudio-'+id);
+  if(!el) return;
+  try{
+    const res = await window.storage.get('wordaudio:'+id, false);
+    if(res && res.value){ el.innerHTML = `<audio controls src="${JSON.parse(res.value).dataUrl}"></audio>`; }
+  }catch(e){}
+}
+let activeRecorder = null;
+async function startWordRecording(wordId, targetElId, onDone){
+  const elId = targetElId || ('wAudio-'+wordId);
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(activeRecorder && activeRecorder.state==='recording'){ activeRecorder.stop(); }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1}});
+    let chunks = [];
+    const rec = new MediaRecorder(stream, {audioBitsPerSecond:32000});
+    activeRecorder = rec;
+    el.innerHTML = '<span class="meta">Recording…</span> <button class="ghost" onclick="stopActiveRecording()">Stop</button>';
+    rec.ondataavailable = e=>chunks.push(e.data);
+    rec.onstop = async ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      if(activeRecorder===rec) activeRecorder = null;
+      const blob = new Blob(chunks, {type:'audio/webm'});
+      const reader = new FileReader();
+      reader.onloadend = async ()=>{
+        try{
+          await window.storage.set('wordaudio:'+wordId, JSON.stringify({dataUrl:reader.result}), false);
+          const w = state.words.find(w=>w.id===wordId);
+          if(w) w.hasAudio = true;
+          await saveData();
+          if(onDone){ onDone(); }
+          else { const freshEl = document.getElementById(elId); if(freshEl) freshEl.innerHTML = `<audio controls src="${reader.result}"></audio>`; }
+        }catch(e){ const freshEl=document.getElementById(elId); if(freshEl) freshEl.innerHTML = '<span class="meta">Save failed.</span>'; }
+      };
+      reader.readAsDataURL(blob);
+    };
+    rec.start();
+    setTimeout(()=>{ if(rec.state==='recording') rec.stop(); }, 180000);
+  }catch(e){ el.innerHTML = '<span class="meta">Microphone unavailable.</span>'; }
+}
+function stopActiveRecording(){
+  if(activeRecorder && activeRecorder.state==='recording'){ activeRecorder.stop(); }
+}
+
+// ---------- Review (spaced-repetition audio drill) ----------
+let reviewActive = false, reviewSelected = null, reviewCurrent = null, reviewRevealed = false, reviewStats = {seen:0, known:0};
+function availableReviewPlans(){
+  const plans = new Set();
+  let hasUnassigned = false;
+  state.words.filter(w=>w.hasAudio).forEach(w=>{
+    if(w.meetingPlan) plans.add(Number(w.meetingPlan)); else hasUnassigned = true;
+  });
+  return {plans:[...plans].sort((a,b)=>a-b), hasUnassigned};
+}
+function renderReview(c){
+  if(!reviewActive){
+    const {plans, hasUnassigned} = availableReviewPlans();
+    const totalWithAudio = state.words.filter(w=>w.hasAudio).length;
+    if(totalWithAudio===0){
+      c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or use the Record button inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
+      return;
+    }
+    c.innerHTML = `
+      <h3>Choose what to review</h3>
+      <div class="empty" style="margin-bottom:8px;">Pick which activities' recordings to pull from. Words you struggle with come up more often; words you know well still show up, just less often.</div>
+      <div id="planChecks">
+        ${plans.map(p=>`<label style="display:block;font-size:.85rem;margin:4px 0;"><input type="checkbox" class="revPlanCheck" value="${p}" checked> Meeting Plan ${p}</label>`).join('')}
+        ${hasUnassigned?`<label style="display:block;font-size:.85rem;margin:4px 0;"><input type="checkbox" class="revPlanCheck" value="none" checked> Not tagged to a meeting plan</label>`:''}
+      </div>
+      <div style="margin-top:10px;"><button class="ghost" onclick="selectAllReviewPlans(true)">Select all</button> <button class="ghost" onclick="selectAllReviewPlans(false)">Select none</button></div>
+      <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
+    `;
+    return;
+  }
+  // active session
+  if(!reviewCurrent){
+    c.innerHTML = `<div class="empty">Nothing left in your selection. <button class="ghost" onclick="endReview()">Back to setup</button></div>`;
+    return;
+  }
+  const w = reviewCurrent;
+  c.innerHTML = `
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${reviewStats.seen} · knew ${reviewStats.known} this session</div>
+    <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
+      <div id="reviewPlayer" class="meta">Loading audio…</div>
+      ${!reviewRevealed ? `
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
+          <button class="primary" onclick="answerReview(true)">I know it</button>
+          <button class="ghost" onclick="answerReview(false)">I don't know it</button>
+        </div>
+      ` : `
+        <div style="margin-top:14px;font-family:'Lora',serif;font-size:1.3rem;">${escapeHtml(w.text)}</div>
+        <div class="empty" style="margin-top:4px;">${w.meetingPlan?'Meeting Plan '+w.meetingPlan:'No meeting plan tagged'}</div>
+        <button class="primary" style="margin-top:14px;" onclick="nextReview()">Next</button>
+      `}
+    </div>
+    <button class="ghost" style="margin-top:14px;" onclick="endReview()">End review</button>
+  `;
+  loadPlayerInto('reviewPlayer', 'word', w.id);
+}
+function selectAllReviewPlans(val){
+  document.querySelectorAll('.revPlanCheck').forEach(cb=>cb.checked=val);
+}
+function startReview(){
+  const checked = [...document.querySelectorAll('.revPlanCheck:checked')].map(cb=>cb.value);
+  reviewSelected = new Set(checked);
+  reviewActive = true;
+  reviewStats = {seen:0, known:0};
+  pickNextReviewWord();
+  renderReview(document.getElementById('content'));
+}
+function reviewPool(){
+  return state.words.filter(w=>{
+    if(!w.hasAudio) return false;
+    const key = w.meetingPlan ? String(Number(w.meetingPlan)) : 'none';
+    return reviewSelected.has(key);
+  });
+}
+function pickNextReviewWord(){
+  const pool = reviewPool();
+  if(pool.length===0){ reviewCurrent = null; return; }
+  const weight = w => w.level===0 ? 5 : w.level===1 ? 2 : 1;
+  let candidates = pool;
+  if(pool.length>1 && reviewCurrent){ candidates = pool.filter(w=>w.id!==reviewCurrent.id); if(candidates.length===0) candidates = pool; }
+  const total = candidates.reduce((a,w)=>a+weight(w),0);
+  let r = Math.random()*total;
+  for(const w of candidates){ r -= weight(w); if(r<=0){ reviewCurrent = w; reviewRevealed=false; return; } }
+  reviewCurrent = candidates[candidates.length-1]; reviewRevealed=false;
+}
+function answerReview(knewIt){
+  reviewRevealed = true;
+  reviewStats.seen++;
+  if(knewIt) reviewStats.known++;
+  const w = state.words.find(w=>w.id===reviewCurrent.id);
+  if(w){
+    w.level = knewIt ? Math.min(w.level+1, 2) : Math.max(w.level-1, 0);
+    w.lastReview = new Date().toISOString().slice(0,10);
+  }
+  saveData();
+  renderReview(document.getElementById('content'));
+}
+function nextReview(){
+  pickNextReviewWord();
+  renderReview(document.getElementById('content'));
+}
+function endReview(){
+  reviewActive = false; reviewCurrent = null; reviewSelected = null;
+  renderReview(document.getElementById('content'));
+}
+
+// ---------- Audio Notes (general, not tied to a word) ----------
+function renderAudio(c){
+  c.innerHTML = `
+    <h3>Record a session note</h3>
+    <div class="field"><label>Label</label><input id="aLabel" placeholder="e.g. Meeting Plan 4 recap"></div>
+    <button class="record" id="recBtn" onclick="toggleGeneralRecord()">Start recording</button>
+    <div class="meta" id="recStatus" style="margin-top:8px;"></div>
+    <div class="empty" style="margin-top:8px;">Voice-optimized (mono, compressed) — auto-stops at 90s.</div>
+
+    <h3 style="margin-top:24px;">To review</h3>
+    <div class="empty" style="margin-bottom:8px;">Recordings you haven't reviewed in a while, or word recordings still low on the Iceberg.</div>
+    <div id="reviewList"></div>
+
+    <h3 style="margin-top:22px;">All recordings</h3>
+    <div id="audioList"></div>
+  `;
+  const generalItems = state.audioIndex.map(a=>({
+    kind:'general', id:a.id, label:a.label, date:a.date,
+    daysSince: a.lastReviewed ? Math.floor((Date.now()-new Date(a.lastReviewed))/86400000) : null,
+    needsReview: !a.lastReviewed || Math.floor((Date.now()-new Date(a.lastReviewed))/86400000) >= 10,
+  }));
+  const wordItems = state.words.filter(w=>w.hasAudio).map(w=>({
+    kind:'word', id:w.id, label:w.text+' (word)', date:w.dateAdded, level:w.level,
+    daysSince: w.lastReview ? Math.floor((Date.now()-new Date(w.lastReview))/86400000) : null,
+    needsReview: w.level<2 || !w.lastReview || Math.floor((Date.now()-new Date(w.lastReview))/86400000) >= 10,
+  }));
+  const all = [...generalItems, ...wordItems];
+  const toReview = all.filter(i=>i.needsReview).sort((a,b)=> (b.daysSince||999)-(a.daysSince||999));
+  const reviewEl = document.getElementById('reviewList');
+  reviewEl.innerHTML = toReview.length ? toReview.map(item=>`
+    <div class="entry" id="review-${item.kind}-${item.id}">
+      <div class="entry-top"><span class="title">${escapeHtml(item.label)}</span><span class="date">${item.daysSince===null?'never reviewed':item.daysSince+' days ago'}</span></div>
+      <div id="revplayer-${item.kind}-${item.id}" class="meta">Loading…</div>
+      <div class="actions"><button class="ghost" onclick="markReviewed('${item.kind}','${item.id}')">Mark reviewed</button></div>
+    </div>`).join('') : '<div class="empty">Nothing needs review right now.</div>';
+  toReview.forEach(item=> loadPlayerInto('revplayer-'+item.kind+'-'+item.id, item.kind, item.id));
+
+  const list = document.getElementById('audioList');
+  const sortedAll = [...all].sort((a,b)=>b.date.localeCompare(a.date));
+  list.innerHTML = sortedAll.length ? sortedAll.map(item=>`
+    <div class="entry">
+      <div class="entry-top"><span class="title">${escapeHtml(item.label)}</span><span class="date">${item.date}</span></div>
+      <div id="allplayer-${item.kind}-${item.id}" class="meta">Loading…</div>
+      ${item.kind==='general'?`<div class="actions"><button class="ghost danger" onclick="deleteGeneralAudio('${item.id}')">Delete</button></div>`:'<div class="empty">Manage this one from the Word Log tab.</div>'}
+    </div>`).join('') : '<div class="empty">No recordings yet.</div>';
+  sortedAll.forEach(item=> loadPlayerInto('allplayer-'+item.kind+'-'+item.id, item.kind, item.id));
+}
+async function loadPlayerInto(elId, kind, id){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  try{
+    const key = kind==='general' ? 'audio:'+id : 'wordaudio:'+id;
+    const res = await window.storage.get(key, false);
+    if(res && res.value) el.innerHTML = `<audio controls src="${JSON.parse(res.value).dataUrl}"></audio>`;
+    else el.innerHTML = '<span class="empty">Clip not found.</span>';
+  }catch(e){ el.innerHTML = '<span class="empty">Could not load.</span>'; }
+}
+async function markReviewed(kind, id){
+  if(kind==='general'){
+    const a = state.audioIndex.find(a=>a.id===id);
+    if(a) a.lastReviewed = new Date().toISOString().slice(0,10);
+  } else {
+    const w = state.words.find(w=>w.id===id);
+    if(w) w.lastReview = new Date().toISOString().slice(0,10);
+  }
+  await saveData();
+  renderAudio(document.getElementById('content'));
+}
+async function toggleGeneralRecord(){
+  const btn = document.getElementById('recBtn'); const status = document.getElementById('recStatus');
+  if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.stop(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1}});
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream, {audioBitsPerSecond:32000});
+    mediaRecorder.ondataavailable = e=>audioChunks.push(e.data);
+    mediaRecorder.onstop = async ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      btn.classList.remove('recording'); btn.textContent='Start recording';
+      status.textContent='Saving…';
+      const blob = new Blob(audioChunks, {type:'audio/webm'});
+      const reader = new FileReader();
+      reader.onloadend = async ()=>{
+        const id = uid();
+        const label = document.getElementById('aLabel').value.trim() || 'Untitled';
+        try{
+          await window.storage.set('audio:'+id, JSON.stringify({dataUrl:reader.result}), false);
+          state.audioIndex.push({id, label, date:new Date().toISOString().slice(0,10), lastReviewed:null});
+          await saveData();
+          status.textContent='Saved.';
+          renderAudio(document.getElementById('content'));
+        }catch(e){ status.textContent='Save failed.'; }
+      };
+      reader.readAsDataURL(blob);
+    };
+    mediaRecorder.start();
+    btn.classList.add('recording'); btn.textContent='Stop recording';
+    status.textContent='Recording…';
+    setTimeout(()=>{ if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop(); }, 90000);
+  }catch(e){ status.textContent='Microphone access denied or unavailable.'; }
+}
+async function deleteGeneralAudio(id){
+  state.audioIndex = state.audioIndex.filter(a=>a.id!==id);
+  await saveData();
+  try{ await window.storage.delete('audio:'+id, false); }catch(e){}
+  renderAudio(document.getElementById('content'));
+}
+
+// ---------- Profile ----------
+function renderProfile(c){
+  const p = state.profile;
+  c.innerHTML = `
+    <h3>About you</h3>
+    <div class="row">
+      <div class="field"><label>Language you're learning</label><input id="pLang" value="${escapeHtml(p.language||'')}"></div>
+      <div class="field"><label>Where you'll live</label><input id="pLocation" value="${escapeHtml(p.location||'')}"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Profession</label><input id="pProfession" value="${escapeHtml(p.profession||'')}"></div>
+      <div class="field"><label>Interests</label><input id="pInterests" value="${escapeHtml(p.interests||'')}"></div>
+    </div>
+    <div class="field"><label>Hours you can study per week</label><input id="pHours" type="number" min="0" value="${escapeHtml(p.hoursPerWeek||'')}"></div>
+    <button class="primary" onclick="saveProfile()">Save</button>
+    <h3 style="margin-top:26px;">Backup</h3>
+    <div class="empty" style="margin-bottom:8px;">Export everything (lessons, words, sessions — not audio, which is too large for a text file) as a backup you control.</div>
+    <button class="ghost" onclick="exportData()">Export data as JSON</button>
+  `;
+}
+function saveProfile(){
+  state.profile = {
+    language: document.getElementById('pLang').value.trim(),
+    location: document.getElementById('pLocation').value.trim(),
+    profession: document.getElementById('pProfession').value.trim(),
+    interests: document.getElementById('pInterests').value.trim(),
+    hoursPerWeek: document.getElementById('pHours').value,
+  };
+  saveData(); renderProfile(document.getElementById('content'));
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'gpa-companion-backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+loadData();
+</script>
+</body>
+</html>
