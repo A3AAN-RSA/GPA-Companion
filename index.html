@@ -1240,10 +1240,21 @@ function gameKeysFor(key){
   detail.steps.forEach((s,i)=>{ if(s.game===step.game) keys.push(mpN+'-'+i); });
   return keys.length ? keys : [key];
 }
+function isRecordingKey(key){
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const mp = MEETING_PLANS.find(m=>m.n===mpN);
+  if(!mp) return true;
+  if(!mp.detailed) return true;
+  const detail = MEETING_DETAILS[mpN];
+  const stepIdx = Number(parts[1]);
+  const step = detail && detail.steps[stepIdx];
+  return step ? !!step.needsRecording : true;
+}
 function renderMaterialsBlock(key, formPrefix, contextText){
   const el = document.getElementById('mat-'+key);
   if(!el) return;
-  const gameKeys = gameKeysFor(key);
+  const gameKeys = isRecordingKey(key) ? gameKeysFor(key) : [key];
   const attached = [];
   gameKeys.forEach(k=>{
     ((state.activityMaterials && state.activityMaterials[k]) || []).forEach((a,idx)=>{
@@ -1251,7 +1262,6 @@ function renderMaterialsBlock(key, formPrefix, contextText){
     });
   });
   const canEdit = state.allowMaterialsEditing !== false;
-  const autoMatches = autoMatchedLibraryPhotos(key, contextText||'');
   let html = `<h4 style="margin-top:0;">Reference pictures for this activity</h4>`;
   if(attached.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -1269,20 +1279,6 @@ function renderMaterialsBlock(key, formPrefix, contextText){
     </div>`;
   } else {
     html += `<div class="empty" style="margin-bottom:6px;">${canEdit ? 'No reference pictures attached yet.' : 'No reference pictures set up for this activity yet.'}</div>`;
-  }
-  if(autoMatches.length){
-    html += `<h4 style="font-size:.8rem;margin:12px 0 4px;">Suggested (not yet attached)</h4>
-    <div class="empty" style="margin-bottom:4px;">Matched by topic from your photo library — tap Attach to actually add one, or dismiss it if it's not a good fit.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      ${autoMatches.map(p=>`
-        <div style="text-align:center;width:80px;">
-          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);opacity:.75;">
-          <div class="tm">${escapeHtml(p.label||p.category||'')}</div>
-          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',null,null,'${p.id}')">Attach</button>
-          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="dismissAutoMatch('${key}','${p.id}')">Dismiss</button>
-        </div>
-      `).join('')}
-    </div>`;
   }
   if(canEdit){
     html += `<button class="ghost" onclick="toggleMaterialsPicker('${key}')">${materialsPickerOpen[key]?'Close picker':'+ Attach a picture'}</button>
