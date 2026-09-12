@@ -428,10 +428,9 @@ function renderDashboard(c){
       ${(!p.why && !p.remember) ? `<div class="empty">Add "why" and "what to remember" in Profile to see them here.</div>` : ''}
     </div>
     <div class="stat-row">
-      <div class="stat"><div class="num">${h.toFixed(1)}/${CUM_HOURS[1]}</div><div class="label">hours logged</div></div>
       <div class="stat"><div class="num">${meetingsTouched}/40</div><div class="label">meeting plans completed</div></div>
-      <div class="stat"><div class="num">${state.words.length}</div><div class="label">log entries</div></div>
-      <div class="stat"><div class="num">${state.words.filter(w=>w.level===2).length}</div><div class="label">ready to say</div></div>
+      <div class="stat"><div class="num">${state.words.length}</div><div class="label">recordings logged</div></div>
+      <div class="stat"><div class="num">${state.words.filter(w=>w.level===2).length}</div><div class="label">top of your iceberg</div></div>
       <div class="stat"><div class="num">${((state.revisionMinutes||0)/60).toFixed(1)}/${(MEETING_PLANS.length*1.5).toFixed(0)}</div><div class="label">revision hours</div></div>
     </div>
     <div class="empty" style="margin-bottom:16px;">${entryTypeBreakdown()}</div>
@@ -1699,32 +1698,113 @@ function groupWordsForDisplay(wordsList){
 function reviewGroups(){
   return groupWordsForDisplay(state.words.filter(w=>w.hasAudio));
 }
+let reviewMode = 'activities';
+let reviewActivityMPIndex = 0;
+let reviewActivitySelectedSubs = new Set();
+function renderReviewSetup(c){
+  const groups = reviewGroups();
+  if(groups.length===0){
+    c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or from inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
+    return;
+  }
+  c.innerHTML = `
+    <h3>Choose what to review</h3>
+    <div class="field"><label>Review type</label>
+      <select onchange="setReviewMode(this.value)">
+        <option value="activities" ${reviewMode==='activities'?'selected':''}>Review Activities</option>
+        <option value="custom" ${reviewMode==='custom'?'selected':''}>Custom Review</option>
+      </select>
+    </div>
+    <div id="reviewModeBody"></div>
+    <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
+  `;
+  renderReviewModeBody();
+}
+function setReviewMode(mode){
+  reviewMode = mode;
+  renderReviewModeBody();
+}
+function renderReviewModeBody(){
+  const el = document.getElementById('reviewModeBody');
+  if(!el) return;
+  if(reviewMode==='activities') renderReviewActivitiesMode(el);
+  else renderReviewCustomMode(el);
+}
+function renderReviewActivitiesMode(el){
+  const groups = reviewGroups();
+  if(reviewActivityMPIndex>=groups.length) reviewActivityMPIndex = 0;
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Pick a meeting plan or category, then check which activities you want to review — every word recorded under them gets pulled in automatically.</div>
+    <div class="field"><label>Meeting Plan / Category</label>
+      <select onchange="setReviewActivityMPIndex(this.value)">
+        ${groups.map((g,gi)=>`<option value="${gi}" ${gi===reviewActivityMPIndex?'selected':''}>${escapeHtml(g.topLabel)}</option>`).join('')}
+      </select>
+    </div>
+    <div id="reviewActivityChecks"></div>
+    <div class="empty" style="margin-top:6px;">${reviewActivitySelectedSubs.size} activit${reviewActivitySelectedSubs.size===1?'y':'ies'} selected so far, across all meeting plans.</div>
+  `;
+  renderReviewActivityChecks();
+}
+function setReviewActivityMPIndex(val){
+  reviewActivityMPIndex = Number(val);
+  renderReviewActivityChecks();
+}
+function renderReviewActivityChecks(){
+  const el = document.getElementById('reviewActivityChecks');
+  if(!el) return;
+  const groups = reviewGroups();
+  const g = groups[reviewActivityMPIndex];
+  if(!g){ el.innerHTML=''; return; }
+  el.innerHTML = g.subs.map((s,si)=>{
+    const subKey = g.topLabel+'::'+s.subLabel;
+    const checked = reviewActivitySelectedSubs.has(subKey);
+    return `<label style="display:block;font-size:.85rem;margin:4px 0;"><input type="checkbox" ${checked?'checked':''} onchange="toggleReviewActivitySub(${reviewActivityMPIndex},${si},this.checked)"> ${escapeHtml(s.subLabel)} <span class="tm">(${s.words.length} word${s.words.length===1?'':'s'})</span></label>`;
+  }).join('');
+}
+function toggleReviewActivitySub(gi, si, checked){
+  const groups = reviewGroups();
+  const g = groups[gi];
+  if(!g) return;
+  const s = g.subs[si];
+  const subKey = g.topLabel+'::'+s.subLabel;
+  if(checked) reviewActivitySelectedSubs.add(subKey); else reviewActivitySelectedSubs.delete(subKey);
+  renderReviewActivitiesMode(document.getElementById('reviewModeBody'));
+}
+function renderReviewCustomMode(el){
+  const groups = reviewGroups();
+  el.innerHTML = `
+    <div class="field"><input id="reviewSearch" placeholder="Search your words..." oninput="filterReviewChecklist()"></div>
+    <div style="margin-bottom:8px;"><button class="ghost" onclick="selectAllReviewWords(true)">Select all</button> <button class="ghost" onclick="selectAllReviewWords(false)">Select none</button></div>
+    <div id="reviewChecks">
+      ${groups.map((g,ti)=>`
+        <div class="reviewCustomGroup" style="margin-bottom:14px;">
+          <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},false)">none</button></div>
+          ${g.subs.map((s,si)=>`
+            <div style="margin:5px 0 0 12px;">
+              <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},false)">none</button></div>
+              ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:block;font-size:.83rem;margin:2px 0 2px 10px;"><input type="checkbox" class="revWordCheck" data-top="${ti}" data-sub="${si}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+function filterReviewChecklist(){
+  const q = document.getElementById('reviewSearch').value.trim().toLowerCase();
+  document.querySelectorAll('.reviewCustomGroup').forEach(block=>{
+    let any = false;
+    block.querySelectorAll('.reviewWordRow').forEach(row=>{
+      const match = !q || row.dataset.search.includes(q);
+      row.style.display = match ? '' : 'none';
+      if(match) any = true;
+    });
+    block.style.display = any ? '' : 'none';
+  });
+}
 function renderReview(c){
   if(!reviewActive){
-    const groups = reviewGroups();
-    if(groups.length===0){
-      c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or from inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
-      return;
-    }
-    c.innerHTML = `
-      <h3>Choose what to review</h3>
-      <div class="empty" style="margin-bottom:8px;">Check individual recordings — mix and match across meetings, activities, or categories however you like. Words you struggle with come up more often; words you know well still show up, just less often.</div>
-      <div style="margin-bottom:10px;"><button class="ghost" onclick="selectAllReviewWords(true)">Select all</button> <button class="ghost" onclick="selectAllReviewWords(false)">Select none</button></div>
-      <div id="reviewChecks">
-        ${groups.map((g,ti)=>`
-          <div style="margin-bottom:14px;">
-            <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},false)">none</button></div>
-            ${g.subs.map((s,si)=>`
-              <div style="margin:5px 0 0 12px;">
-                <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},false)">none</button></div>
-                ${s.words.map(w=>`<label style="display:block;font-size:.83rem;margin:2px 0 2px 10px;"><input type="checkbox" class="revWordCheck" data-top="${ti}" data-sub="${si}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
-              </div>
-            `).join('')}
-          </div>
-        `).join('')}
-      </div>
-      <button class="primary" style="margin-top:8px;" onclick="startReview()">Start review</button>
-    `;
+    renderReviewSetup(c);
     return;
   }
   // active session
@@ -1764,8 +1844,20 @@ function selectSubReviewGroup(ti, si, val){
 }
 let reviewSessionStart = null;
 function startReview(){
-  const checked = [...document.querySelectorAll('.revWordCheck:checked')].map(cb=>cb.value);
-  reviewSelected = new Set(checked);
+  if(reviewMode==='activities'){
+    const groups = reviewGroups();
+    const ids = new Set();
+    groups.forEach(g=>{
+      g.subs.forEach(s=>{
+        const subKey = g.topLabel+'::'+s.subLabel;
+        if(reviewActivitySelectedSubs.has(subKey)) s.words.forEach(w=>ids.add(w.id));
+      });
+    });
+    reviewSelected = ids;
+  } else {
+    const checked = [...document.querySelectorAll('.revWordCheck:checked')].map(cb=>cb.value);
+    reviewSelected = new Set(checked);
+  }
   reviewActive = true;
   reviewStats = {seen:0, known:0};
   reviewSessionStart = Date.now();
