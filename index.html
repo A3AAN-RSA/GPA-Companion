@@ -91,6 +91,9 @@ img.thumb{max-width:100%;border-radius:var(--radius);margin-top:6px;}
   <div class="panel" id="content"></div>
   <div class="footer-note">Data saves automatically to your account. Use Export in Profile to back it up.</div>
 </div>
+<div id="imageOverlay" onclick="hideEnlargedImage()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:1000;align-items:center;justify-content:center;cursor:pointer;padding:20px;">
+  <img id="imageOverlayImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:4px;">
+</div>
 
 <script>
 // If running outside Claude (e.g. published on GitHub Pages), window.storage won't
@@ -1240,6 +1243,22 @@ function gameKeysFor(key){
   detail.steps.forEach((s,i)=>{ if(s.game===step.game) keys.push(mpN+'-'+i); });
   return keys.length ? keys : [key];
 }
+function showEnlargedImage(src){
+  const overlay = document.getElementById('imageOverlay');
+  const img = document.getElementById('imageOverlayImg');
+  if(!overlay || !img || !src) return;
+  img.src = src;
+  overlay.style.display = 'flex';
+}
+function hideEnlargedImage(){
+  const overlay = document.getElementById('imageOverlay');
+  if(overlay) overlay.style.display = 'none';
+}
+function showEnlargedImageFor(key, idx){
+  const item = state.activityMaterials && state.activityMaterials[key] && state.activityMaterials[key][idx];
+  if(!item) return;
+  showEnlargedImage(resolveAttachedSrc(item));
+}
 function isRecordingKey(key){
   const parts = key.split('-');
   const mpN = Number(parts[0]);
@@ -1269,7 +1288,7 @@ function renderMaterialsBlock(key, formPrefix, contextText){
         const src = resolveAttachedSrc(a);
         return `
         <div style="text-align:center;width:80px;">
-          <img src="${src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <img src="${src}" onclick="showEnlargedImageFor('${a._key}',${a._idx})" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);cursor:pointer;">
           <div class="tm">${escapeHtml(a.code||'')}</div>
           <a href="${src}" download="${escapeHtml(a.code||'photo')}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
           ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecordingAt('${formPrefix}','${a._key}',${a._idx})">Use for recording</button>` : ''}
