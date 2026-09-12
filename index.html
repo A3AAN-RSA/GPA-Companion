@@ -616,9 +616,10 @@ function renderMeetings(c){
   if(expandedPlan!=null){
     const mp = MEETING_PLANS.find(m=>m.n===expandedPlan);
     if(mp && mp.detailed){
-      MEETING_DETAILS[mp.n].steps.forEach((s,i)=>{
+      const detail = MEETING_DETAILS[mp.n];
+      detail.steps.forEach((s,i)=>{
         renderDisplayInputFor('step'+mp.n+'-'+i+'_');
-        renderMaterialsBlock(mp.n+'-'+i, 'step'+mp.n+'-'+i+'_');
+        renderMaterialsBlock(mp.n+'-'+i, recordingFormPrefixFor(mp.n, detail, i));
       });
     } else if(mp){
       renderDisplayInputFor('mpword'+mp.n+'_');
@@ -869,7 +870,7 @@ function renderMaterialsBlock(key, formPrefix){
           <img src="graphics/${a.file}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(a.code)}</div>
           <a href="graphics/${a.file}" download="${a.code}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
-          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}','${a.file}','${a.code}')">Use for recording</button>
+          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}','${a.file}','${a.code}')">Use for recording</button>` : ''}
           ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}','${a.file}','${a.code}')">Remove</button>` : ''}
         </div>
       `).join('')}
@@ -934,6 +935,12 @@ async function toggleAttachedImage(key, file, code){
   else state.activityMaterials[key].push({file, code});
   await saveData();
   renderMeetings(document.getElementById('content'));
+}
+function recordingFormPrefixFor(mpN, detail, stepIndex){
+  const step = detail.steps[stepIndex];
+  if(step.needsRecording) return 'step'+mpN+'-'+stepIndex+'_';
+  const idx = detail.steps.findIndex(s => s.game===step.game && s.needsRecording);
+  return idx>=0 ? 'step'+mpN+'-'+idx+'_' : null;
 }
 function useAttachedForRecording(formPrefix, file, code){
   const typeEl = document.getElementById(formPrefix+'DisplayType');
