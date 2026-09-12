@@ -264,12 +264,12 @@ const MEETING_DETAILS = {
     technique:"Both games use the \"Rough-and-Ready Dozen\" technique: the nurturer names something once, then immediately quizzes you on it by asking where it is, mixing in everything learned so far, at random. You never repeat words back — you just point. Two ground rules sit above everything else here: stay connected to your nurturer as a real person, not a machine dispensing vocabulary, and have fun — laughing is a good sign, not a distraction. There are three possible roles in the room: the nurturer (your host companion), the growing participators (2-6 of you), and optionally a coach — another growing participator, beginner or advanced, whose presence helps train a new nurturer.",
     materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room), plus toy animals or animal pictures (bird, fish, frog, dog, cat, cow, mouse, horse, goat, etc. — local, familiar animals are fine). The Graphics Packet's Rough-and-Ready Dozen pictures for reference and its Talking Picture Dictionary page for recording new words.",
     steps:[
-      {name:"Introduce man, woman, and yourself", needsRecording:false, description:"Your nurturer lays out two dolls (or uses two real people in the room) — a man and a woman — and says the equivalent of \"This is a man. This is a woman\" just once each. From this point on, only the nurturer speaks the target language, and GPs only listen and point — no talking at all. She immediately starts asking, over and over in random order, \"Where is the woman? Where is the man?\" and you respond purely by pointing. She then introduces \"I\" by pointing to herself, folding it into the same random questioning — \"Where am I? Where is the man? Where is the woman?\""},
-      {name:"Keep adding new words, one at a time", needsRecording:false, description:"From here, one rule governs everything: every time a new word is added — boy, you, they, child, person, girl, baby, old man, old woman, and so on — the nurturer says it in a sentence exactly once, then goes straight back to quiz-style \"Where is...?\" questioning, folding it in with everything already learned. She never repeats a new word by itself over and over (never \"man, man, man\"); the repetition you need comes from being asked about it in different random combinations, not from hearing it chanted. Only move on to a new word once the group can reliably point to everything already introduced. If someone points wrong along the way, the nurturer corrects it only in the target language, naturally and kindly — for example, gently saying something like \"no, that's not the man, that's the woman — where is the man?\" and continuing, never switching to English or explaining grammar. You'll pick up the gist of the correction even without understanding every word of it, and that's fine. Keep going until you've built up the full set for this round."},
-      {name:"Wrap up Game 1A: record and log", needsRecording:true, description:"Now record and log every new word from this round. In the original method this meant manually numbering pictures and keeping a running paper dictionary — this app does that part for you automatically, so just use the recording area below: add each new word, record yourself (or the nurturer) saying it, and it's logged and organized for you, ready to review later."},
-      {name:"Introduce two animals", needsRecording:false, description:"Same technique as Game 1A, just with animals instead of people. Nurturer brings out two toy animals or pictures, names each once (\"This is a cat. This is a dog\"), then immediately starts the random \"Where is...?\" questioning."},
-      {name:"Keep adding animals, one at a time", needsRecording:false, description:"Continue adding one new animal at a time — goat, bird, fish, frog, spider, cow, mouse, horse, and so on (local, familiar animals are perfectly fine) — always folding each new addition into the same random questioning covering everything already learned in this game, the same one-at-a-time rule as before. Once several animals are known, introduce a general category word for \"animals\" itself, and contrast it against the general word for \"people\" from Game 1A."},
-      {name:"Wrap up Game 1B: record and log", needsRecording:true, description:"Same as Game 1A's wrap-up — record and log every new animal word from this round using the recording area below. No manual numbering needed; the app keeps track."}
+      {name:"Introduce man, woman, and yourself", game:"1A: Introducing people", needsRecording:false, description:"Your nurturer lays out two dolls (or uses two real people in the room) — a man and a woman — and says the equivalent of \"This is a man. This is a woman\" just once each. From this point on, only the nurturer speaks the target language, and GPs only listen and point — no talking at all. She immediately starts asking, over and over in random order, \"Where is the woman? Where is the man?\" and you respond purely by pointing. She then introduces \"I\" by pointing to herself, folding it into the same random questioning — \"Where am I? Where is the man? Where is the woman?\""},
+      {name:"Keep adding new words, one at a time", game:"1A: Introducing people", needsRecording:false, description:"From here, one rule governs everything: every time a new word is added — boy, you, they, child, person, girl, baby, old man, old woman, and so on — the nurturer says it in a sentence exactly once, then goes straight back to quiz-style \"Where is...?\" questioning, folding it in with everything already learned. She never repeats a new word by itself over and over (never \"man, man, man\"); the repetition you need comes from being asked about it in different random combinations, not from hearing it chanted. Only move on to a new word once the group can reliably point to everything already introduced. If someone points wrong along the way, the nurturer corrects it only in the target language, naturally and kindly — for example, gently saying something like \"no, that's not the man, that's the woman — where is the man?\" and continuing, never switching to English or explaining grammar. You'll pick up the gist of the correction even without understanding every word of it, and that's fine. Keep going until you've built up the full set for this round."},
+      {name:"Wrap up Game 1A: record and log", game:"1A: Introducing people", needsRecording:true, description:"Now record and log every new word from this round. In the original method this meant manually numbering pictures and keeping a running paper dictionary — this app does that part for you automatically, so just use the recording area below: add each new word, record yourself (or the nurturer) saying it, and it's logged and organized for you, ready to review later."},
+      {name:"Introduce two animals", game:"1B: Introducing animals", needsRecording:false, description:"Same technique as Game 1A, just with animals instead of people. Nurturer brings out two toy animals or pictures, names each once (\"This is a cat. This is a dog\"), then immediately starts the random \"Where is...?\" questioning."},
+      {name:"Keep adding animals, one at a time", game:"1B: Introducing animals", needsRecording:false, description:"Continue adding one new animal at a time — goat, bird, fish, frog, spider, cow, mouse, horse, and so on (local, familiar animals are perfectly fine) — always folding each new addition into the same random questioning covering everything already learned in this game, the same one-at-a-time rule as before. Once several animals are known, introduce a general category word for \"animals\" itself, and contrast it against the general word for \"people\" from Game 1A."},
+      {name:"Wrap up Game 1B: record and log", game:"1B: Introducing animals", needsRecording:true, description:"Same as Game 1A's wrap-up — record and log every new animal word from this round using the recording area below. No manual numbering needed; the app keeps track."}
     ],
     checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
   },
@@ -278,18 +278,18 @@ const MEETING_DETAILS = {
     technique:"Every game in this meeting still uses the same Rough-and-Ready Dozen technique from Meeting 1: the nurturer names something once, then immediately quizzes you on it at random, folding in everything learned so far. You never repeat a word back — you just point (or, later in this meeting, act out a command). No new item gets repeated by itself; the repetition comes from varied random questioning. Stay connected as a person, and keep it fun — the ground rules from Meeting 1 still apply throughout.",
     materials:"Kitchen items (book, paper, pencil, pen, knife, fork, spoon, glass, cup, bowl, mixing bowl, teapot); office/schoolroom objects and furniture — real, toy, or drawn (table, chair, bed, couch); a deliberately \"good\" and \"bad\" version of one or two items (like a good pencil and a broken one); simple stick-figure or triangle-people action drawings (sitting, standing, lying, walking, running); an object with a clear front and back for location words (a toy chair works well); a dozen pencils or similar small objects; a few containers things can go \"in\" (glass, cup, bowl); photos of the nurturer and each GP walking/running together; bubble-story pictures from your graphics packet (Lexicarry-style).",
     steps:[
-      {name:"Play Game 1: Our little world — kitchen to office", needsRecording:false, description:"Using the same technique as Meeting 1, the nurturer introduces a set of everyday objects — starting with kitchen items, then office/schoolroom objects and furniture — ideally ones she actually uses in real life. She starts with two items (\"This is a pen. This is a knife. Where is the knife?\"), then adds one new item at a time, folding each into random questioning exactly as before. Along the way you may pick up a generic word for \"thing\" if the language has one (\"Where is a thing?\" — point to any item). Once several objects are known, the nurturer can combine them with \"and\" and \"or\" (\"Where is the book and the spoon? Where is the glass or the cup?\"). Include one deliberately \"good\" and \"bad\" version of an item so those words come up too. If anyone still feels weak on specific words from Meeting 1, fold a few of those back into this set as well."},
-      {name:"Wrap up Game 1: record and log", needsRecording:true, description:"Record and log every new word from this round using the area below — the app organizes and numbers everything automatically."},
-      {name:"Play Game 2: Make it true! (Stick People in Action)", needsRecording:false, description:"Nurturer lays out two simple stick-figure or triangle-people drawings and describes an action for one of them — for example, \"The boy is running.\" You choose which of the two pictures matches. One by one, add more action pictures the same way — sitting, standing, lying down, walking. Don't worry if the exact grammatical form differs (like \"Run!\" versus \"is running\") — as long as you understand enough to point to the right picture, you've got what you need for now; finer details come later."},
-      {name:"Wrap up Game 2: record and log", needsRecording:true, description:"Record and log this round's new content using the area below."},
-      {name:"Play Games 3A & 3B: Lots of places, and objects in places", needsRecording:false, description:"Choose an already-known object with a clear front and back (a toy chair works well). Nurturer introduces two location words at once — for example, \"This pencil is on the chair. This pencil is under the chair. Which pencil is under the chair?\" — then adds one new location at a time (in front of, behind), same Rough-and-Ready Dozen style: start with two, understand and point, one new item at a time, mostly ask individuals, keep it random. Don't worry about picking up extra words like \"which\" along the way — you'll hear them constantly. Once the location words feel solid, extend the game (3B) by bringing in objects you already know from Meeting 1 or from Game 1 today — especially ones you still feel weak on — and mix them into new combinations: \"Which pencil is under the horse? Which pencil is in front of the man?\""},
-      {name:"Wrap up Games 3A & 3B: record", needsRecording:true, description:"Record a short sample covering the location words and object combinations using the area below. Since Game 3B doesn't introduce anything new of its own, there's nothing extra to log there — just the sample from 3A onward."},
-      {name:"Play Game 3C: Understand and do — putting, taking, etc.", needsRecording:false, description:"Take one already-known object (say, a pencil). Nurturer contrasts two actions — \"Take the pencil\" and \"Put down the pencil\" — then adds one new action, \"give\" (\"Give me the pencil\"), then one more, \"point at.\" Four actions is enough for this round. Choose three or four other objects besides the pencil, and the nurturer gives commands mixing any of the actions with any of the objects at random — \"Take the goat. Give me the pencil.\""},
-      {name:"Wrap up Game 3C: record and log", needsRecording:true, description:"Record and log this round's new words using the area below."},
-      {name:"Play Game 4: Photos of us in action, continued", needsRecording:false, description:"Pick up the \"Photos of us in action\" game from Meeting 1, where you had pictures of the nurturer and each GP walking and running individually. Today, add new photos of the nurturer and each GP walking and running together, and extend the questioning to include \"we\" alongside \"I\" and \"you\" — \"In which picture are we walking? In which are we running?\""},
-      {name:"Wrap up Game 4: record", needsRecording:true, description:"Just a sample recording this time using the area below — no new vocabulary items to log separately."},
-      {name:"Play Game 5: More of the Cartoon Bubble Game", needsRecording:false, description:"Continue the bubble-picture game from Meeting 1 — bubble-story pictures from your graphics packet — adding a few more scenes the same way you did before."},
-      {name:"Wrap up Game 5: record and log", needsRecording:true, description:"Record and log this round's new content using the area below."}
+      {name:"Play Game 1: Our little world — kitchen to office", game:"Game 1: Kitchen to office", needsRecording:false, description:"Using the same technique as Meeting 1, the nurturer introduces a set of everyday objects — starting with kitchen items, then office/schoolroom objects and furniture — ideally ones she actually uses in real life. She starts with two items (\"This is a pen. This is a knife. Where is the knife?\"), then adds one new item at a time, folding each into random questioning exactly as before. Along the way you may pick up a generic word for \"thing\" if the language has one (\"Where is a thing?\" — point to any item). Once several objects are known, the nurturer can combine them with \"and\" and \"or\" (\"Where is the book and the spoon? Where is the glass or the cup?\"). Include one deliberately \"good\" and \"bad\" version of an item so those words come up too. If anyone still feels weak on specific words from Meeting 1, fold a few of those back into this set as well."},
+      {name:"Wrap up Game 1: record and log", game:"Game 1: Kitchen to office", needsRecording:true, description:"Record and log every new word from this round using the area below — the app organizes and numbers everything automatically."},
+      {name:"Play Game 2: Make it true! (Stick People in Action)", game:"Game 2: Stick people in action", needsRecording:false, description:"Nurturer lays out two simple stick-figure or triangle-people drawings and describes an action for one of them — for example, \"The boy is running.\" You choose which of the two pictures matches. One by one, add more action pictures the same way — sitting, standing, lying down, walking. Don't worry if the exact grammatical form differs (like \"Run!\" versus \"is running\") — as long as you understand enough to point to the right picture, you've got what you need for now; finer details come later."},
+      {name:"Wrap up Game 2: record and log", game:"Game 2: Stick people in action", needsRecording:true, description:"Record and log this round's new content using the area below."},
+      {name:"Play Games 3A & 3B: Lots of places, and objects in places", game:"Games 3A-3B: Locations", needsRecording:false, description:"Choose an already-known object with a clear front and back (a toy chair works well). Nurturer introduces two location words at once — for example, \"This pencil is on the chair. This pencil is under the chair. Which pencil is under the chair?\" — then adds one new location at a time (in front of, behind), same Rough-and-Ready Dozen style: start with two, understand and point, one new item at a time, mostly ask individuals, keep it random. Don't worry about picking up extra words like \"which\" along the way — you'll hear them constantly. Once the location words feel solid, extend the game (3B) by bringing in objects you already know from Meeting 1 or from Game 1 today — especially ones you still feel weak on — and mix them into new combinations: \"Which pencil is under the horse? Which pencil is in front of the man?\""},
+      {name:"Wrap up Games 3A & 3B: record", game:"Games 3A-3B: Locations", needsRecording:true, description:"Record a short sample covering the location words and object combinations using the area below. Since Game 3B doesn't introduce anything new of its own, there's nothing extra to log there — just the sample from 3A onward."},
+      {name:"Play Game 3C: Understand and do — putting, taking, etc.", game:"Game 3C: Giving and taking", needsRecording:false, description:"Take one already-known object (say, a pencil). Nurturer contrasts two actions — \"Take the pencil\" and \"Put down the pencil\" — then adds one new action, \"give\" (\"Give me the pencil\"), then one more, \"point at.\" Four actions is enough for this round. Choose three or four other objects besides the pencil, and the nurturer gives commands mixing any of the actions with any of the objects at random — \"Take the goat. Give me the pencil.\""},
+      {name:"Wrap up Game 3C: record and log", game:"Game 3C: Giving and taking", needsRecording:true, description:"Record and log this round's new words using the area below."},
+      {name:"Play Game 4: Photos of us in action, continued", game:"Game 4: Photos of us in action", needsRecording:false, description:"Pick up the \"Photos of us in action\" game from Meeting 1, where you had pictures of the nurturer and each GP walking and running individually. Today, add new photos of the nurturer and each GP walking and running together, and extend the questioning to include \"we\" alongside \"I\" and \"you\" — \"In which picture are we walking? In which are we running?\""},
+      {name:"Wrap up Game 4: record", game:"Game 4: Photos of us in action", needsRecording:true, description:"Just a sample recording this time using the area below — no new vocabulary items to log separately."},
+      {name:"Play Game 5: More of the Cartoon Bubble Game", game:"Game 5: Cartoon bubble game", needsRecording:false, description:"Continue the bubble-picture game from Meeting 1 — bubble-story pictures from your graphics packet — adding a few more scenes the same way you did before."},
+      {name:"Wrap up Game 5: record and log", game:"Game 5: Cartoon bubble game", needsRecording:true, description:"Record and log this round's new content using the area below."}
     ],
     checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
   }
@@ -545,7 +545,7 @@ function renderMeetings(c){
             <div id="mat-${key}" style="margin:8px 0 0 24px;"></div>
             ${s.needsRecording ? `
             <div style="margin:8px 0 0 24px;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
-              ${wordFormHTML('step'+key+'_', mp.n, i, s.name)}
+              ${wordFormHTML('step'+key+'_', mp.n, i, s.game||s.name)}
             </div>` : ''}
           </div>`;
         });
@@ -566,18 +566,6 @@ function renderMeetings(c){
           <div style="margin:8px 0;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
             ${wordFormHTML('mpword'+mp.n+'_', mp.n)}
           </div>`;
-      }
-      const recsForPlan = state.words.filter(w=>Number(w.meetingPlan)===mp.n);
-      if(recsForPlan.length){
-        html += `<h4>Recordings for this meeting (${recsForPlan.length})</h4>`;
-        recsForPlan.slice().reverse().forEach(w=>{
-          html += `<div class="entry">
-            <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
-            <div class="meta">${w.stepName?`<span class="tag ochre">${escapeHtml(w.stepName)}</span>`:''}${entryTypeTag(w)}${w.category?`<span class="tag">${escapeHtml(w.category)}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
-            ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
-            <div id="mprec-${w.id}" class="meta"></div>
-          </div>`;
-        });
       }
       const mat = suggestedMaterials(mp);
       if(mat.status==='ok'){
@@ -621,7 +609,6 @@ function renderMeetings(c){
       renderDisplayInputFor('mpword'+mp.n+'_');
       renderMaterialsBlock(mp.n+'-whole', 'mpword'+mp.n+'_');
     }
-    state.words.filter(w=>Number(w.meetingPlan)===expandedPlan && w.hasAudio).forEach(w=> loadPlayerInto('mprec-'+w.id, 'word', w.id));
   }
 }
 function saveNurturerScript(){
@@ -1077,13 +1064,11 @@ function renderWords(c){
   `;
   renderDisplayInputFor('w');
   const list = document.getElementById('wordList');
-  const sorted = [...state.words].sort((a,b)=> b.dateAdded.localeCompare(a.dateAdded));
-  list.innerHTML = sorted.length ? sorted.map(w=>{
-    const lvl = ['Recognize','Understand','Recall / Say'];
-    return `
+  const lvl = ['Recognize','Understand','Recall / Say'];
+  const wordCardHTML = (w) => `
     <div class="entry" id="word-${w.id}">
       <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
-      <div class="meta">${entryTypeTag(w)}${w.meetingPlan?`<span class="tag">Meeting ${w.meetingPlan}</span>`:''}${w.category?`<span class="tag">${escapeHtml(w.category)}</span>`:''}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
+      <div class="meta">${entryTypeTag(w)}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
       <div class="iceberg">
         ${[0,1,2].map(i=>`<button class="${w.level===i?'on':''}" onclick="setLevel('${w.id}',${i})">${lvl[i]}</button>`).join('')}
       </div>
@@ -1096,8 +1081,23 @@ function renderWords(c){
         <button class="ghost danger" onclick="deleteWord('${w.id}')">Delete</button>
       </div>
     </div>`;
-  }).join('') : '<div class="empty">No words yet.</div>';
-  sorted.forEach(w=>{ if(w.hasAudio) loadWordAudio(w.id); });
+  if(state.words.length===0){
+    list.innerHTML = '<div class="empty">No words yet.</div>';
+  } else {
+    const groups = groupWordsForDisplay(state.words);
+    list.innerHTML = groups.map(g => `
+      <div style="margin-bottom:18px;">
+        <div class="phase-divider" style="margin-top:4px;">${escapeHtml(g.topLabel)}</div>
+        ${g.subs.map(s => `
+          <div style="margin:8px 0 0 4px;">
+            <div style="font-weight:600;font-size:.82rem;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(s.subLabel)}</div>
+            ${s.words.slice().sort((a,b)=>b.dateAdded.localeCompare(a.dateAdded)).map(wordCardHTML).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+  state.words.forEach(w=>{ if(w.hasAudio) loadWordAudio(w.id); });
 }
 function togglePhotoEdit(wordId){
   const el = document.getElementById('wPhotoEdit-'+wordId);
@@ -1188,25 +1188,34 @@ function stopActiveRecording(){
 
 // ---------- Review (spaced-repetition audio drill) ----------
 let reviewActive = false, reviewSelected = null, reviewCurrent = null, reviewRevealed = false, reviewStats = {seen:0, known:0};
-function reviewGroups(){
+function groupWordsForDisplay(wordsList){
   const map = {};
-  state.words.filter(w=>w.hasAudio).forEach(w=>{
-    let topLabel;
+  wordsList.forEach(w=>{
+    let topLabel, subLabel;
     if(w.meetingPlan){
       const mp = MEETING_PLANS.find(m=>m.n===Number(w.meetingPlan));
       topLabel = mp ? `Meeting Plan ${mp.n}: ${mp.title}` : `Meeting Plan ${w.meetingPlan}`;
+      subLabel = w.stepName || 'General';
     } else {
-      topLabel = w.category ? w.category : 'Uncategorized';
+      topLabel = 'Other / Extra';
+      subLabel = w.category || 'Uncategorized';
     }
-    const subLabel = w.stepName || 'General';
     map[topLabel] = map[topLabel] || {};
     map[topLabel][subLabel] = map[topLabel][subLabel] || [];
     map[topLabel][subLabel].push(w);
   });
-  return Object.keys(map).sort().map(topLabel => ({
+  const topLabels = Object.keys(map).sort((a,b)=>{
+    if(a==='Other / Extra') return 1;
+    if(b==='Other / Extra') return -1;
+    return a.localeCompare(b, undefined, {numeric:true});
+  });
+  return topLabels.map(topLabel => ({
     topLabel,
     subs: Object.keys(map[topLabel]).sort().map(subLabel => ({subLabel, words: map[topLabel][subLabel]}))
   }));
+}
+function reviewGroups(){
+  return groupWordsForDisplay(state.words.filter(w=>w.hasAudio));
 }
 function renderReview(c){
   if(!reviewActive){
