@@ -787,6 +787,7 @@ function wordFormHTML(prefix, presetMeetingPlan, presetStepIndex, presetStepName
         <option value="device">Photo on device</option>
         <option value="graphics">Standard photo from graphics pack</option>
         <option value="library">My photo library</option>
+        <option value="reference">Reference images (for this activity)</option>
       </select>
     </div>
     <div id="${prefix}DisplayInput"></div>
@@ -815,6 +816,9 @@ function renderDisplayInputFor(prefix){
   } else if(type==='library'){
     el.innerHTML = `<div id="${prefix}LibraryPicker"></div>`;
     renderLibraryPicker(prefix);
+  } else if(type==='reference'){
+    el.innerHTML = `<div id="${prefix}RefPicker"></div>`;
+    renderReferencePicker(prefix);
   } else {
     el.innerHTML = `<div class="empty">This entry will display as text only.</div>`;
   }
@@ -877,6 +881,10 @@ function libraryFilterSet(prefix, cat){
   libraryFilter[prefix] = cat;
   renderLibraryPicker(prefix);
 }
+function libraryFilterSetByIndex(prefix, idx){
+  const cats = libraryCategories();
+  libraryFilterSet(prefix, cats[idx]);
+}
 function selectLibraryImage(prefix, id){
   librarySelection[prefix] = id;
   renderLibraryPicker(prefix);
@@ -898,7 +906,7 @@ function renderLibraryPicker(prefix){
     ` : ''}
     ${cats.length ? `<div style="margin-bottom:6px;">
       <button class="ghost" style="font-size:.72rem;padding:3px 8px;${!activeCat?'font-weight:600;':''}" onclick="libraryFilterSet('${prefix}', null)">All</button>
-      ${cats.map(c=>`<button class="ghost" style="font-size:.72rem;padding:3px 8px;margin-left:4px;${activeCat===c?'font-weight:600;':''}" onclick="libraryFilterSet('${prefix}', ${JSON.stringify(c)})">${escapeHtml(c)}</button>`).join('')}
+      ${cats.map((c,ci)=>`<button class="ghost" style="font-size:.72rem;padding:3px 8px;margin-left:4px;${activeCat===c?'font-weight:600;':''}" onclick="libraryFilterSetByIndex('${prefix}', ${ci})">${escapeHtml(c)}</button>`).join('')}
     </div>` : ''}
     ${items.length ? `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:8px;">
@@ -949,6 +957,69 @@ function addToPhotoLibrary(prefix){
   reader.readAsDataURL(fileInput.files[0]);
 }
 
+// ---------- Reference images (pictures already assigned to this activity) ----------
+let referenceSelection = {};
+function referenceImagesForForm(prefix){
+  const meta = formMeta[prefix] || {};
+  const mpN = meta.meetingPlan;
+  if(mpN==null) return [];
+  const mp = MEETING_PLANS.find(m=>Number(m.n)===Number(mpN));
+  if(!mp) return [];
+  let keys = [];
+  if(mp.detailed){
+    const detail = MEETING_DETAILS[mp.n];
+    const stepIdx = meta.stepIndex;
+    const step = (stepIdx!=null && detail.steps[stepIdx]) ? detail.steps[stepIdx] : null;
+    const gameLabel = step ? step.game : null;
+    detail.steps.forEach((s,i)=>{ if(!gameLabel || s.game===gameLabel) keys.push(mp.n+'-'+i); });
+  } else {
+    keys = [mp.n+'-whole'];
+  }
+  const items = [];
+  const seen = new Set();
+  keys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{
+      const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+      if(!src || seen.has(src)) return;
+      seen.add(src);
+      items.push({src, code: a.code||''});
+    });
+  });
+  return items;
+}
+function selectReferenceImage(prefix, idx){
+  referenceSelection[prefix] = idx;
+  renderReferencePicker(prefix);
+}
+function renderReferencePicker(prefix){
+  const el = document.getElementById(prefix+'RefPicker');
+  if(!el) return;
+  const items = referenceImagesForForm(prefix);
+  if(items.length===0){
+    el.innerHTML = `<div class="empty">No reference pictures attached to this activity yet — add some from the Assign Pictures tab.</div>`;
+    return;
+  }
+  const selIdx = referenceSelection[prefix];
+  const sel = (selIdx!=null) ? items[selIdx] : null;
+  el.innerHTML = `
+    ${sel ? `
+      <div style="text-align:center;margin-bottom:10px;padding:10px;background:#fff;border:2px solid var(--teal);border-radius:3px;">
+        <img src="${sel.src}" style="max-width:100%;max-height:260px;display:inline-block;">
+        <div class="meta" style="margin-top:4px;">Selected: ${escapeHtml(sel.code)} — keep this visible while you record</div>
+      </div>
+    ` : ''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+      ${items.map((it,idx)=>`
+        <div onclick="selectReferenceImage('${prefix}',${idx})" style="cursor:pointer;text-align:center;border:2px solid ${selIdx===idx?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+          <img src="${it.src}" style="width:100%;display:block;border-radius:2px;">
+          <div class="tm">${escapeHtml(it.code)}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${!sel ? `<div class="empty" style="margin-top:6px;">Tap a picture to select it.</div>` : ''}
+  `;
+}
+
 // ---------- Attach reference pictures to an activity's materials ----------
 let materialsPickerOpen = {};
 let materialsBrowsePage = {};
@@ -983,16 +1054,15 @@ function renderMaterialsBlock(key, formPrefix, contextText){
   let html = `<h4 style="margin-top:0;">Reference pictures for this activity</h4>`;
   if(attached.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      ${attached.map(a=>{
+      ${attached.map((a,idx)=>{
         const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
-        const dl = a.libId ? src : `graphics/${a.file}`;
         return `
         <div style="text-align:center;width:80px;">
           <img src="${src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
-          <div class="tm">${escapeHtml(a.code)}</div>
-          <a href="${dl}" download="${a.code}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
-          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}',${JSON.stringify(a.file||null)},'${escapeHtml(a.code)}',${JSON.stringify(a.libId||null)})">Use for recording</button>` : ''}
-          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',${JSON.stringify(a.file||null)},'${escapeHtml(a.code)}',${JSON.stringify(a.libId||null)})">Remove</button>` : ''}
+          <div class="tm">${escapeHtml(a.code||'')}</div>
+          <a href="${src}" download="${escapeHtml(a.code||'photo')}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
+          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecordingAt('${formPrefix}','${key}',${idx})">Use for recording</button>` : ''}
+          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${key}',${idx})">Remove</button>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -1007,8 +1077,8 @@ function renderMaterialsBlock(key, formPrefix, contextText){
         <div style="text-align:center;width:80px;">
           <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);opacity:.75;">
           <div class="tm">${escapeHtml(p.label||p.category||'')}</div>
-          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',null,${JSON.stringify(p.label||p.category||'')},${JSON.stringify(p.id)})">Attach</button>
-          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="dismissAutoMatch('${key}',${JSON.stringify(p.id)})">Dismiss</button>
+          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',null,null,'${p.id}')">Attach</button>
+          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="dismissAutoMatch('${key}','${p.id}')">Dismiss</button>
         </div>
       `).join('')}
     </div>`;
@@ -1066,16 +1136,36 @@ async function toggleAttachedImage(key, file, code, libId){
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
   const idx = state.activityMaterials[key].findIndex(a=> libId ? a.libId===libId : a.file===file);
-  if(idx>=0) state.activityMaterials[key].splice(idx,1);
-  else state.activityMaterials[key].push({file: file||null, code, libId: libId||null});
+  if(idx>=0){
+    state.activityMaterials[key].splice(idx,1);
+  } else {
+    let finalCode = code;
+    if(!finalCode && libId){
+      const p = state.photoLibrary.find(p=>p.id===libId);
+      finalCode = p ? (p.label||p.category||'') : '';
+    }
+    state.activityMaterials[key].push({file: file||null, code: finalCode, libId: libId||null});
+  }
   await saveData();
   renderMeetings(document.getElementById('content'));
+}
+async function removeAttachedAt(key, idx){
+  if(!state.activityMaterials || !state.activityMaterials[key]) return;
+  state.activityMaterials[key].splice(idx,1);
+  await saveData();
+  if(activeTab==='assign') renderAssign(document.getElementById('content'));
+  else renderMeetings(document.getElementById('content'));
 }
 function recordingFormPrefixFor(mpN, detail, stepIndex){
   const step = detail.steps[stepIndex];
   if(step.needsRecording) return 'step'+mpN+'-'+stepIndex+'_';
   const idx = detail.steps.findIndex(s => s.game===step.game && s.needsRecording);
   return idx>=0 ? 'step'+mpN+'-'+idx+'_' : null;
+}
+function useAttachedForRecordingAt(formPrefix, key, idx){
+  const item = state.activityMaterials && state.activityMaterials[key] && state.activityMaterials[key][idx];
+  if(!item) return;
+  useAttachedForRecording(formPrefix, item.file, item.code, item.libId);
 }
 function useAttachedForRecording(formPrefix, file, code, libId){
   const typeEl = document.getElementById(formPrefix+'DisplayType');
@@ -1144,6 +1234,16 @@ async function addAndMaybeRecord(prefix, shouldRecord){
     if(libItem){
       entry.photo = libItem.dataUrl;
       delete librarySelection[prefix];
+      finish();
+      return;
+    }
+  }
+  if(displayType==='reference' && referenceSelection[prefix]!=null){
+    const items = referenceImagesForForm(prefix);
+    const item = items[referenceSelection[prefix]];
+    if(item){
+      entry.photo = item.src;
+      delete referenceSelection[prefix];
       finish();
       return;
     }
@@ -1268,6 +1368,7 @@ function logMeetingSession(n){
 let assignGallerySource = 'graphics';
 let assignGraphicsPage = 1;
 let assignLibraryFilter = null;
+let assignSelectedKey = null;
 let dragItem = null;
 function allActivityTargets(){
   const targets = [];
@@ -1275,24 +1376,29 @@ function allActivityTargets(){
     if(mp.detailed){
       const detail = MEETING_DETAILS[mp.n];
       detail.steps.forEach((s,i)=>{
-        targets.push({key: mp.n+'-'+i, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: s.name});
+        targets.push({key: mp.n+'-'+i, mpLabel: `Meeting Plan ${mp.n}: ${mp.title}`, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: s.name});
       });
     } else {
-      targets.push({key: mp.n+'-whole', label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: null});
+      targets.push({key: mp.n+'-whole', mpLabel: `Meeting Plan ${mp.n}: ${mp.title}`, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: null});
     }
   });
   return targets;
 }
-function handleDragStart(ev, source, fileOrId, code){
-  dragItem = {source, fileOrId, code};
+function handleDragStart(ev, source, fileOrId){
+  dragItem = {source, fileOrId};
   ev.dataTransfer.effectAllowed = 'copy';
   try{ ev.dataTransfer.setData('text/plain', source+':'+fileOrId); }catch(e){}
 }
 function handleDropOnActivity(ev, key){
   ev.preventDefault();
   if(!dragItem) return;
-  if(dragItem.source==='graphics') addAssignment(key, dragItem.fileOrId, dragItem.code, null);
-  else addAssignment(key, null, dragItem.code, dragItem.fileOrId);
+  if(dragItem.source==='graphics'){
+    const g = GRAPHICS_MANIFEST.find(x=>x.file===dragItem.fileOrId);
+    addAssignment(key, dragItem.fileOrId, g ? g.code : dragItem.fileOrId, null);
+  } else {
+    const p = state.photoLibrary.find(x=>x.id===dragItem.fileOrId);
+    addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId);
+  }
   dragItem = null;
 }
 async function addAssignment(key, file, code, libId){
@@ -1301,7 +1407,7 @@ async function addAssignment(key, file, code, libId){
   const exists = state.activityMaterials[key].some(a => libId ? a.libId===libId : a.file===file);
   if(!exists) state.activityMaterials[key].push({file: file||null, code, libId: libId||null});
   await saveData();
-  renderAssign(document.getElementById('content'));
+  renderAssignZone();
 }
 function setAssignSource(src){
   assignGallerySource = src;
@@ -1323,6 +1429,33 @@ function setAssignLibraryFilter(cat){
   assignLibraryFilter = cat;
   renderAssign(document.getElementById('content'));
 }
+function setAssignLibraryFilterByIndex(idx){
+  const cats = libraryCategories();
+  setAssignLibraryFilter(idx<0 ? null : cats[idx]);
+}
+function setAssignActivity(key){
+  assignSelectedKey = key;
+  renderAssignZone();
+}
+function renderAssignZone(){
+  const el = document.getElementById('assignZone');
+  if(!el) return;
+  const key = assignSelectedKey;
+  const attached = key ? ((state.activityMaterials && state.activityMaterials[key]) || []) : [];
+  el.innerHTML = !key ? '' : `
+    <div class="entry" ondragover="event.preventDefault()" ondrop="handleDropOnActivity(event,'${key}')" style="border:2px dashed var(--paper-line);border-radius:3px;padding:12px;min-height:100px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${attached.length ? attached.map((a,idx)=>{
+          const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+          return `<div style="text-align:center;width:70px;">
+            <img src="${src}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
+            <div class="tm">${escapeHtml(a.code||'')}</div>
+            <button class="ghost danger" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${key}',${idx})">Remove</button>
+          </div>`;
+        }).join('') : `<div class="empty">Drop a picture here</div>`}
+      </div>
+    </div>`;
+}
 function renderAssign(c){
   const canEdit = state.allowMaterialsEditing !== false;
   if(!canEdit){
@@ -1337,10 +1470,12 @@ function renderAssign(c){
     ? GRAPHICS_MANIFEST.filter(g=>g.page===assignGraphicsPage)
     : (assignLibraryFilter ? state.photoLibrary.filter(p=>p.category===assignLibraryFilter) : state.photoLibrary);
   const libCats = libraryCategories();
+  const targets = allActivityTargets();
+  if(!assignSelectedKey || !targets.some(t=>t.key===assignSelectedKey)) assignSelectedKey = targets[0] ? targets[0].key : null;
 
   let html = `
     <h3>Assign Pictures</h3>
-    <div class="empty" style="margin-bottom:10px;">Drag a picture from the gallery below onto the activity you want it attached to. Do this once during your weekly prep, then turn off "Allow picking reference pictures" in Profile to lock it for the actual session.</div>
+    <div class="empty" style="margin-bottom:10px;">Pick an activity below, then drag pictures from the gallery onto it. Do this once during your weekly prep, then turn off "Allow picking reference pictures" in Profile to lock it for the actual session.</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;">
       <button class="ghost" style="${assignGallerySource==='graphics'?'font-weight:600;':''}" onclick="setAssignSource('graphics')">Graphics Pack</button>
       <button class="ghost" style="${assignGallerySource==='library'?'font-weight:600;':''}" onclick="setAssignSource('library')">My Library</button>
@@ -1355,46 +1490,33 @@ function renderAssign(c){
       </div>`;
   } else {
     html += `<div style="margin-bottom:6px;">
-      <button class="ghost" style="${!assignLibraryFilter?'font-weight:600;':''}" onclick="setAssignLibraryFilter(null)">All</button>
-      ${libCats.map(cat=>`<button class="ghost" style="margin-left:4px;${assignLibraryFilter===cat?'font-weight:600;':''}" onclick="setAssignLibraryFilter(${JSON.stringify(cat)})">${escapeHtml(cat)}</button>`).join('')}
+      <button class="ghost" style="${!assignLibraryFilter?'font-weight:600;':''}" onclick="setAssignLibraryFilterByIndex(-1)">All</button>
+      ${libCats.map((cat,ci)=>`<button class="ghost" style="margin-left:4px;${assignLibraryFilter===cat?'font-weight:600;':''}" onclick="setAssignLibraryFilterByIndex(${ci})">${escapeHtml(cat)}</button>`).join('')}
     </div>`;
   }
   html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:220px;overflow-y:auto;padding:6px;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:18px;background:#fff;">
     ${galleryItems.length ? galleryItems.map(item=>{
       if(assignGallerySource==='graphics'){
-        return `<div draggable="true" ondragstart="handleDragStart(event,'graphics','${item.file}','${item.code}')" style="cursor:grab;text-align:center;">
+        return `<div draggable="true" ondragstart="handleDragStart(event,'graphics','${item.file}')" style="cursor:grab;text-align:center;">
           <img src="graphics/${item.file}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(item.code)}</div>
         </div>`;
       } else {
-        return `<div draggable="true" ondragstart="handleDragStart(event,'library','${item.id}',${JSON.stringify(item.label||item.category||'')})" style="cursor:grab;text-align:center;">
+        return `<div draggable="true" ondragstart="handleDragStart(event,'library','${item.id}')" style="cursor:grab;text-align:center;">
           <img src="${item.dataUrl}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(item.label||item.category||'')}</div>
         </div>`;
       }
     }).join('') : `<div class="empty">Nothing here yet.</div>`}
   </div>
-  <h4>Activities</h4>
-  <div class="empty" style="margin-bottom:8px;">Drop a picture onto an activity below to attach it there.</div>
+  <h4>Activity</h4>
+  <select onchange="setAssignActivity(this.value)">
+    ${targets.map(t=>`<option value="${t.key}" ${t.key===assignSelectedKey?'selected':''}>${escapeHtml(t.label)}${t.sub?' — '+escapeHtml(t.sub):''}</option>`).join('')}
+  </select>
+  <div id="assignZone" style="margin-top:10px;"></div>
   `;
-  const targets = allActivityTargets();
-  html += targets.map(t=>{
-    const attached = (state.activityMaterials && state.activityMaterials[t.key]) || [];
-    return `
-    <div class="entry" ondragover="event.preventDefault()" ondrop="handleDropOnActivity(event,'${t.key}')" style="border:1px dashed var(--paper-line);border-radius:3px;padding:8px;">
-      <div class="entry-top"><span class="title">${escapeHtml(t.label)}${t.sub?` — ${escapeHtml(t.sub)}`:''}</span></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;min-height:44px;">
-        ${attached.length ? attached.map(a=>{
-          const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
-          return `<div style="text-align:center;width:50px;">
-            <img src="${src}" style="width:100%;border-radius:2px;">
-            <button class="ghost danger" style="font-size:.6rem;padding:1px 3px;width:100%;" onclick="toggleAttachedImage('${t.key}',${JSON.stringify(a.file)},'${escapeHtml(a.code)}',${JSON.stringify(a.libId)})">x</button>
-          </div>`;
-        }).join('') : `<div class="empty" style="font-size:.75rem;">Drop a picture here</div>`}
-      </div>
-    </div>`;
-  }).join('');
   c.innerHTML = html;
+  renderAssignZone();
 }
 
 // ---------- Word Log ----------
