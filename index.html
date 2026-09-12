@@ -860,6 +860,7 @@ function renderMaterialsBlock(key, formPrefix){
   const el = document.getElementById('mat-'+key);
   if(!el) return;
   const attached = (state.activityMaterials && state.activityMaterials[key]) || [];
+  const canEdit = state.allowMaterialsEditing !== false;
   let html = `<h4 style="margin-top:0;">Reference pictures for this activity</h4>`;
   if(attached.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
@@ -869,15 +870,17 @@ function renderMaterialsBlock(key, formPrefix){
           <div class="tm">${escapeHtml(a.code)}</div>
           <a href="graphics/${a.file}" download="${a.code}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
           <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}','${a.file}','${a.code}')">Use for recording</button>
-          <button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}','${a.file}','${a.code}')">Remove</button>
+          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}','${a.file}','${a.code}')">Remove</button>` : ''}
         </div>
       `).join('')}
     </div>`;
   } else {
-    html += `<div class="empty" style="margin-bottom:6px;">No reference pictures attached yet.</div>`;
+    html += `<div class="empty" style="margin-bottom:6px;">${canEdit ? 'No reference pictures attached yet.' : 'No reference pictures set up for this activity yet.'}</div>`;
   }
-  html += `<button class="ghost" onclick="toggleMaterialsPicker('${key}')">${materialsPickerOpen[key]?'Close picker':'+ Attach a picture'}</button>
+  if(canEdit){
+    html += `<button class="ghost" onclick="toggleMaterialsPicker('${key}')">${materialsPickerOpen[key]?'Close picker':'+ Attach a picture'}</button>
     <div id="mat-picker-${key}" style="margin-top:8px;"></div>`;
+  }
   el.innerHTML = html;
   if(materialsPickerOpen[key]) renderMaterialsPicker(key);
 }
@@ -1486,10 +1489,19 @@ function renderProfile(c){
       <div class="field"><label>Hours you can study per week</label><input id="pHours" type="number" min="0" value="${escapeHtml(p.hoursPerWeek||'')}"></div>
     </div>
     <button class="primary" onclick="saveProfile()">Save</button>
+    <h3 style="margin-top:26px;">Session setup</h3>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:.85rem;margin-bottom:8px;">
+      <input type="checkbox" id="pAllowMaterialsEditing" style="margin-top:3px;" ${state.allowMaterialsEditing!==false?'checked':''} onchange="toggleAllowMaterialsEditing(this.checked)">
+      <span>Allow picking reference pictures for activities. Turn this off once you've set up the pictures you want — the language learner will then just see what's already attached (view, use for a recording, or download), with no browsing or picker to distract them.</span>
+    </label>
     <h3 style="margin-top:26px;">Backup</h3>
     <div class="empty" style="margin-bottom:8px;">Export everything (lessons, words, sessions — not audio, which is too large for a text file) as a backup you control.</div>
     <button class="ghost" onclick="exportData()">Export data as JSON</button>
   `;
+}
+function toggleAllowMaterialsEditing(val){
+  state.allowMaterialsEditing = val;
+  saveData();
 }
 function saveProfile(){
   state.profile = {
