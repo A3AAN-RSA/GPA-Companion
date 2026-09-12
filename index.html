@@ -225,7 +225,7 @@ const GRAPHICS_MANIFEST = [{c:'p1-0',f:'p1-0.jpg',p:1},{c:'1A',f:'1A.jpg',p:4},{
 const MEETING_PLANS = [
   {n:1, phase:'1A', title:"The Us Game", topics:"People words (man, woman, you, I, he, she), common movements, greetings, some animals", detailed:true},
   {n:2, phase:'1A', title:"Around Us", topics:"Furniture, schoolroom/office/kitchen objects, put/in/on/take, \"how are you?\"", detailed:true},
-  {n:3, phase:'1A', title:"Around Us, More", topics:"Parts of a room, animals, containers, point to/next to/on/beside"},
+  {n:3, phase:'1A', title:"Around Us, More", topics:"Parts of a room, animals, containers, point to/next to/on/beside", detailed:true},
   {n:4, phase:'1A', title:"House & Home", topics:"Household objects, \"show me\", locations of objects relative to each other"},
   {n:5, phase:'1A', title:"Body & Family", topics:"Body parts, possessives, family relationships"},
   {n:6, phase:'1A', title:"Touch & Care", topics:"Touch, look at, wash, pat, stroke, each other / yourself"},
@@ -266,16 +266,23 @@ const MEETING_PLANS = [
 ];
 const MEETING_DETAILS = {
   1: {
-    purpose:"Build the very first connection with your nurturer while learning simple pointing-words — first people-words (man, woman, you, I, boy, girl...) in Game 1A, then animal words in Game 1B — through pure listening, no talking at all.",
-    technique:"Both games use the \"Rough-and-Ready Dozen\" technique: the nurturer names something once, then immediately quizzes you on it by asking where it is, mixing in everything learned so far, at random. You never repeat words back — you just point. Two ground rules sit above everything else here: stay connected to your nurturer as a real person, not a machine dispensing vocabulary, and have fun — laughing is a good sign, not a distraction. There are three possible roles in the room: the nurturer (your host companion), the growing participators (2-6 of you), and optionally a coach — another growing participator, beginner or advanced, whose presence helps train a new nurturer.",
-    materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room), plus toy animals or animal pictures (bird, fish, frog, dog, cat, cow, mouse, horse, goat, etc. — local, familiar animals are fine). The Graphics Packet's Rough-and-Ready Dozen pictures for reference and its Talking Picture Dictionary page for recording new words.",
+    purpose:"Build the very first connection with your nurturer through five games, all pure listening at first: people-words (Game 1A), animal words (Game 1B), physical action commands (Game 2), the same actions applied to photos of you and your nurturer (Game 3), and common greeting/thank-you phrases using bubble pictures (Game 4).",
+    technique:"Every game uses the \"Rough-and-Ready Dozen\" technique: the nurturer names or demonstrates something once, then immediately quizzes you on it, mixing in everything learned so far, at random. You never repeat words back — you just point or physically do the action. Two ground rules sit above everything else here: stay connected to your nurturer as a real person, not a machine dispensing vocabulary, and have fun — laughing is a good sign, not a distraction. There are three possible roles in the room: the nurturer (your host companion), the growing participators (2-6 of you), and optionally a coach — another growing participator, beginner or advanced, whose presence helps train a new nurturer.",
+    materials:"Doll or toy figures for man, woman, boy, girl, baby, old man, old woman (or real people in the room); toy animals or animal pictures; a large space to move around in for physical actions; a camera to photograph the nurturer and each GP walking and running (or stick-figure drawings if photos aren't possible); puppets, dolls, or stuffed animals for Game 4; story-strip pictures with empty cartoon speech bubbles (Lexicarry-style, in your graphics packet). The Graphics Packet's Rough-and-Ready Dozen pictures for reference and its Talking Picture Dictionary page for recording new words.",
     steps:[
       {name:"Introduce man, woman, and yourself", game:"1A: Introducing people", needsRecording:false, description:"Your nurturer lays out two dolls (or uses two real people in the room) — a man and a woman — and says the equivalent of \"This is a man. This is a woman\" just once each. From this point on, only the nurturer speaks the target language, and GPs only listen and point — no talking at all. She immediately starts asking, over and over in random order, \"Where is the woman? Where is the man?\" and you respond purely by pointing. She then introduces \"I\" by pointing to herself, folding it into the same random questioning — \"Where am I? Where is the man? Where is the woman?\""},
-      {name:"Keep adding new words, one at a time", game:"1A: Introducing people", needsRecording:false, description:"From here, one rule governs everything: every time a new word is added — boy, you, they, child, person, girl, baby, old man, old woman, and so on — the nurturer says it in a sentence exactly once, then goes straight back to quiz-style \"Where is...?\" questioning, folding it in with everything already learned. She never repeats a new word by itself over and over (never \"man, man, man\"); the repetition you need comes from being asked about it in different random combinations, not from hearing it chanted. Only move on to a new word once the group can reliably point to everything already introduced. If someone points wrong along the way, the nurturer corrects it only in the target language, naturally and kindly — for example, gently saying something like \"no, that's not the man, that's the woman — where is the man?\" and continuing, never switching to English or explaining grammar. You'll pick up the gist of the correction even without understanding every word of it, and that's fine. Keep going until you've built up the full set for this round."},
+      {name:"Keep adding new words, one at a time", game:"1A: Introducing people", needsRecording:false, description:"From here, one rule governs everything: every time a new word is added — boy, you, they, child, person, girl, baby, old man, old woman, and so on — the nurturer says it in a sentence exactly once, then goes straight back to quiz-style \"Where is...?\" questioning, folding it in with everything already learned. She never repeats a new word by itself over and over (never \"man, man, man\"); the repetition you need comes from being asked about it in different random combinations, not from hearing it chanted. Only move on to a new word once the group can reliably point to everything already introduced. Don't forget \"people\" and \"person\" and \"child\" alongside man/woman/boy/girl, and don't forget \"we\" and \"he\" alongside I/you/they — by the end, the nurturer should be mixing all the doll-words (boy, girl, man, baby, old man, old woman, person, people, child) with all the \"us\" words (I, we, you, he, they) randomly together, something like: \"Where is the girl? Where is a person? Where is the woman? Where are they? Where am I? Where are we? Where is the old man? Where are the people?\" — on and on, repeated a few times each in no particular order. If someone points wrong along the way, the nurturer corrects it only in the target language, naturally and kindly — for example, gently saying something like \"no, that's not the man, that's the woman — where is the man?\" and continuing, never switching to English or explaining grammar. You'll pick up the gist of the correction even without understanding every word of it, and that's fine. Keep going until you've built up the full set for this round."},
       {name:"Wrap up Game 1A: record and log", game:"1A: Introducing people", needsRecording:true, description:"Now record and log every new word from this round. In the original method this meant manually numbering pictures and keeping a running paper dictionary — this app does that part for you automatically, so just use the recording area below: add each new word, record yourself (or the nurturer) saying it, and it's logged and organized for you, ready to review later."},
       {name:"Introduce two animals", game:"1B: Introducing animals", needsRecording:false, description:"Same technique as Game 1A, just with animals instead of people. Nurturer brings out two toy animals or pictures, names each once (\"This is a cat. This is a dog\"), then immediately starts the random \"Where is...?\" questioning."},
-      {name:"Keep adding animals, one at a time", game:"1B: Introducing animals", needsRecording:false, description:"Continue adding one new animal at a time — goat, bird, fish, frog, spider, cow, mouse, horse, and so on (local, familiar animals are perfectly fine) — always folding each new addition into the same random questioning covering everything already learned in this game, the same one-at-a-time rule as before. Once several animals are known, introduce a general category word for \"animals\" itself, and contrast it against the general word for \"people\" from Game 1A."},
-      {name:"Wrap up Game 1B: record and log", game:"1B: Introducing animals", needsRecording:true, description:"Same as Game 1A's wrap-up — record and log every new animal word from this round using the recording area below. No manual numbering needed; the app keeps track."}
+      {name:"Keep adding animals, one at a time", game:"1B: Introducing animals", needsRecording:false, description:"Continue adding one new animal at a time — goat, bird, fish, frog, fly, spider, cow, mouse, horse, and so on (local, familiar animals are perfectly fine) — always folding each new addition into the same random questioning covering everything already learned in this game, the same one-at-a-time rule as before. Once several animals are known, introduce a general category word for \"animals\" itself, and contrast it against the general word for \"people\" from Game 1A."},
+      {name:"Wrap up Game 1B: record and log", game:"1B: Introducing animals", needsRecording:true, description:"Same as Game 1A's wrap-up — record and log every new animal word from this round using the recording area below. No manual numbering needed; the app keeps track."},
+      {name:"Play Game 2: Us in Action", game:"2: Us in Action", needsRecording:false, description:"This game moves from pointing to physically acting out commands. Nurturer begins with two actions — say, \"stand\" and \"sit\" — demonstrating each herself the first time she says it, with everyone standing/sitting along with her. Once both are introduced, she gives the instructions to the whole group in random order (\"stand, sit, sit, stand, sit...\") without demonstrating again, and everyone responds by actually doing the action. After a few rounds together, she starts addressing one GP at a time — saying the instruction first, pausing, then naming the person, so everyone has to process the instruction before knowing who it's for. She then adds a third action (like \"walk\") the same one-at-a-time way, mixing all three into the random individual and group instructions. GPs should act out actions fully and physically — actually walk around the room, actually lie down — not just gesture at it."},
+      {name:"Wrap up Game 2: record and log", game:"2: Us in Action", needsRecording:true, description:"Once the last action has been added, record about a minute covering all the actions in random order, and log each new action word using the area below."},
+      {name:"Prepare Game 3: Photos of Us in Action", game:"3: Photos of Us in Action", needsRecording:false, description:"This game needs some prep first, and the source material suggests spreading it over a few days given how many photos are involved. Take (or have the coach take) photos of the nurturer and of each GP separately: one walking, one running. If the nurturer prefers not to be photographed, simple stick-figure drawings of her doing each action work fine instead. Print these out — draft quality on plain paper is fine, several photos per page cut apart with scissors."},
+      {name:"Play Game 3: Photos of Us in Action", game:"3: Photos of Us in Action", needsRecording:false, description:"Start with just the two \"walking\" photos: \"In which photo am I walking? In which photo are you walking?\" — repeated randomly, giving different GPs a turn to respond. When you're ready to add the \"running\" photos, you can add both at once since there are no genuinely new words, just new forms of the same ones: \"In which picture are you running? In which am I walking?\" and so on. With walking and running photos of multiple people now in play, pointing correctly means understanding both the action word AND the person word (I/you) together, not just one or the other. If any one GP starts struggling, it's fine to narrow back down to just two photos for that person specifically, then rebuild up again once they're confident — this doesn't need to slow down the rest of the group."},
+      {name:"Wrap up Game 3: record and log", game:"3: Photos of Us in Action", needsRecording:true, description:"Record a sample covering the walking/running photos in random order, and log anything new using the area below."},
+      {name:"Play Game 4: Cartoon Bubbles", game:"4: Cartoon Bubbles", needsRecording:false, description:"This game teaches common social phrases — hello, goodbye, thank you, you're welcome — using puppets or dolls first, then bubble pictures. Start by acting out a greeting and a farewell between two puppets or dolls, so GPs see what's being depicted before any pictures are involved. Then bring in two pictures with empty speech bubbles (from your graphics packet, or the Lexicarry book this idea comes from) depicting people greeting and parting, and ask Rough-and-Ready Dozen style: \"Who is saying hello? Who is saying goodbye?\" repeated randomly. Once that's solid, add a third: someone giving a gift and the other expressing thanks, then a fourth image for acknowledging thanks (\"you're welcome\") — folding each new phrase into the same random questioning as it's added, exactly like every other game so far. Vary the age and gender of the people depicted across pictures, since the same phrase can look different depending on who's speaking. It's fine to pick a fresh small set of expressions each day (five or six is plenty to start) — you're learning to recognize them as whole chunks, not analyzing every word inside them."},
+      {name:"Wrap up Game 4: record and log", game:"4: Cartoon Bubbles", needsRecording:true, description:"Once the last expression has been added, record a sample — it might run about two minutes — covering everything in random order. Log the new expressions using the area below, continuing your running numbered set."}
     ],
     checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
   },
@@ -298,10 +305,49 @@ const MEETING_DETAILS = {
       {name:"Wrap up Game 5: record and log", game:"Game 5: Cartoon bubble game", needsRecording:true, description:"Record and log this round's new content using the area below."}
     ],
     checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
+  },
+  3: {
+    purpose:"Seven games: learn the room you're actually sitting in, combine actions with room locations, add many more animals and kitchen containers, reinforce location words through two cue-card games, extend the ongoing photo and bubble-picture games, and prepare material for Meeting Plan 4.",
+    technique:"Every game still runs on the same Rough-and-Ready Dozen technique from Meeting 1: name or demonstrate something once, then quiz randomly, folding in everything learned so far. This meeting also introduces cue cards — your Talking Picture Dictionary pages cut apart into individual cards. They exist for two reasons: to help you review recordings at home even without the real objects in front of you, and to help your nurturer keep games moving quickly by literally handing her random combinations to describe, rather than her having to invent variety on the spot.",
+    materials:"Actual parts of the room you meet in (door, window, shelf, cupboard, blackboard/whiteboard, floor, ceiling, wall, wall picture, other furniture); cue cards for actions and room locations; toy animals, drawings, or magazine photos for camel, sheep, bee, tiger, goat, rabbit, duck, goose, snake, lizard, chicken; containers — pan, plate, saucer, tray, pitcher, kettle, frying pan, pot, lid, stove; cue cards for every object and location learned so far, sorted into stacks for the \"Make It True\" game; existing photos of the nurturer and each GP walking/running (individually and together); bubble-story pictures from your graphics packet; any familiar objects that can be held or touched, plus a camera for new prep photos.",
+    steps:[
+      {name:"Play Game 1: Look Around Us Here", game:"1: Look Around Us Here", needsRecording:false, description:"Same Rough-and-Ready Dozen technique as always, this time on the actual room you're meeting in. Nurturer starts with two — say, door and window — \"This is the door. This is the window. Where is the window? Where is the door?\" repeated randomly, then adds one at a time: floor, ceiling, wall, shelf, cupboard, blackboard or whiteboard, wall picture, other furniture in the room. Keep folding each new item into the same random questioning covering everything learned so far."},
+      {name:"Wrap up Game 1: record and log", game:"1: Look Around Us Here", needsRecording:true, description:"Record and log the new room words using the area below."},
+      {name:"Play Game 2: Us in Action, Here", game:"2: Us in Action, Here", needsRecording:false, description:"Combine movement and body-position words (sit, stand, lie) with the room locations from Game 1. Start by adding \"point to\" and \"look at\" — \"Point to the ceiling. Look at the floor. Look at the sofa. Point to the door.\" Then fold in known commands from earlier meetings: \"Walk to the door. Stand beside the blackboard. Sit on the floor.\" As always, a GP just needs to be able to carry out the action correctly — understanding every grammatical detail of how it's phrased can come later."},
+      {name:"Wrap up Game 2: record and log", game:"2: Us in Action, Here", needsRecording:true, description:"Record and log this round's combinations using the area below."},
+      {name:"Play Game 3A: More Animal World", game:"3A: More Animal World", needsRecording:false, description:"More Rough-and-Ready Dozen, alternating between new living creatures and new inanimate containers — it tends to go easier alternating between the two types rather than doing all of one and then all of the other. Add animals like camel, sheep, bee, tiger, goat, rabbit, duck, goose, snake, lizard, chicken. Add containers like pan, plate, saucer, tray, pitcher, kettle, frying pan, pot, lid, stove. For example: \"This is a camel. This is a pitcher. Where is the camel? Where is the pitcher?\" — then keep adding one at a time, folding each into the random mix."},
+      {name:"Wrap up Game 3A: record and log", game:"3A: More Animal World", needsRecording:true, description:"Record and log the new animals and containers using the area below. The source material notes this one needs two separate recordings (animals, then containers) if you'd rather split them — either way works, just make sure both groups get logged."},
+      {name:"Play Games 3B & 3C: Strengthening Locations and Objects", game:"3B-3C: Strengthening Locations and Objects", needsRecording:false, description:"Two reinforcement games using cue cards — no brand-new vocabulary here, just deepening what's already been learned. First (3B): practice \"putting objects in locations\" — \"Put the duck into the pitcher.\" Don't worry yet if a word changes form depending on context (\"into the pitcher\" vs. \"in the pitcher\") — rough-and-ready understanding is still the goal. Then (3C), play \"Make It True\": sort your cue cards into two stacks of objects and one stack of location words. Draw one card from each object stack plus the location stack — say you draw \"horse,\" \"boy,\" and \"behind\" — and say the resulting sentence (\"The boy is behind the horse\"), while GPs physically arrange the actual objects to match. Occasionally flip it (\"the horse is behind the boy\") so GPs must actually process the sentence rather than guess. Keep the pace brisk — decide quickly what to say next rather than pausing to think, which is exactly what the cue cards are there to help with."},
+      {name:"Wrap up Games 3B & 3C: record", game:"3B-3C: Strengthening Locations and Objects", needsRecording:true, description:"Just a recorded sample of the game using the area below — there's no new vocabulary to log here, so nothing needs adding to your running word count this round."},
+      {name:"Play Game 4: Photos of Us in Action, Continued", game:"4: Photos of Us in Action, Continued", needsRecording:false, description:"Continue the ongoing photo game from Meetings 1 and 2. You already have photos of the nurturer and each GP walking/running individually (Meeting 1) and together (Meeting 2, covering \"we\"). Now add questions using existing photos of individuals in your group: \"In which picture is he running? In which is she walking?\" — extending the same action + person-word combination to he/she."},
+      {name:"Wrap up Game 4: record", game:"4: Photos of Us in Action, Continued", needsRecording:true, description:"A brief recorded sample using the area below — no picture dictionary entry needed this round, since he/she are just new forms of words you already know."},
+      {name:"Play Game 5: Continuing the Cartoon Bubbles", game:"5: Continuing the Cartoon Bubbles", needsRecording:false, description:"Continue the bubble-picture game from Meeting 1, using the Lexicarry book or your graphics packet's bubble pictures. This round, look for pictures that let you bring out differences based on the age or gender of the speakers — greetings, leave-takings, \"how are you\"s and \"I'm fine, how are you\"s can all vary depending on who's talking to whom. It's fine to make somewhat arbitrary choices about which picture depicts which exact phrase — giving a rough translation to clarify intended meaning is completely fine. Once the game is underway, the same Rough-and-Ready Dozen rules apply as always: only the nurturer speaks, and only in the target language."},
+      {name:"Wrap up Game 5: record and log", game:"5: Continuing the Cartoon Bubbles", needsRecording:true, description:"Record parts of the activity as you go, and log new phrases in your running Picture Dictionary using the area below."},
+      {name:"Play Game 6: Preparing for Meeting Plan 4 — Holding & Touching", game:"6: Preparing for Meeting 4", needsRecording:false, description:"This one sets up material for Meeting Plan 4's own photo game. First, introduce two new words — \"holding\" and \"touching\" — using a single already-known object: nurturer asks GPs to either touch it or hold it. Once everyone has each object familiar, have each person hold or touch a different familiar object at the same time, then the nurturer asks \"Who is holding X?\" and \"Who is touching Y?\" while GPs point to the right person. Once this is solid, take a batch of photos of different people holding and touching different things — you'll need these ready for Meeting Plan 4."},
+      {name:"Wrap up Game 6: record and log", game:"6: Preparing for Meeting 4", needsRecording:true, description:"Record and log \"holding\" and \"touching\" using the area below — and don't forget to actually take and save the prep photos for Meeting Plan 4 while you're at it."}
+    ],
+    checkup:"Were you listening intensely and thinking about meaning, without commentating out loud? Was the nurturer speaking only in the target language, the whole time?"
   }
 };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+const BUSY_PICTURE_DEFAULT_CATEGORIES = ["Bajaj scenes","City","Emotions","Football","Home","Market","Religion","Street","Tea shop","Verbs","Video & Photo"];
+function busyCategories(){
+  return [...new Set([...BUSY_PICTURE_DEFAULT_CATEGORIES, ...state.busyPictures.map(p=>p.category).filter(Boolean)])].sort();
+}
+function drawGenderLabel(canvas, gender){
+  if(!gender) return;
+  const ctx = canvas.getContext('2d');
+  const text = gender==='M' ? 'Male' : 'Female';
+  const barH = Math.max(20, canvas.height*0.13);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, canvas.height-barH, canvas.width, barH);
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.round(barH*0.6)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width/2, canvas.height-barH/2);
+}
 
 async function loadData(){
   try{
@@ -320,6 +366,7 @@ async function loadData(){
   state.stepDurations = state.stepDurations || {};
   state.activityMaterials = state.activityMaterials || {};
   state.photoLibrary = state.photoLibrary || [];
+  state.busyPictures = state.busyPictures || [];
   state.materialsDismissed = state.materialsDismissed || {};
   state.revisionMinutes = state.revisionMinutes || 0;
   state.activityNurturerAudio = state.activityNurturerAudio || {};
@@ -805,6 +852,7 @@ function wordFormHTML(prefix, presetMeetingPlan, presetStepIndex, presetStepName
         <option value="graphics">Standard photo from graphics pack</option>
         <option value="library">My photo library</option>
         <option value="reference">Reference images (for this activity)</option>
+        <option value="busy">Busy picture</option>
       </select>
     </div>
     <div id="${prefix}DisplayInput"></div>
@@ -836,6 +884,9 @@ function renderDisplayInputFor(prefix){
   } else if(type==='reference'){
     el.innerHTML = `<div id="${prefix}RefPicker"></div>`;
     renderReferencePicker(prefix);
+  } else if(type==='busy'){
+    el.innerHTML = `<div id="${prefix}BusyPicker"></div>`;
+    renderBusyPicker(prefix);
   } else {
     el.innerHTML = `<div class="empty">This entry will display as text only.</div>`;
   }
@@ -952,15 +1003,28 @@ function renderLibraryPicker(prefix){
           <datalist id="${prefix}LibCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
         </div>
       </div>
+      <div class="field"><label>Male / Female label on picture (optional)</label>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="ghost" style="${!libraryAddGender[prefix]?'font-weight:600;':''}" onclick="setLibraryAddGender('${prefix}', null)">None</button>
+          <button type="button" class="ghost" style="${libraryAddGender[prefix]==='M'?'font-weight:600;':''}" onclick="setLibraryAddGender('${prefix}', 'M')">Male</button>
+          <button type="button" class="ghost" style="${libraryAddGender[prefix]==='F'?'font-weight:600;':''}" onclick="setLibraryAddGender('${prefix}', 'F')">Female</button>
+        </div>
+      </div>
       <button class="ghost" onclick="addToPhotoLibrary('${prefix}')">Add to library</button>
     </div>
   `;
+}
+let libraryAddGender = {};
+function setLibraryAddGender(prefix, g){
+  libraryAddGender[prefix] = g;
+  renderLibraryPicker(prefix);
 }
 function addToPhotoLibrary(prefix){
   const fileInput = document.getElementById(prefix+'LibUpload');
   if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
   const label = document.getElementById(prefix+'LibLabel').value.trim();
   const category = document.getElementById(prefix+'LibCategory').value.trim();
+  const gender = libraryAddGender[prefix] || null;
   const reader = new FileReader();
   reader.onload = ()=>{
     const img = new Image();
@@ -971,12 +1035,107 @@ function addToPhotoLibrary(prefix){
       const scale = Math.min(1, maxW/img.width);
       canvas.width = img.width*scale; canvas.height = img.height*scale;
       canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      drawGenderLabel(canvas, gender);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       const id = uid();
-      state.photoLibrary.push({id, label, category: category||null, dataUrl});
+      state.photoLibrary.push({id, label, category: category||null, gender, dataUrl});
       await saveData();
       librarySelection[prefix] = id;
+      delete libraryAddGender[prefix];
       renderLibraryPicker(prefix);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
+// ---------- Busy Pictures (full scenes for description/story practice) ----------
+let busySelection = {};
+let busyFilter = {};
+let busyAddGender = {};
+function busyFilterSet(prefix, cat){
+  busyFilter[prefix] = cat;
+  renderBusyPicker(prefix);
+}
+function busyFilterSetByIndex(prefix, idx){
+  const cats = busyCategories();
+  busyFilterSet(prefix, idx<0 ? null : cats[idx]);
+}
+function selectBusyImage(prefix, id){
+  busySelection[prefix] = id;
+  renderBusyPicker(prefix);
+}
+async function deleteBusyPhoto(id, prefix){
+  state.busyPictures = state.busyPictures.filter(p=>p.id!==id);
+  if(busySelection[prefix]===id) delete busySelection[prefix];
+  await saveData();
+  renderBusyPicker(prefix);
+}
+function renderBusyPicker(prefix){
+  const el = document.getElementById(prefix+'BusyPicker');
+  if(!el) return;
+  const cats = busyCategories();
+  const activeCat = busyFilter[prefix] || null;
+  const items = activeCat ? state.busyPictures.filter(p=>p.category===activeCat) : state.busyPictures;
+  const selId = busySelection[prefix];
+  const sel = selId ? state.busyPictures.find(p=>p.id===selId) : null;
+  el.innerHTML = `
+    ${sel ? `
+      <div style="text-align:center;margin-bottom:10px;padding:10px;background:#fff;border:2px solid var(--teal);border-radius:3px;">
+        <img src="${sel.dataUrl}" style="max-width:100%;max-height:260px;display:inline-block;">
+        <div class="meta" style="margin-top:4px;">Selected: ${escapeHtml(sel.label||sel.category||'(untitled)')} — keep this visible while you record</div>
+      </div>
+    ` : ''}
+    <div style="margin-bottom:6px;">
+      <button class="ghost" style="font-size:.72rem;padding:3px 8px;${!activeCat?'font-weight:600;':''}" onclick="busyFilterSet('${prefix}', null)">All</button>
+      ${cats.map((c,ci)=>`<button class="ghost" style="font-size:.72rem;padding:3px 8px;margin-left:4px;${activeCat===c?'font-weight:600;':''}" onclick="busyFilterSetByIndex('${prefix}', ${ci})">${escapeHtml(c)}</button>`).join('')}
+    </div>
+    ${items.length ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:8px;">
+        ${items.map(p=>`
+          <div style="position:relative;">
+            <div onclick="selectBusyImage('${prefix}','${p.id}')" style="cursor:pointer;text-align:center;border:2px solid ${selId===p.id?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+              <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;">
+              <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+            </div>
+            <button onclick="event.stopPropagation(); deleteBusyPhoto('${p.id}','${prefix}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;line-height:1;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+          </div>
+        `).join('')}
+      </div>
+    ` : `<div class="empty" style="margin-bottom:8px;">${activeCat?'No busy pictures in this category yet.':'No busy pictures yet — add your first one below.'}</div>`}
+    <div style="padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <div class="field"><label>Add a new busy picture</label><input type="file" id="${prefix}BusyUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="${prefix}BusyLabel" placeholder="e.g. market stall scene"></div>
+        <div class="field"><label>Category</label><input id="${prefix}BusyCategory" list="${prefix}BusyCatList" placeholder="e.g. Market, Street">
+          <datalist id="${prefix}BusyCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
+        </div>
+      </div>
+      <button class="ghost" onclick="addToBusyPictures('${prefix}')">Add busy picture</button>
+    </div>
+  `;
+}
+function addToBusyPictures(prefix){
+  const fileInput = document.getElementById(prefix+'BusyUpload');
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const label = document.getElementById(prefix+'BusyLabel').value.trim();
+  const category = document.getElementById(prefix+'BusyCategory').value.trim();
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      const id = uid();
+      state.busyPictures.push({id, label, category: category||null, dataUrl});
+      await saveData();
+      busySelection[prefix] = id;
+      renderBusyPicker(prefix);
     };
     img.src = reader.result;
   };
@@ -991,21 +1150,13 @@ function referenceImagesForForm(prefix){
   if(mpN==null) return [];
   const mp = MEETING_PLANS.find(m=>Number(m.n)===Number(mpN));
   if(!mp) return [];
-  let keys = [];
-  if(mp.detailed){
-    const detail = MEETING_DETAILS[mp.n];
-    const stepIdx = meta.stepIndex;
-    const step = (stepIdx!=null && detail.steps[stepIdx]) ? detail.steps[stepIdx] : null;
-    const gameLabel = step ? step.game : null;
-    detail.steps.forEach((s,i)=>{ if(!gameLabel || s.game===gameLabel) keys.push(mp.n+'-'+i); });
-  } else {
-    keys = [mp.n+'-whole'];
-  }
+  const baseKey = mp.detailed ? (mp.n+'-'+meta.stepIndex) : (mp.n+'-whole');
+  const keys = gameKeysFor(baseKey);
   const items = [];
   const seen = new Set();
   keys.forEach(k=>{
     ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{
-      const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+      const src = resolveAttachedSrc(a);
       if(!src || seen.has(src)) return;
       seen.add(src);
       items.push({src, code: a.code||''});
@@ -1057,7 +1208,11 @@ function autoMatchedLibraryPhotos(key, contextText){
   const actWords = new Set(keywordsFrom(contextText));
   if(actWords.size===0) return [];
   const dismissed = (state.materialsDismissed && state.materialsDismissed[key]) || [];
-  const attachedIds = ((state.activityMaterials && state.activityMaterials[key]) || []).map(a=>a.libId).filter(Boolean);
+  const gameKeys = gameKeysFor(key);
+  const attachedIds = [];
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{ if(a.libId) attachedIds.push(a.libId); });
+  });
   return state.photoLibrary.filter(p=>{
     if(dismissed.includes(p.id) || attachedIds.includes(p.id)) return false;
     const libWords = keywordsFrom((p.category||'')+' '+(p.label||''));
@@ -1071,24 +1226,44 @@ function dismissAutoMatch(key, libId){
   saveData();
   renderMeetings(document.getElementById('content'));
 }
+function gameKeysFor(key){
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const mp = MEETING_PLANS.find(m=>m.n===mpN);
+  if(!mp || !mp.detailed) return [key];
+  const detail = MEETING_DETAILS[mpN];
+  if(!detail) return [key];
+  const stepIdx = Number(parts[1]);
+  const step = detail.steps[stepIdx];
+  if(!step) return [key];
+  const keys = [];
+  detail.steps.forEach((s,i)=>{ if(s.game===step.game) keys.push(mpN+'-'+i); });
+  return keys.length ? keys : [key];
+}
 function renderMaterialsBlock(key, formPrefix, contextText){
   const el = document.getElementById('mat-'+key);
   if(!el) return;
-  const attached = (state.activityMaterials && state.activityMaterials[key]) || [];
+  const gameKeys = gameKeysFor(key);
+  const attached = [];
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach((a,idx)=>{
+      attached.push(Object.assign({}, a, {_key:k, _idx:idx}));
+    });
+  });
   const canEdit = state.allowMaterialsEditing !== false;
   const autoMatches = autoMatchedLibraryPhotos(key, contextText||'');
   let html = `<h4 style="margin-top:0;">Reference pictures for this activity</h4>`;
   if(attached.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      ${attached.map((a,idx)=>{
-        const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+      ${attached.map(a=>{
+        const src = resolveAttachedSrc(a);
         return `
         <div style="text-align:center;width:80px;">
           <img src="${src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(a.code||'')}</div>
           <a href="${src}" download="${escapeHtml(a.code||'photo')}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
-          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecordingAt('${formPrefix}','${key}',${idx})">Use for recording</button>` : ''}
-          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${key}',${idx})">Remove</button>` : ''}
+          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecordingAt('${formPrefix}','${a._key}',${a._idx})">Use for recording</button>` : ''}
+          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${a._key}',${a._idx})">Remove</button>` : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -1170,7 +1345,7 @@ async function toggleAttachedImage(key, file, code, libId){
       const p = state.photoLibrary.find(p=>p.id===libId);
       finalCode = p ? (p.label||p.category||'') : '';
     }
-    state.activityMaterials[key].push({file: file||null, code: finalCode, libId: libId||null});
+    state.activityMaterials[key].push({file: file||null, code: finalCode, libId: libId||null, source: libId?'library':'graphics'});
   }
   await saveData();
   renderMeetings(document.getElementById('content'));
@@ -1182,6 +1357,13 @@ async function removeAttachedAt(key, idx){
   if(activeTab==='assign') renderAssign(document.getElementById('content'));
   else renderMeetings(document.getElementById('content'));
 }
+function resolveAttachedSrc(a){
+  if(a.libId){
+    if(a.source==='busy') return (state.busyPictures.find(p=>p.id===a.libId)||{}).dataUrl || '';
+    return (state.photoLibrary.find(p=>p.id===a.libId)||{}).dataUrl || '';
+  }
+  return a.file ? `graphics/${a.file}` : '';
+}
 function recordingFormPrefixFor(mpN, detail, stepIndex){
   const step = detail.steps[stepIndex];
   if(step.needsRecording) return 'step'+mpN+'-'+stepIndex+'_';
@@ -1191,12 +1373,17 @@ function recordingFormPrefixFor(mpN, detail, stepIndex){
 function useAttachedForRecordingAt(formPrefix, key, idx){
   const item = state.activityMaterials && state.activityMaterials[key] && state.activityMaterials[key][idx];
   if(!item) return;
-  useAttachedForRecording(formPrefix, item.file, item.code, item.libId);
+  useAttachedForRecording(formPrefix, item.file, item.code, item.libId, item.source);
 }
-function useAttachedForRecording(formPrefix, file, code, libId){
+function useAttachedForRecording(formPrefix, file, code, libId, source){
   const typeEl = document.getElementById(formPrefix+'DisplayType');
   if(!typeEl) return;
-  if(libId){
+  if(libId && source==='busy'){
+    typeEl.value = 'busy';
+    renderDisplayInputFor(formPrefix);
+    busySelection[formPrefix] = libId;
+    renderBusyPicker(formPrefix);
+  } else if(libId){
     typeEl.value = 'library';
     renderDisplayInputFor(formPrefix);
     librarySelection[formPrefix] = libId;
@@ -1270,6 +1457,15 @@ async function addAndMaybeRecord(prefix, shouldRecord){
     if(item){
       entry.photo = item.src;
       delete referenceSelection[prefix];
+      finish();
+      return;
+    }
+  }
+  if(displayType==='busy' && busySelection[prefix]){
+    const busyItem = state.busyPictures.find(p=>p.id===busySelection[prefix]);
+    if(busyItem){
+      entry.photo = busyItem.dataUrl;
+      delete busySelection[prefix];
       finish();
       return;
     }
@@ -1394,6 +1590,7 @@ function logMeetingSession(n){
 let assignGallerySource = 'graphics';
 let assignGraphicsPage = 1;
 let assignLibraryFilter = null;
+let assignBusyFilter = null;
 let assignSelectedKey = null;
 let dragItem = null;
 function allActivityTargets(){
@@ -1420,18 +1617,21 @@ function handleDropOnActivity(ev, key){
   if(!dragItem) return;
   if(dragItem.source==='graphics'){
     const g = GRAPHICS_MANIFEST.find(x=>x.file===dragItem.fileOrId);
-    addAssignment(key, dragItem.fileOrId, g ? g.code : dragItem.fileOrId, null);
+    addAssignment(key, dragItem.fileOrId, g ? g.code : dragItem.fileOrId, null, 'graphics');
+  } else if(dragItem.source==='busy'){
+    const p = state.busyPictures.find(x=>x.id===dragItem.fileOrId);
+    addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'busy');
   } else {
     const p = state.photoLibrary.find(x=>x.id===dragItem.fileOrId);
-    addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId);
+    addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'library');
   }
   dragItem = null;
 }
-async function addAssignment(key, file, code, libId){
+async function addAssignment(key, file, code, libId, source){
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
   const exists = state.activityMaterials[key].some(a => libId ? a.libId===libId : a.file===file);
-  if(!exists) state.activityMaterials[key].push({file: file||null, code, libId: libId||null});
+  if(!exists) state.activityMaterials[key].push({file: file||null, code, libId: libId||null, source: source||(libId?'library':'graphics')});
   await saveData();
   renderAssignZone();
 }
@@ -1459,6 +1659,14 @@ function setAssignLibraryFilterByIndex(idx){
   const cats = libraryCategories();
   setAssignLibraryFilter(idx<0 ? null : cats[idx]);
 }
+function setAssignBusyFilter(cat){
+  assignBusyFilter = cat;
+  renderAssign(document.getElementById('content'));
+}
+function setAssignBusyFilterByIndex(idx){
+  const cats = busyCategories();
+  setAssignBusyFilter(idx<0 ? null : cats[idx]);
+}
 function setAssignActivity(key){
   assignSelectedKey = key;
   renderAssignZone();
@@ -1472,7 +1680,7 @@ function renderAssignZone(){
     <div class="entry" ondragover="event.preventDefault()" ondrop="handleDropOnActivity(event,'${key}')" style="border:2px dashed var(--paper-line);border-radius:3px;padding:12px;min-height:100px;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${attached.length ? attached.map((a,idx)=>{
-          const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+          const src = resolveAttachedSrc(a);
           return `<div style="text-align:center;width:70px;">
             <img src="${src}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
             <div class="tm">${escapeHtml(a.code||'')}</div>
@@ -1494,17 +1702,21 @@ function renderAssign(c){
   const pages = graphicsPages();
   const galleryItems = assignGallerySource==='graphics'
     ? GRAPHICS_MANIFEST.filter(g=>g.page===assignGraphicsPage)
-    : (assignLibraryFilter ? state.photoLibrary.filter(p=>p.category===assignLibraryFilter) : state.photoLibrary);
+    : assignGallerySource==='busy'
+      ? (assignBusyFilter ? state.busyPictures.filter(p=>p.category===assignBusyFilter) : state.busyPictures)
+      : (assignLibraryFilter ? state.photoLibrary.filter(p=>p.category===assignLibraryFilter) : state.photoLibrary);
   const libCats = libraryCategories();
+  const busyCats = busyCategories();
   const targets = allActivityTargets();
   if(!assignSelectedKey || !targets.some(t=>t.key===assignSelectedKey)) assignSelectedKey = targets[0] ? targets[0].key : null;
 
   let html = `
     <h3>Assign Pictures</h3>
     <div class="empty" style="margin-bottom:10px;">Pick an activity below, then drag pictures from the gallery onto it. Do this once during your weekly prep, then turn off "Allow picking reference pictures" in Profile to lock it for the actual session.</div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
       <button class="ghost" style="${assignGallerySource==='graphics'?'font-weight:600;':''}" onclick="setAssignSource('graphics')">Graphics Pack</button>
-      <button class="ghost" style="${assignGallerySource==='library'?'font-weight:600;':''}" onclick="setAssignSource('library')">My Library</button>
+      <button class="ghost" style="${assignGallerySource==='library'?'font-weight:600;':''}" onclick="setAssignSource('library')">My Photo Library</button>
+      <button class="ghost" style="${assignGallerySource==='busy'?'font-weight:600;':''}" onclick="setAssignSource('busy')">Busy Pictures</button>
     </div>
   `;
   if(assignGallerySource==='graphics'){
@@ -1514,6 +1726,11 @@ function renderAssign(c){
         <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${assignGraphicsPage}" onchange="assignGraphicsJumpPage(this.value)"> of ${pages[pages.length-1]}</span>
         <button class="ghost" onclick="assignGraphicsPageNav(1)">Next &raquo;</button>
       </div>`;
+  } else if(assignGallerySource==='busy'){
+    html += `<div style="margin-bottom:6px;">
+      <button class="ghost" style="${!assignBusyFilter?'font-weight:600;':''}" onclick="setAssignBusyFilterByIndex(-1)">All</button>
+      ${busyCats.map((cat,ci)=>`<button class="ghost" style="margin-left:4px;${assignBusyFilter===cat?'font-weight:600;':''}" onclick="setAssignBusyFilterByIndex(${ci})">${escapeHtml(cat)}</button>`).join('')}
+    </div>`;
   } else {
     html += `<div style="margin-bottom:6px;">
       <button class="ghost" style="${!assignLibraryFilter?'font-weight:600;':''}" onclick="setAssignLibraryFilterByIndex(-1)">All</button>
@@ -1526,6 +1743,11 @@ function renderAssign(c){
         return `<div draggable="true" ondragstart="handleDragStart(event,'graphics','${item.file}')" style="cursor:grab;text-align:center;">
           <img src="graphics/${item.file}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(item.code)}</div>
+        </div>`;
+      } else if(assignGallerySource==='busy'){
+        return `<div draggable="true" ondragstart="handleDragStart(event,'busy','${item.id}')" style="cursor:grab;text-align:center;">
+          <img src="${item.dataUrl}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(item.label||item.category||'')}</div>
         </div>`;
       } else {
         return `<div draggable="true" ondragstart="handleDragStart(event,'library','${item.id}')" style="cursor:grab;text-align:center;">
@@ -1556,6 +1778,7 @@ function renderLibrary(c){
       <select onchange="setLibraryTabSource(this.value)">
         <option value="graphics" ${libraryTabSource==='graphics'?'selected':''}>Graphics Pack</option>
         <option value="mine" ${libraryTabSource==='mine'?'selected':''}>My Photo Library</option>
+        <option value="busy" ${libraryTabSource==='busy'?'selected':''}>Busy Pictures</option>
         <option value="lessons" ${libraryTabSource==='lessons'?'selected':''}>Added from Lessons</option>
       </select>
     </div>
@@ -1572,6 +1795,7 @@ function renderLibraryTabBody(){
   if(!el) return;
   if(libraryTabSource==='graphics') renderLibraryTabGraphics(el);
   else if(libraryTabSource==='mine') renderLibraryTabMine(el);
+  else if(libraryTabSource==='busy') renderLibraryTabBusy(el);
   else renderLibraryTabLessons(el);
 }
 function renderLibraryTabGraphics(el){
@@ -1616,7 +1840,7 @@ function renderLibraryTabMine(el){
       ${items.length ? items.map(p=>`
         <div style="position:relative;text-align:center;">
           <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
-          <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          <div class="tm">${escapeHtml(p.label||'(untitled)')}${p.gender?` <span class="tag">${p.gender==='M'?'Male':'Female'}</span>`:''}</div>
           <button onclick="deleteLibraryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
         </div>
       `).join('') : `<div class="empty">Nothing here yet.</div>`}
@@ -1630,9 +1854,21 @@ function renderLibraryTabMine(el){
           <datalist id="libTabCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
         </div>
       </div>
+      <div class="field"><label>Male / Female label on picture (optional)</label>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="ghost" style="${!libTabAddGender?'font-weight:600;':''}" onclick="setLibTabAddGender(null)">None</button>
+          <button type="button" class="ghost" style="${libTabAddGender==='M'?'font-weight:600;':''}" onclick="setLibTabAddGender('M')">Male</button>
+          <button type="button" class="ghost" style="${libTabAddGender==='F'?'font-weight:600;':''}" onclick="setLibTabAddGender('F')">Female</button>
+        </div>
+      </div>
       <button class="ghost" onclick="addToPhotoLibraryTab()">Add to library</button>
     </div>
   `;
+}
+let libTabAddGender = null;
+function setLibTabAddGender(g){
+  libTabAddGender = g;
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
 }
 function libTabLibraryFilterByIndex(val){
   const idx = Number(val);
@@ -1650,6 +1886,7 @@ function addToPhotoLibraryTab(){
   if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
   const label = document.getElementById('libTabLabel').value.trim();
   const category = document.getElementById('libTabCategory').value.trim();
+  const gender = libTabAddGender;
   const reader = new FileReader();
   reader.onload = ()=>{
     const img = new Image();
@@ -1660,11 +1897,84 @@ function addToPhotoLibraryTab(){
       const scale = Math.min(1, maxW/img.width);
       canvas.width = img.width*scale; canvas.height = img.height*scale;
       canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      drawGenderLabel(canvas, gender);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       const id = uid();
-      state.photoLibrary.push({id, label, category: category||null, dataUrl});
+      state.photoLibrary.push({id, label, category: category||null, gender, dataUrl});
       await saveData();
+      libTabAddGender = null;
       renderLibraryTabMine(document.getElementById('libraryTabBody'));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+let libTabBusyFilter = null;
+let libTabBusyGender = null;
+function renderLibraryTabBusy(el){
+  const cats = busyCategories();
+  const items = libTabBusyFilter ? state.busyPictures.filter(p=>p.category===libTabBusyFilter) : state.busyPictures;
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Full scenes for describing and storytelling (Phase 2+) — separate from My Photo Library, which is for illustrating single words. Pre-loaded with the categories you already use.</div>
+    <div class="field"><label>Filter by category</label>
+      <select onchange="libTabBusyFilterByIndex(this.value)">
+        <option value="-1">All</option>
+        ${cats.map((c,ci)=>`<option value="${ci}" ${libTabBusyFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
+      ${items.length ? items.map(p=>`
+        <div style="position:relative;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(p.label||p.category||'(untitled)')}</div>
+          <button onclick="deleteBusyPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+        </div>
+      `).join('') : `<div class="empty">Nothing in this category yet.</div>`}
+    </div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <h4 style="margin-top:0;">Add a new busy picture</h4>
+      <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="libTabBusyLabel" placeholder="e.g. market stall scene"></div>
+        <div class="field"><label>Category</label><input id="libTabBusyCategory" list="libTabBusyCatList" placeholder="e.g. Market, Street">
+          <datalist id="libTabBusyCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
+        </div>
+      </div>
+      <button class="ghost" onclick="addToBusyPicturesTab()">Add busy picture</button>
+    </div>
+  `;
+}
+function libTabBusyFilterByIndex(val){
+  const idx = Number(val);
+  const cats = busyCategories();
+  libTabBusyFilter = idx<0 ? null : cats[idx];
+  renderLibraryTabBusy(document.getElementById('libraryTabBody'));
+}
+async function deleteBusyPhotoTab(id){
+  state.busyPictures = state.busyPictures.filter(p=>p.id!==id);
+  await saveData();
+  renderLibraryTabBusy(document.getElementById('libraryTabBody'));
+}
+function addToBusyPicturesTab(){
+  const fileInput = document.getElementById('libTabBusyUpload');
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const label = document.getElementById('libTabBusyLabel').value.trim();
+  const category = document.getElementById('libTabBusyCategory').value.trim();
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      const id = uid();
+      state.busyPictures.push({id, label, category: category||null, dataUrl});
+      await saveData();
+      renderLibraryTabBusy(document.getElementById('libraryTabBody'));
     };
     img.src = reader.result;
   };
