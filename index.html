@@ -157,6 +157,7 @@ const TABS_ROW1 = [
   {id:'profile', label:'Profile'},
   {id:'orientation', label:'Orientation'},
   {id:'assign', label:'Assign Pictures'},
+  {id:'library', label:'Picture Library'},
 ];
 const TABS_ROW2 = [
   {id:'meetings', label:'Meeting Plans'},
@@ -321,6 +322,7 @@ async function loadData(){
   state.photoLibrary = state.photoLibrary || [];
   state.materialsDismissed = state.materialsDismissed || {};
   state.revisionMinutes = state.revisionMinutes || 0;
+  state.activityNurturerAudio = state.activityNurturerAudio || {};
   loaded = true;
   render();
 }
@@ -363,6 +365,7 @@ function render(){
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
   else if(activeTab==='assign') renderAssign(c);
+  else if(activeTab==='library') renderLibrary(c);
   else if(activeTab==='profile') renderProfile(c);
 }
 function setTab(id){ activeTab=id; render(); }
@@ -434,7 +437,7 @@ function renderDashboard(c){
       <div class="stat"><div class="num">${((state.revisionMinutes||0)/60).toFixed(1)}/${(MEETING_PLANS.length*1.5).toFixed(0)}</div><div class="label">revision hours</div></div>
     </div>
     <div class="empty" style="margin-bottom:16px;">${entryTypeBreakdown()}</div>
-    <h3>Phase ${phase}${endH?` (${hoursIntoPhase.toFixed(0)} / ${endH-startH} hrs)`:''}</h3>
+    <h3>Phase ${phase}</h3>
     <div class="meta" style="margin-bottom:4px;"><strong>Understanding:</strong> ${info.understand}</div>
     <div class="meta" style="margin-bottom:10px;"><strong>Talking:</strong> ${info.talk}</div>
     <div class="empty" style="margin-bottom:16px;">${forecastLine}</div>
@@ -510,10 +513,8 @@ function renderMeetings(c){
   </div>
   <div class="mp-detail" style="margin-bottom:16px;">
     <h4 style="margin-top:0;">Reminder for your nurturer</h4>
-    <div class="empty" style="margin-bottom:6px;">Record this once, then play it for your nurturer at the start of a session. Edit the script to fit you first.</div>
-    <textarea id="nurturerScript" style="min-height:140px;font-size:.83rem;">${escapeHtml(state.nurturerScript!==undefined?state.nurturerScript:DEFAULT_NURTURER_SCRIPT)}</textarea>
-    <div style="margin-top:6px;"><button class="ghost" onclick="saveNurturerScript()">Save script</button></div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+    <div class="empty" style="margin-bottom:6px;">Record this once, then play it for your nurturer at the start of a session.</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <button class="record" onclick="recordNurturerAudio()">${state.hasNurturerAudio?'Re-record':'Record'}</button>
       <div id="nurturerPlayer" style="flex:1;min-width:180px;">${state.hasNurturerAudio?'':''}</div>
     </div>
@@ -564,6 +565,11 @@ function renderMeetings(c){
               <button class="ghost" onclick="stopStepTimer(${mp.n},${i})">Stop</button>
               <span id="stepTimerPace-${key}" class="tm" data-est="${perStepEst}">${storedMin!=null?paceComment(storedMin,perStepEst):''}</span>
             </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0 24px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+              <span class="tm" style="width:100%;">Instructions for your nurturer for this activity</span>
+              <button class="record" onclick="recordActivityNurturerAudio('${key}')">${state.activityNurturerAudio&&state.activityNurturerAudio[key]?'Re-record':'Record'}</button>
+              <div id="actNurturerPlayer-${key}" style="flex:1;min-width:150px;"></div>
+            </div>
             <div id="mat-${key}" style="margin:8px 0 0 24px;"></div>
             ${s.needsRecording ? `
             <div style="margin:8px 0 0 24px;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
@@ -583,6 +589,11 @@ function renderMeetings(c){
             <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},'whole')">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
             <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},'whole')" ${running?'':'disabled'}>Pause</button>
             <button class="ghost" onclick="stopStepTimer(${mp.n},'whole')">Stop &amp; fill minutes</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+            <span class="tm" style="width:100%;">Instructions for your nurturer for this activity</span>
+            <button class="record" onclick="recordActivityNurturerAudio('${key}')">${state.activityNurturerAudio&&state.activityNurturerAudio[key]?'Re-record':'Record'}</button>
+            <div id="actNurturerPlayer-${key}" style="flex:1;min-width:150px;"></div>
           </div>
           <div id="mat-${key}" style="margin:8px 0;"></div>
           <div style="margin:8px 0;padding:8px 10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
@@ -628,21 +639,28 @@ function renderMeetings(c){
         renderDisplayInputFor('step'+mp.n+'-'+i+'_');
         const context = (mp.topics||'')+' '+(mp.title||'')+' '+(s.game||s.name||'');
         renderMaterialsBlock(mp.n+'-'+i, recordingFormPrefixFor(mp.n, detail, i), context);
+        const key1 = mp.n+'-'+i;
+        if(state.activityNurturerAudio && state.activityNurturerAudio[key1]) loadPlayerInto('actNurturerPlayer-'+key1, 'nurturer', 'nurturerInstr-'+key1);
       });
     } else if(mp){
       renderDisplayInputFor('mpword'+mp.n+'_');
       renderMaterialsBlock(mp.n+'-whole', 'mpword'+mp.n+'_', (mp.topics||'')+' '+(mp.title||''));
+      const key2 = mp.n+'-whole';
+      if(state.activityNurturerAudio && state.activityNurturerAudio[key2]) loadPlayerInto('actNurturerPlayer-'+key2, 'nurturer', 'nurturerInstr-'+key2);
     }
   }
 }
-function saveNurturerScript(){
-  state.nurturerScript = document.getElementById('nurturerScript').value;
-  saveData();
-}
 function recordNurturerAudio(){
-  saveNurturerScript();
   startWordRecording('nurturer', 'nurturerPlayer', ()=>{
     state.hasNurturerAudio = true;
+    saveData();
+    renderMeetings(document.getElementById('content'));
+  });
+}
+function recordActivityNurturerAudio(key){
+  startWordRecording('nurturerInstr-'+key, 'actNurturerPlayer-'+key, ()=>{
+    state.activityNurturerAudio = state.activityNurturerAudio || {};
+    state.activityNurturerAudio[key] = true;
     saveData();
     renderMeetings(document.getElementById('content'));
   });
@@ -888,6 +906,12 @@ function selectLibraryImage(prefix, id){
   librarySelection[prefix] = id;
   renderLibraryPicker(prefix);
 }
+async function deleteLibraryPhoto(id, prefix){
+  state.photoLibrary = state.photoLibrary.filter(p=>p.id!==id);
+  if(librarySelection[prefix]===id) delete librarySelection[prefix];
+  await saveData();
+  renderLibraryPicker(prefix);
+}
 function renderLibraryPicker(prefix){
   const el = document.getElementById(prefix+'LibraryPicker');
   if(!el) return;
@@ -910,9 +934,12 @@ function renderLibraryPicker(prefix){
     ${items.length ? `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:8px;">
         ${items.map(p=>`
-          <div onclick="selectLibraryImage('${prefix}','${p.id}')" style="cursor:pointer;text-align:center;border:2px solid ${selId===p.id?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
-            <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;">
-            <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          <div style="position:relative;">
+            <div onclick="selectLibraryImage('${prefix}','${p.id}')" style="cursor:pointer;text-align:center;border:2px solid ${selId===p.id?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+              <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;">
+              <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+            </div>
+            <button onclick="event.stopPropagation(); deleteLibraryPhoto('${p.id}','${prefix}')" title="Remove from library" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;line-height:1;cursor:pointer;color:var(--red);padding:0;">&times;</button>
           </div>
         `).join('')}
       </div>
@@ -1518,6 +1545,149 @@ function renderAssign(c){
   renderAssignZone();
 }
 
+// ---------- Picture Library tab ----------
+let libraryTabSource = 'graphics';
+let libTabGraphicsPage = 1;
+let libTabLibraryFilter = null;
+function renderLibrary(c){
+  c.innerHTML = `
+    <h3>Picture Library</h3>
+    <div class="field"><label>Category</label>
+      <select onchange="setLibraryTabSource(this.value)">
+        <option value="graphics" ${libraryTabSource==='graphics'?'selected':''}>Graphics Pack</option>
+        <option value="mine" ${libraryTabSource==='mine'?'selected':''}>My Photo Library</option>
+        <option value="lessons" ${libraryTabSource==='lessons'?'selected':''}>Added from Lessons</option>
+      </select>
+    </div>
+    <div id="libraryTabBody"></div>
+  `;
+  renderLibraryTabBody();
+}
+function setLibraryTabSource(src){
+  libraryTabSource = src;
+  renderLibraryTabBody();
+}
+function renderLibraryTabBody(){
+  const el = document.getElementById('libraryTabBody');
+  if(!el) return;
+  if(libraryTabSource==='graphics') renderLibraryTabGraphics(el);
+  else if(libraryTabSource==='mine') renderLibraryTabMine(el);
+  else renderLibraryTabLessons(el);
+}
+function renderLibraryTabGraphics(el){
+  const pages = graphicsPages();
+  const items = GRAPHICS_MANIFEST.filter(g=>g.page===libTabGraphicsPage);
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">The official graphics pack — browse only, since it's fixed content from the source PDF.</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="ghost" onclick="libTabGraphicsPageNav(-1)">&laquo; Prev</button>
+      <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${libTabGraphicsPage}" onchange="libTabGraphicsJumpPage(this.value)"> of ${pages[pages.length-1]}</span>
+      <button class="ghost" onclick="libTabGraphicsPageNav(1)">Next &raquo;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;">
+      ${items.map(g=>`<div style="text-align:center;"><img src="graphics/${g.file}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);"><div class="tm">${escapeHtml(g.code)}</div></div>`).join('')}
+    </div>
+  `;
+}
+function libTabGraphicsPageNav(delta){
+  const pages = graphicsPages();
+  const idx = pages.indexOf(libTabGraphicsPage);
+  libTabGraphicsPage = pages[Math.min(Math.max(idx+delta,0), pages.length-1)];
+  renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
+}
+function libTabGraphicsJumpPage(val){
+  const pages = graphicsPages();
+  const n = Number(val);
+  libTabGraphicsPage = pages.includes(n) ? n : pages[0];
+  renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
+}
+function renderLibraryTabMine(el){
+  const cats = libraryCategories();
+  const items = libTabLibraryFilter ? state.photoLibrary.filter(p=>p.category===libTabLibraryFilter) : state.photoLibrary;
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Your own photos — add and remove freely.</div>
+    <div class="field"><label>Filter by category</label>
+      <select onchange="libTabLibraryFilterByIndex(this.value)">
+        <option value="-1">All</option>
+        ${cats.map((c,ci)=>`<option value="${ci}" ${libTabLibraryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
+      ${items.length ? items.map(p=>`
+        <div style="position:relative;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          <button onclick="deleteLibraryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+        </div>
+      `).join('') : `<div class="empty">Nothing here yet.</div>`}
+    </div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <h4 style="margin-top:0;">Add a new photo</h4>
+      <div class="field"><input type="file" id="libTabUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="libTabLabel" placeholder="e.g. our kitchen table"></div>
+        <div class="field"><label>Category</label><input id="libTabCategory" list="libTabCatList" placeholder="e.g. Home, Market">
+          <datalist id="libTabCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
+        </div>
+      </div>
+      <button class="ghost" onclick="addToPhotoLibraryTab()">Add to library</button>
+    </div>
+  `;
+}
+function libTabLibraryFilterByIndex(val){
+  const idx = Number(val);
+  const cats = libraryCategories();
+  libTabLibraryFilter = idx<0 ? null : cats[idx];
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+async function deleteLibraryPhotoTab(id){
+  state.photoLibrary = state.photoLibrary.filter(p=>p.id!==id);
+  await saveData();
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+function addToPhotoLibraryTab(){
+  const fileInput = document.getElementById('libTabUpload');
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const label = document.getElementById('libTabLabel').value.trim();
+  const category = document.getElementById('libTabCategory').value.trim();
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 500;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      const id = uid();
+      state.photoLibrary.push({id, label, category: category||null, dataUrl});
+      await saveData();
+      renderLibraryTabMine(document.getElementById('libraryTabBody'));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+function lessonPhotos(){
+  return state.words.filter(w=>w.photo && (w.displayType==='camera'||w.displayType==='device'));
+}
+function renderLibraryTabLessons(el){
+  const items = lessonPhotos();
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Automatically collected from photos you took with your camera or added from your device while recording a word, phrase, description, or story. Browse only — to remove one, edit or delete that entry in Word Log.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;">
+      ${items.length ? items.map(w=>`
+        <div style="text-align:center;">
+          <img src="${w.photo}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${w.text?escapeHtml(w.text):'(untitled)'}</div>
+        </div>
+      `).join('') : `<div class="empty">Nothing here yet — take a photo or add one from your device while recording a word.</div>`}
+    </div>
+  `;
+}
+
 // ---------- Word Log ----------
 function renderWords(c){
   c.innerHTML = `
@@ -1770,28 +1940,49 @@ function toggleReviewActivitySub(gi, si, checked){
   if(checked) reviewActivitySelectedSubs.add(subKey); else reviewActivitySelectedSubs.delete(subKey);
   renderReviewActivitiesMode(document.getElementById('reviewModeBody'));
 }
+let reviewCustomMPIndex = -1;
 function renderReviewCustomMode(el){
   const groups = reviewGroups();
   el.innerHTML = `
+    <div class="field"><label>Meeting Plan / Category</label>
+      <select onchange="setReviewCustomMPIndex(this.value)">
+        <option value="-1" ${reviewCustomMPIndex===-1?'selected':''}>All</option>
+        ${groups.map((g,gi)=>`<option value="${gi}" ${gi===reviewCustomMPIndex?'selected':''}>${escapeHtml(g.topLabel)}</option>`).join('')}
+      </select>
+    </div>
     <div class="field"><input id="reviewSearch" placeholder="Search your words..." oninput="filterReviewChecklist()"></div>
     <div style="margin-bottom:8px;"><button class="ghost" onclick="selectAllReviewWords(true)">Select all</button> <button class="ghost" onclick="selectAllReviewWords(false)">Select none</button></div>
-    <div id="reviewChecks">
-      ${groups.map((g,ti)=>`
-        <div class="reviewCustomGroup" style="margin-bottom:14px;">
-          <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${ti},false)">none</button></div>
-          ${g.subs.map((s,si)=>`
-            <div style="margin:5px 0 0 12px;">
-              <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${ti},${si},false)">none</button></div>
-              ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:block;font-size:.83rem;margin:2px 0 2px 10px;"><input type="checkbox" class="revWordCheck" data-top="${ti}" data-sub="${si}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
-            </div>
-          `).join('')}
+    <div id="reviewChecks"></div>
+  `;
+  renderReviewCustomChecklist();
+}
+function setReviewCustomMPIndex(val){
+  reviewCustomMPIndex = Number(val);
+  renderReviewCustomChecklist();
+}
+function renderReviewCustomChecklist(){
+  const el = document.getElementById('reviewChecks');
+  if(!el) return;
+  const groups = reviewGroups();
+  const visible = reviewCustomMPIndex===-1
+    ? groups.map((g,gi)=>({g,gi}))
+    : (groups[reviewCustomMPIndex] ? [{g:groups[reviewCustomMPIndex], gi:reviewCustomMPIndex}] : []);
+  el.innerHTML = visible.map(({g,gi})=>`
+    <div class="reviewCustomGroup" style="margin-bottom:14px;">
+      <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},false)">none</button></div>
+      ${g.subs.map((s,si)=>`
+        <div style="margin:5px 0 0 12px;">
+          <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},false)">none</button></div>
+          ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:block;font-size:.83rem;margin:2px 0 2px 10px;"><input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
         </div>
       `).join('')}
     </div>
-  `;
+  `).join('');
+  filterReviewChecklist();
 }
 function filterReviewChecklist(){
-  const q = document.getElementById('reviewSearch').value.trim().toLowerCase();
+  const searchEl = document.getElementById('reviewSearch');
+  const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
   document.querySelectorAll('.reviewCustomGroup').forEach(block=>{
     let any = false;
     block.querySelectorAll('.reviewWordRow').forEach(row=>{
