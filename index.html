@@ -158,6 +158,7 @@ const TABS = [
   {id:'words', label:'Word Log'},
   {id:'review', label:'Review'},
   {id:'suggestions', label:'Suggestions'},
+  {id:'assign', label:'Assign Pictures'},
   {id:'profile', label:'Profile'},
 ];
 
@@ -311,6 +312,8 @@ async function loadData(){
       state.stepProgress = state.stepProgress || {};
       state.stepDurations = state.stepDurations || {};
       state.activityMaterials = state.activityMaterials || {};
+      state.photoLibrary = state.photoLibrary || [];
+      state.materialsDismissed = state.materialsDismissed || {};
       state.revisionMinutes = state.revisionMinutes || 0;
     }
   }catch(e){}
@@ -355,6 +358,7 @@ function render(){
   else if(activeTab==='words') renderWords(c);
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
+  else if(activeTab==='assign') renderAssign(c);
   else if(activeTab==='profile') renderProfile(c);
 }
 function setTab(id){ activeTab=id; render(); }
@@ -619,11 +623,12 @@ function renderMeetings(c){
       const detail = MEETING_DETAILS[mp.n];
       detail.steps.forEach((s,i)=>{
         renderDisplayInputFor('step'+mp.n+'-'+i+'_');
-        renderMaterialsBlock(mp.n+'-'+i, recordingFormPrefixFor(mp.n, detail, i));
+        const context = (mp.topics||'')+' '+(mp.title||'')+' '+(s.game||s.name||'');
+        renderMaterialsBlock(mp.n+'-'+i, recordingFormPrefixFor(mp.n, detail, i), context);
       });
     } else if(mp){
       renderDisplayInputFor('mpword'+mp.n+'_');
-      renderMaterialsBlock(mp.n+'-whole', 'mpword'+mp.n+'_');
+      renderMaterialsBlock(mp.n+'-whole', 'mpword'+mp.n+'_', (mp.topics||'')+' '+(mp.title||''));
     }
   }
 }
@@ -777,6 +782,7 @@ function wordFormHTML(prefix, presetMeetingPlan, presetStepIndex, presetStepName
         <option value="camera">Photo taken with camera</option>
         <option value="device">Photo on device</option>
         <option value="graphics">Standard photo from graphics pack</option>
+        <option value="library">My photo library</option>
       </select>
     </div>
     <div id="${prefix}DisplayInput"></div>
@@ -802,6 +808,9 @@ function renderDisplayInputFor(prefix){
     if(!graphicsBrowsePage[prefix]) graphicsBrowsePage[prefix] = (GRAPHICS_MANIFEST[0] ? GRAPHICS_MANIFEST[0].page : 1);
     el.innerHTML = `<div id="${prefix}GraphicsPicker"></div>`;
     renderGraphicsPicker(prefix);
+  } else if(type==='library'){
+    el.innerHTML = `<div id="${prefix}LibraryPicker"></div>`;
+    renderLibraryPicker(prefix);
   } else {
     el.innerHTML = `<div class="empty">This entry will display as text only.</div>`;
   }
@@ -854,29 +863,151 @@ function renderGraphicsPicker(prefix){
     ${!sel ? `<div class="empty" style="margin-top:6px;">Tap a picture to select it.</div>` : ''}
   `;
 }
+// ---------- My Photo Library (the learner's own images, not the graphics pack) ----------
+let librarySelection = {};
+let libraryFilter = {};
+function libraryCategories(){
+  return [...new Set(state.photoLibrary.map(p=>p.category).filter(Boolean))].sort();
+}
+function libraryFilterSet(prefix, cat){
+  libraryFilter[prefix] = cat;
+  renderLibraryPicker(prefix);
+}
+function selectLibraryImage(prefix, id){
+  librarySelection[prefix] = id;
+  renderLibraryPicker(prefix);
+}
+function renderLibraryPicker(prefix){
+  const el = document.getElementById(prefix+'LibraryPicker');
+  if(!el) return;
+  const cats = libraryCategories();
+  const activeCat = libraryFilter[prefix] || null;
+  const items = activeCat ? state.photoLibrary.filter(p=>p.category===activeCat) : state.photoLibrary;
+  const selId = librarySelection[prefix];
+  const sel = selId ? state.photoLibrary.find(p=>p.id===selId) : null;
+  el.innerHTML = `
+    ${sel ? `
+      <div style="text-align:center;margin-bottom:10px;padding:10px;background:#fff;border:2px solid var(--teal);border-radius:3px;">
+        <img src="${sel.dataUrl}" style="max-width:100%;max-height:260px;display:inline-block;">
+        <div class="meta" style="margin-top:4px;">Selected: ${escapeHtml(sel.label||'(untitled)')} — keep this visible while you record</div>
+      </div>
+    ` : ''}
+    ${cats.length ? `<div style="margin-bottom:6px;">
+      <button class="ghost" style="font-size:.72rem;padding:3px 8px;${!activeCat?'font-weight:600;':''}" onclick="libraryFilterSet('${prefix}', null)">All</button>
+      ${cats.map(c=>`<button class="ghost" style="font-size:.72rem;padding:3px 8px;margin-left:4px;${activeCat===c?'font-weight:600;':''}" onclick="libraryFilterSet('${prefix}', ${JSON.stringify(c)})">${escapeHtml(c)}</button>`).join('')}
+    </div>` : ''}
+    ${items.length ? `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:8px;">
+        ${items.map(p=>`
+          <div onclick="selectLibraryImage('${prefix}','${p.id}')" style="cursor:pointer;text-align:center;border:2px solid ${selId===p.id?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+            <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;">
+            <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : `<div class="empty" style="margin-bottom:8px;">${state.photoLibrary.length===0?'Your library is empty — add your first photo below.':'No photos in this category yet.'}</div>`}
+    <div style="padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <div class="field"><label>Add a new photo to your library</label><input type="file" id="${prefix}LibUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="${prefix}LibLabel" placeholder="e.g. our kitchen table"></div>
+        <div class="field"><label>Category</label><input id="${prefix}LibCategory" list="${prefix}LibCatList" placeholder="e.g. Home, Market">
+          <datalist id="${prefix}LibCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
+        </div>
+      </div>
+      <button class="ghost" onclick="addToPhotoLibrary('${prefix}')">Add to library</button>
+    </div>
+  `;
+}
+function addToPhotoLibrary(prefix){
+  const fileInput = document.getElementById(prefix+'LibUpload');
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const label = document.getElementById(prefix+'LibLabel').value.trim();
+  const category = document.getElementById(prefix+'LibCategory').value.trim();
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 500;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      const id = uid();
+      state.photoLibrary.push({id, label, category: category||null, dataUrl});
+      await saveData();
+      librarySelection[prefix] = id;
+      renderLibraryPicker(prefix);
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
 // ---------- Attach reference pictures to an activity's materials ----------
 let materialsPickerOpen = {};
 let materialsBrowsePage = {};
-function renderMaterialsBlock(key, formPrefix){
+const STOPWORDS = new Set(['the','and','or','of','to','in','on','at','for','with','a','an','is','are','etc','more','other','words','word','some','words,','around','into','from','words.']);
+function keywordsFrom(str){
+  return (str||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=3 && !STOPWORDS.has(w));
+}
+function autoMatchedLibraryPhotos(key, contextText){
+  const actWords = new Set(keywordsFrom(contextText));
+  if(actWords.size===0) return [];
+  const dismissed = (state.materialsDismissed && state.materialsDismissed[key]) || [];
+  const attachedIds = ((state.activityMaterials && state.activityMaterials[key]) || []).map(a=>a.libId).filter(Boolean);
+  return state.photoLibrary.filter(p=>{
+    if(dismissed.includes(p.id) || attachedIds.includes(p.id)) return false;
+    const libWords = keywordsFrom((p.category||'')+' '+(p.label||''));
+    return libWords.some(w=>actWords.has(w));
+  });
+}
+function dismissAutoMatch(key, libId){
+  state.materialsDismissed = state.materialsDismissed || {};
+  state.materialsDismissed[key] = state.materialsDismissed[key] || [];
+  state.materialsDismissed[key].push(libId);
+  saveData();
+  renderMeetings(document.getElementById('content'));
+}
+function renderMaterialsBlock(key, formPrefix, contextText){
   const el = document.getElementById('mat-'+key);
   if(!el) return;
   const attached = (state.activityMaterials && state.activityMaterials[key]) || [];
   const canEdit = state.allowMaterialsEditing !== false;
+  const autoMatches = autoMatchedLibraryPhotos(key, contextText||'');
   let html = `<h4 style="margin-top:0;">Reference pictures for this activity</h4>`;
   if(attached.length){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-      ${attached.map(a=>`
+      ${attached.map(a=>{
+        const src = a.libId ? (state.photoLibrary.find(p=>p.id===a.libId)?.dataUrl || '') : `graphics/${a.file}`;
+        const dl = a.libId ? src : `graphics/${a.file}`;
+        return `
         <div style="text-align:center;width:80px;">
-          <img src="graphics/${a.file}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <img src="${src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(a.code)}</div>
-          <a href="graphics/${a.file}" download="${a.code}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
-          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}','${a.file}','${a.code}')">Use for recording</button>` : ''}
-          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}','${a.file}','${a.code}')">Remove</button>` : ''}
-        </div>
-      `).join('')}
+          <a href="${dl}" download="${a.code}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
+          ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecording('${formPrefix}',${JSON.stringify(a.file||null)},'${escapeHtml(a.code)}',${JSON.stringify(a.libId||null)})">Use for recording</button>` : ''}
+          ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',${JSON.stringify(a.file||null)},'${escapeHtml(a.code)}',${JSON.stringify(a.libId||null)})">Remove</button>` : ''}
+        </div>`;
+      }).join('')}
     </div>`;
   } else {
     html += `<div class="empty" style="margin-bottom:6px;">${canEdit ? 'No reference pictures attached yet.' : 'No reference pictures set up for this activity yet.'}</div>`;
+  }
+  if(autoMatches.length){
+    html += `<h4 style="font-size:.8rem;margin:12px 0 4px;">Suggested (not yet attached)</h4>
+    <div class="empty" style="margin-bottom:4px;">Matched by topic from your photo library — tap Attach to actually add one, or dismiss it if it's not a good fit.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+      ${autoMatches.map(p=>`
+        <div style="text-align:center;width:80px;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);opacity:.75;">
+          <div class="tm">${escapeHtml(p.label||p.category||'')}</div>
+          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachedImage('${key}',null,${JSON.stringify(p.label||p.category||'')},${JSON.stringify(p.id)})">Attach</button>
+          <button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="dismissAutoMatch('${key}',${JSON.stringify(p.id)})">Dismiss</button>
+        </div>
+      `).join('')}
+    </div>`;
   }
   if(canEdit){
     html += `<button class="ghost" onclick="toggleMaterialsPicker('${key}')">${materialsPickerOpen[key]?'Close picker':'+ Attach a picture'}</button>
@@ -927,12 +1058,12 @@ function renderMaterialsPicker(key){
     <div class="empty" style="margin-top:4px;">Tap to attach or remove. You can pick more than one.</div>
   `;
 }
-async function toggleAttachedImage(key, file, code){
+async function toggleAttachedImage(key, file, code, libId){
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
-  const idx = state.activityMaterials[key].findIndex(a=>a.file===file);
+  const idx = state.activityMaterials[key].findIndex(a=> libId ? a.libId===libId : a.file===file);
   if(idx>=0) state.activityMaterials[key].splice(idx,1);
-  else state.activityMaterials[key].push({file, code});
+  else state.activityMaterials[key].push({file: file||null, code, libId: libId||null});
   await saveData();
   renderMeetings(document.getElementById('content'));
 }
@@ -942,13 +1073,20 @@ function recordingFormPrefixFor(mpN, detail, stepIndex){
   const idx = detail.steps.findIndex(s => s.game===step.game && s.needsRecording);
   return idx>=0 ? 'step'+mpN+'-'+idx+'_' : null;
 }
-function useAttachedForRecording(formPrefix, file, code){
+function useAttachedForRecording(formPrefix, file, code, libId){
   const typeEl = document.getElementById(formPrefix+'DisplayType');
   if(!typeEl) return;
-  typeEl.value = 'graphics';
-  renderDisplayInputFor(formPrefix);
-  graphicsSelection[formPrefix] = {file, code};
-  renderGraphicsPicker(formPrefix);
+  if(libId){
+    typeEl.value = 'library';
+    renderDisplayInputFor(formPrefix);
+    librarySelection[formPrefix] = libId;
+    renderLibraryPicker(formPrefix);
+  } else {
+    typeEl.value = 'graphics';
+    renderDisplayInputFor(formPrefix);
+    graphicsSelection[formPrefix] = {file, code};
+    renderGraphicsPicker(formPrefix);
+  }
   const target = document.getElementById(formPrefix+'Text');
   if(target) target.scrollIntoView({behavior:'smooth', block:'center'});
 }
@@ -996,6 +1134,15 @@ async function addAndMaybeRecord(prefix, shouldRecord){
     entry.photo = 'graphics/' + graphicsSelection[prefix].file;
     finish();
     return;
+  }
+  if(displayType==='library' && librarySelection[prefix]){
+    const libItem = state.photoLibrary.find(p=>p.id===librarySelection[prefix]);
+    if(libItem){
+      entry.photo = libItem.dataUrl;
+      delete librarySelection[prefix];
+      finish();
+      return;
+    }
   }
   if(fileInput && fileInput.files && fileInput.files[0]){
     const reader = new FileReader();
