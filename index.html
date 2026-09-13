@@ -2867,7 +2867,7 @@ function renderAlphaList(){
     <div class="entry" style="width:110px;text-align:center;">
       <div style="font-size:1.8rem;font-family:'Lora',serif;">${escapeHtml(a.char)}</div>
       <div id="alphaAudio-${a.id}" style="margin:4px 0;min-height:20px;"></div>
-      <button class="ghost" style="font-size:.7rem;padding:2px 6px;width:100%;" onclick="startWordRecording('${a.id}', 'alphaAudio-${a.id}', ()=>markAlphaHasAudio('${a.id}'))">${a.hasAudio?'Re-record':'Record'}</button>
+      <button class="ghost" style="font-size:.7rem;padding:2px 6px;width:100%;" onclick="startWordRecording('${a.id}', 'alphaAudio-${a.id}', ()=>onAlphaRecorded('${a.id}'))">${a.hasAudio?'Re-record':'Record'}</button>
       <button class="ghost danger" style="font-size:.7rem;padding:2px 6px;width:100%;margin-top:2px;" onclick="deleteAlphaChar('${a.id}')">Remove</button>
     </div>
   `).join('');
@@ -2894,6 +2894,10 @@ function markAlphaHasAudio(id){
   const a = state.alphabet.find(a=>a.id===id);
   if(a) a.hasAudio = true;
   saveData();
+}
+function onAlphaRecorded(id){
+  markAlphaHasAudio(id);
+  renderAlphaList();
 }
 async function deleteAlphaChar(id){
   state.alphabet = state.alphabet.filter(a=>a.id!==id);
