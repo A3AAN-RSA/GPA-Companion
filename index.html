@@ -1120,11 +1120,21 @@ function tickActiveTimer(){
   }
 }
 setInterval(tickActiveTimer, 1000);
+function commitTimerToStorage(){
+  if(activeTimer.planN==null || activeTimer.stepIdx==null || activeTimer.stepIdx==='whole') return;
+  const minutes = Math.round(activeTimer.ms/60000);
+  state.stepDurations = state.stepDurations || {};
+  state.stepDurations[activeTimer.planN] = state.stepDurations[activeTimer.planN] || {};
+  state.stepDurations[activeTimer.planN][activeTimer.stepIdx] = minutes;
+  saveData();
+}
 function startStepTimer(planN, stepIdx){
-  if(activeTimer.running && (activeTimer.planN!==planN || activeTimer.stepIdx!==stepIdx)){
-    activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false;
+  if(activeTimer.planN!==planN || activeTimer.stepIdx!==stepIdx){
+    if(activeTimer.running){ activeTimer.ms += Date.now()-activeTimer.startedAt; activeTimer.running=false; }
+    if(activeTimer.planN!=null) commitTimerToStorage();
+    const existingMinutes = (stepIdx!=='whole' && state.stepDurations && state.stepDurations[planN] && state.stepDurations[planN][stepIdx]) || 0;
+    activeTimer = {planN, stepIdx, ms: existingMinutes*60000, running:false, startedAt:null};
   }
-  if(activeTimer.planN!==planN || activeTimer.stepIdx!==stepIdx){ activeTimer = {planN, stepIdx, ms:0, running:false, startedAt:null}; }
   activeTimer.running = true; activeTimer.startedAt = Date.now();
   renderMeetings(document.getElementById('content'));
 }
@@ -2865,8 +2875,8 @@ function filterReviewChecklist(){
     block.style.display = any ? '' : 'none';
   });
 }
-function renderReview(c){
-  if(gridReviewActive){ renderGridReviewActive(c); return; }
+function renderReview(c, autoplay){
+  if(gridReviewActive){ renderGridReviewActive(c, autoplay); return; }
   if(!reviewActive){
     renderReviewSetup(c);
     return;
@@ -2895,7 +2905,7 @@ function renderReview(c){
     </div>
     <button class="ghost" style="margin-top:14px;" onclick="endReview()">End review</button>
   `;
-  loadPlayerInto('reviewPlayer', 'word', w.id, true);
+  if(autoplay!==false) loadPlayerInto('reviewPlayer', 'word', w.id, true);
 }
 function selectAllReviewWords(val){
   document.querySelectorAll('.revWordCheck').forEach(cb=>cb.checked=val);
@@ -2947,11 +2957,10 @@ function pickNextReviewWord(){
   for(const w of candidates){ r -= weight(w); if(r<=0){ reviewCurrent = w; reviewRevealed=false; return; } }
   reviewCurrent = candidates[candidates.length-1]; reviewRevealed=false;
 }
-function answerReview(knewIt){
+async function answerReview(knewIt){
   reviewRevealed = true;
   reviewStats.seen++;
   if(knewIt) reviewStats.known++;
-  playRandomAnswerSound(knewIt ? 'know' : 'dontknow');
   const w = state.words.find(w=>w.id===reviewCurrent.id);
   if(w){
     w.iceberg = knewIt ? Math.max(w.iceberg-1, 1) : Math.min(w.iceberg+1, 9);
@@ -2960,15 +2969,27 @@ function answerReview(knewIt){
     if(!knewIt){ w.reviewMissCount = (w.reviewMissCount||0) + 1; w.suggestionDismissed = false; }
   }
   saveData();
-  renderReview(document.getElementById('content'));
+  renderReview(document.getElementById('content'), false);
+  await playRandomAnswerSound(knewIt ? 'know' : 'dontknow');
+  if(reviewCurrent) loadPlayerInto('reviewPlayer', 'word', reviewCurrent.id, true);
 }
-function nextReview(){
-  playRandomAnswerSound('next');
+async function nextReview(){
+  await playRandomAnswerSound('next');
   pickNextReviewWord();
   renderReview(document.getElementById('content'));
 }
 let lastReviewSummary = null;
+function stopAllReviewAudio(){
+  ['reviewPlayer','gridReviewPlayer','alphaReviewPlayer','alphaGridPlayer','readingTestPlayer'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      const audio = el.querySelector('audio');
+      if(audio){ audio.pause(); audio.currentTime = 0; }
+    }
+  });
+}
 function endReview(){
+  stopAllReviewAudio();
   playRandomAnswerSound('finish');
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
@@ -3068,7 +3089,6 @@ function handleGridPick(wordId){
     gridReviewStats.seen++;
     const knewIt = !gridReviewWrongAttempt;
     if(knewIt) gridReviewStats.known++;
-    playRandomAnswerSound('yes');
     const w = state.words.find(w=>w.id===wordId);
     if(w){
       w.iceberg = knewIt ? Math.max(w.iceberg-1, 1) : Math.min(w.iceberg+1, 9);
@@ -3080,14 +3100,20 @@ function handleGridPick(wordId){
     rebuildGridReviewGrid(null);
     pickGridReviewWord();
     gridReviewFeedback = 'correct';
-    renderReview(document.getElementById('content'));
+    renderReview(document.getElementById('content'), false);
+    playRandomAnswerSound('yes').then(()=>{
+      if(gridReviewCurrent) loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id, true);
+    });
   } else {
     gridReviewWrongAttempt = true;
-    playRandomAnswerSound('no');
-    renderReview(document.getElementById('content'));
+    renderReview(document.getElementById('content'), false);
+    playRandomAnswerSound('no').then(()=>{
+      if(gridReviewCurrent) loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id, true);
+    });
   }
 }
 function endGridReview(){
+  stopAllReviewAudio();
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
     if(minutes>0.1){
@@ -3101,7 +3127,7 @@ function endGridReview(){
   gridReviewIntroduced = []; gridReviewRemaining = []; reviewSelected = null;
   renderReview(document.getElementById('content'));
 }
-function renderGridReviewActive(c){
+function renderGridReviewActive(c, autoplay){
   if(!gridReviewCurrent){
     c.innerHTML = `<div class="empty">Nothing left to review. <button class="ghost" onclick="endGridReview()">Back to setup</button></div>`;
     return;
@@ -3125,7 +3151,7 @@ function renderGridReviewActive(c){
       <button class="ghost danger" onclick="endGridReview()">End review</button>
     </div>
   `;
-  loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id, true);
+  if(autoplay!==false) loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id, true);
 }
 
 // ---------- Answer Recorder ----------
@@ -3157,6 +3183,7 @@ function renderAnswerRecorder(el){
       <div id="answerSoundList" style="margin:8px 0;"></div>
       <div class="field"><label>Label (what you're saying)</label><input id="answerSoundLabel" placeholder="e.g. That's right"></div>
       <button class="record" onclick="addAnswerSound()">Record new clip</button>
+      <div id="answerSoundRecordStatus" class="meta" style="margin-top:6px;"></div>
     </div>
   `;
   renderAnswerSoundList();
@@ -3179,15 +3206,18 @@ function renderAnswerSoundList(){
   list.forEach(s=>loadPlayerInto('ansAudio-'+s.id, 'word', s.id));
 }
 function addAnswerSound(){
+  if(activeRecorder && activeRecorder.state==='recording') return;
   const labelInput = document.getElementById('answerSoundLabel');
   const label = labelInput.value.trim();
   const id = uid();
   const cat = answerRecorderCategory;
-  startWordRecording(id, 'answerSoundList', ()=>{
+  startWordRecording(id, 'answerSoundRecordStatus', ()=>{
     state.answerSounds[cat] = state.answerSounds[cat] || [];
     state.answerSounds[cat].push({id, label});
     saveData();
     if(labelInput) labelInput.value = '';
+    const statusEl = document.getElementById('answerSoundRecordStatus');
+    if(statusEl) statusEl.innerHTML = '';
     renderAnswerSoundList();
   });
 }
@@ -3198,17 +3228,23 @@ async function deleteAnswerSound(id){
   await saveData();
   renderAnswerSoundList();
 }
-async function playRandomAnswerSound(category){
-  const list = (state.answerSounds && state.answerSounds[category]) || [];
-  if(list.length===0) return;
-  const pick = list[Math.floor(Math.random()*list.length)];
-  try{
-    const res = await window.storage.get('wordaudio:'+pick.id, false);
-    if(res && res.value){
-      const audio = new Audio(JSON.parse(res.value).dataUrl);
-      audio.play().catch(()=>{});
-    }
-  }catch(e){}
+function playRandomAnswerSound(category){
+  return new Promise(async (resolve)=>{
+    const list = (state.answerSounds && state.answerSounds[category]) || [];
+    if(list.length===0){ resolve(); return; }
+    const pick = list[Math.floor(Math.random()*list.length)];
+    try{
+      const res = await window.storage.get('wordaudio:'+pick.id, false);
+      if(res && res.value){
+        const audio = new Audio(JSON.parse(res.value).dataUrl);
+        audio.onended = ()=>resolve();
+        audio.onerror = ()=>resolve();
+        audio.play().catch(()=>resolve());
+      } else {
+        resolve();
+      }
+    }catch(e){ resolve(); }
+  });
 }
 
 // ---------- Word Review Suggestions ----------
@@ -3272,9 +3308,9 @@ function practiceWordNow(id){
 
 // ---------- Alphabet ----------
 let alphabetTabView = 'alphabet';
-function renderAlphabet(c){
-  if(alphaReviewActive){ renderAlphaReviewActive(c); return; }
-  if(alphaGridActive){ renderAlphaGridActive(c); return; }
+function renderAlphabet(c, autoplay){
+  if(alphaReviewActive){ renderAlphaReviewActive(c, autoplay); return; }
+  if(alphaGridActive){ renderAlphaGridActive(c, autoplay); return; }
   if(readingTestActive){ renderReadingTestActive(c); return; }
   c.innerHTML = `
     <h3>Alphabet</h3>
@@ -3437,12 +3473,13 @@ function answerAlphaReview(){
   alphaReviewStats.seen++;
   renderAlphabet(document.getElementById('content'));
 }
-function nextAlphaReview(){
-  playRandomAnswerSound('next');
+async function nextAlphaReview(){
+  await playRandomAnswerSound('next');
   pickNextAlphaWord();
   renderAlphabet(document.getElementById('content'));
 }
 function endAlphaReview(){
+  stopAllReviewAudio();
   playRandomAnswerSound('finish');
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
@@ -3452,7 +3489,7 @@ function endAlphaReview(){
   alphaReviewActive = false; alphaReviewCurrent = null; alphaReviewSelected = null;
   renderAlphabet(document.getElementById('content'));
 }
-function renderAlphaReviewActive(el){
+function renderAlphaReviewActive(el, autoplay){
   if(!alphaReviewCurrent){
     el.innerHTML = `<div class="empty">Nothing left in your selection. <button class="ghost" onclick="endAlphaReview()">Back to setup</button></div>`;
     return;
@@ -3468,7 +3505,7 @@ function renderAlphaReviewActive(el){
     </div>
     <button class="ghost" style="margin-top:14px;" onclick="endAlphaReview()">End review</button>
   `;
-  loadPlayerInto('alphaReviewPlayer', 'word', a.id, true);
+  if(autoplay!==false) loadPlayerInto('alphaReviewPlayer', 'word', a.id, true);
 }
 
 function startAlphaGridReview(){
@@ -3543,18 +3580,23 @@ function handleAlphaGridPick(charId){
   if(charId === alphaGridCurrent.id){
     alphaGridStats.seen++;
     if(!alphaGridWrongAttempt) alphaGridStats.known++;
-    playRandomAnswerSound('yes');
     rebuildAlphaGrid(null);
     pickAlphaGridChar();
     alphaGridFeedback = 'correct';
-    renderAlphabet(document.getElementById('content'));
+    renderAlphabet(document.getElementById('content'), false);
+    playRandomAnswerSound('yes').then(()=>{
+      if(alphaGridCurrent) loadPlayerInto('alphaGridPlayer', 'word', alphaGridCurrent.id, true);
+    });
   } else {
     alphaGridWrongAttempt = true;
-    playRandomAnswerSound('no');
-    renderAlphabet(document.getElementById('content'));
+    renderAlphabet(document.getElementById('content'), false);
+    playRandomAnswerSound('no').then(()=>{
+      if(alphaGridCurrent) loadPlayerInto('alphaGridPlayer', 'word', alphaGridCurrent.id, true);
+    });
   }
 }
 function endAlphaGridReview(){
+  stopAllReviewAudio();
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
     if(minutes>0.1){ state.revisionMinutes = (state.revisionMinutes||0)+minutes; saveData(); }
@@ -3564,7 +3606,7 @@ function endAlphaGridReview(){
   alphaGridIntroduced = []; alphaGridRemaining = []; alphaReviewSelected = null;
   renderAlphabet(document.getElementById('content'));
 }
-function renderAlphaGridActive(el){
+function renderAlphaGridActive(el, autoplay){
   if(!alphaGridCurrent){
     el.innerHTML = `<div class="empty">Nothing left to review. <button class="ghost" onclick="endAlphaGridReview()">Back to setup</button></div>`;
     return;
@@ -3588,7 +3630,7 @@ function renderAlphaGridActive(el){
       <button class="ghost danger" onclick="endAlphaGridReview()">End review</button>
     </div>
   `;
-  loadPlayerInto('alphaGridPlayer', 'word', alphaGridCurrent.id, true);
+  if(autoplay!==false) loadPlayerInto('alphaGridPlayer', 'word', alphaGridCurrent.id, true);
 }
 
 // ---------- Reading Test ----------
