@@ -410,7 +410,7 @@ function render(){
   if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
   if(activeTab==='dashboard') renderDashboard(c);
   else if(activeTab==='orientation') renderOrientation(c);
-  else if(activeTab==='meetings') renderMeetings(c);
+  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else renderMeetings(c); }
   else if(activeTab==='words') renderWords(c);
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
@@ -615,6 +615,12 @@ function renderMeetings(c){
               <button class="ghost" onclick="stopStepTimer(${mp.n},${i})">Stop</button>
               <span id="stepTimerPace-${key}" class="tm" data-est="${perStepEst}">${storedMin!=null?paceComment(storedMin,perStepEst):''}</span>
             </div>
+            ${(!s.needsRecording && (i===0 || detail.steps[i-1].game!==s.game)) ? (()=>{
+              const poolSize = gameKeysFor(key).reduce((sum,k)=>sum+(((state.activityMaterials&&state.activityMaterials[k])||[]).length),0);
+              return poolSize>0
+                ? `<div style="margin:10px 0 0 24px;"><button class="primary" onclick="startLiveActivity('${key}')">Start Activity (${poolSize} picture${poolSize===1?'':'s'})</button></div>`
+                : `<div class="empty" style="margin:10px 0 0 24px;">Assign reference pictures to this game in Assign Pictures to enable Start Activity.</div>`;
+            })() : ''}
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0 24px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
               <span class="tm" style="width:100%;">Instructions for your nurturer for this activity</span>
               <button class="record" onclick="recordActivityNurturerAudio('${key}')">${state.activityNurturerAudio&&state.activityNurturerAudio[key]?'Re-record':'Record'}</button>
@@ -1259,6 +1265,110 @@ function showEnlargedImageFor(key, idx){
   if(!item) return;
   showEnlargedImage(resolveAttachedSrc(item));
 }
+// ---------- Live Activity Mode ----------
+let liveActivity = null;
+const LIVE_GRID_MAX = 16;
+function weightedSampleWithoutReplacement(items, weights, k){
+  const keyed = items.map((it,i)=>({it, key: Math.pow(Math.random(), 1/Math.max(weights[i], 0.0001))}));
+  keyed.sort((a,b)=>b.key-a.key);
+  return keyed.slice(0, k).map(x=>x.it);
+}
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function startLiveActivity(key){
+  const gameKeys = gameKeysFor(key);
+  const pool = [];
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach((a,idx)=>{
+      const src = resolveAttachedSrc(a);
+      if(src) pool.push({id: k+'|'+idx, src});
+    });
+  });
+  if(pool.length===0) return;
+  liveActivity = {
+    pool,
+    introduced: [],
+    remaining: shuffleArray(pool.map(p=>p.id)),
+    roundsSince: {},
+    currentGrid: [],
+    mode: null,
+    startKey: key
+  };
+  const parts = key.split('-');
+  startStepTimer(Number(parts[0]), Number(parts[1]));
+  render();
+}
+function rebuildLiveGrid(forceIncludeId){
+  const la = liveActivity;
+  if(!la) return;
+  la.introduced.forEach(id=>{
+    if(la.currentGrid.includes(id)) la.roundsSince[id] = 0;
+    else la.roundsSince[id] = (la.roundsSince[id]||0) + 1;
+  });
+  let gridIds = [];
+  let pool = la.introduced.slice();
+  if(forceIncludeId){
+    gridIds.push(forceIncludeId);
+    pool = pool.filter(id=>id!==forceIncludeId);
+  }
+  const slotsLeft = Math.min(LIVE_GRID_MAX, la.introduced.length) - gridIds.length;
+  if(slotsLeft>0 && pool.length>0){
+    const weights = pool.map(id=>(la.roundsSince[id]||0)+1);
+    gridIds = gridIds.concat(weightedSampleWithoutReplacement(pool, weights, Math.min(slotsLeft, pool.length)));
+  }
+  la.currentGrid = shuffleArray(gridIds);
+}
+function liveIntroduceNext(){
+  const la = liveActivity;
+  if(!la || la.remaining.length===0) return;
+  const idx = Math.floor(Math.random()*la.remaining.length);
+  const nextId = la.remaining.splice(idx,1)[0];
+  la.introduced.push(nextId);
+  la.mode = 'new';
+  rebuildLiveGrid(nextId);
+  render();
+}
+function liveQuiz(){
+  const la = liveActivity;
+  if(!la || la.introduced.length===0) return;
+  la.mode = 'quiz';
+  rebuildLiveGrid(null);
+  render();
+}
+function endLiveActivity(){
+  if(liveActivity && liveActivity.startKey){
+    const parts = liveActivity.startKey.split('-');
+    stopStepTimer(Number(parts[0]), Number(parts[1]));
+  }
+  liveActivity = null;
+  render();
+}
+function renderLiveActivity(c){
+  const la = liveActivity;
+  if(!la) return;
+  const gridItems = la.currentGrid.map(id=>la.pool.find(p=>p.id===id)).filter(Boolean);
+  const modeLabel = la.mode==='new' ? 'New' : (la.mode==='quiz' ? 'Quiz' : '');
+  c.innerHTML = `
+    <div style="text-align:center;margin-bottom:14px;">
+      ${modeLabel ? `<span class="tag ochre" style="font-size:1rem;padding:6px 18px;">${modeLabel}</span>` : `<div class="empty">Tap "Introduce Next" to begin.</div>`}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:10px;max-width:600px;margin:0 auto 22px;">
+      ${gridItems.map(it=>`<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;border:1px solid var(--paper-line);background:#fff;"><img src="${it.src}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
+      <button class="primary" onclick="liveIntroduceNext()" ${la.remaining.length===0?'disabled':''}>Introduce Next</button>
+      <button class="ghost" onclick="liveQuiz()" ${la.introduced.length===0?'disabled':''}>Quiz</button>
+      <button class="ghost danger" onclick="endLiveActivity()">End Activity</button>
+    </div>
+    <div class="empty" style="text-align:center;">${la.introduced.length} of ${la.pool.length} introduced so far.${la.remaining.length===0 && la.pool.length>0 ? ' All pictures introduced — keep quizzing, then end the activity when ready.' : ''}</div>
+  `;
+}
 function isRecordingKey(key){
   const parts = key.split('-');
   const mpN = Number(parts[0]);
@@ -1845,22 +1955,7 @@ function renderLibraryTabMine(el){
   const items = libTabLibraryFilter ? state.photoLibrary.filter(p=>p.category===libTabLibraryFilter) : state.photoLibrary;
   el.innerHTML = `
     <div class="empty" style="margin-bottom:6px;">Your own photos — add and remove freely.</div>
-    <div class="field"><label>Filter by category</label>
-      <select onchange="libTabLibraryFilterByIndex(this.value)">
-        <option value="-1">All</option>
-        ${cats.map((c,ci)=>`<option value="${ci}" ${libTabLibraryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
-      </select>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
-      ${items.length ? items.map(p=>`
-        <div style="position:relative;text-align:center;">
-          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
-          <div class="tm">${escapeHtml(p.label||'(untitled)')}${p.gender?` <span class="tag">${p.gender==='M'?'Male':'Female'}</span>`:''}</div>
-          <button onclick="deleteLibraryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
-        </div>
-      `).join('') : `<div class="empty">Nothing here yet.</div>`}
-    </div>
-    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
       <h4 style="margin-top:0;">Add a new photo</h4>
       <div class="field"><input type="file" id="libTabUpload" accept="image/*"></div>
       <div class="row">
@@ -1877,6 +1972,21 @@ function renderLibraryTabMine(el){
         </div>
       </div>
       <button class="ghost" onclick="addToPhotoLibraryTab()">Add to library</button>
+    </div>
+    <div class="field"><label>Filter by category</label>
+      <select onchange="libTabLibraryFilterByIndex(this.value)">
+        <option value="-1">All</option>
+        ${cats.map((c,ci)=>`<option value="${ci}" ${libTabLibraryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
+      ${items.length ? items.map(p=>`
+        <div style="position:relative;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(p.label||'(untitled)')}${p.gender?` <span class="tag">${p.gender==='M'?'Male':'Female'}</span>`:''}</div>
+          <button onclick="deleteLibraryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+        </div>
+      `).join('') : `<div class="empty">Nothing here yet.</div>`}
     </div>
   `;
 }
@@ -1918,6 +2028,7 @@ function addToPhotoLibraryTab(){
       state.photoLibrary.push({id, label, category: category||null, gender, dataUrl});
       await saveData();
       libTabAddGender = null;
+      libTabLibraryFilter = null;
       renderLibraryTabMine(document.getElementById('libraryTabBody'));
     };
     img.src = reader.result;
@@ -1931,6 +2042,17 @@ function renderLibraryTabBusy(el){
   const items = libTabBusyFilter ? state.busyPictures.filter(p=>p.category===libTabBusyFilter) : state.busyPictures;
   el.innerHTML = `
     <div class="empty" style="margin-bottom:6px;">Full scenes for describing and storytelling (Phase 2+) — separate from My Photo Library, which is for illustrating single words. Pre-loaded with the categories you already use.</div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
+      <h4 style="margin-top:0;">Add a new busy picture</h4>
+      <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="libTabBusyLabel" placeholder="e.g. market stall scene"></div>
+        <div class="field"><label>Category</label><input id="libTabBusyCategory" list="libTabBusyCatList" placeholder="e.g. Market, Street">
+          <datalist id="libTabBusyCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
+        </div>
+      </div>
+      <button class="ghost" onclick="addToBusyPicturesTab()">Add busy picture</button>
+    </div>
     <div class="field"><label>Filter by category</label>
       <select onchange="libTabBusyFilterByIndex(this.value)">
         <option value="-1">All</option>
@@ -1945,17 +2067,6 @@ function renderLibraryTabBusy(el){
           <button onclick="deleteBusyPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
         </div>
       `).join('') : `<div class="empty">Nothing in this category yet.</div>`}
-    </div>
-    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
-      <h4 style="margin-top:0;">Add a new busy picture</h4>
-      <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*"></div>
-      <div class="row">
-        <div class="field"><label>Label</label><input id="libTabBusyLabel" placeholder="e.g. market stall scene"></div>
-        <div class="field"><label>Category</label><input id="libTabBusyCategory" list="libTabBusyCatList" placeholder="e.g. Market, Street">
-          <datalist id="libTabBusyCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
-        </div>
-      </div>
-      <button class="ghost" onclick="addToBusyPicturesTab()">Add busy picture</button>
     </div>
   `;
 }
@@ -1989,6 +2100,7 @@ function addToBusyPicturesTab(){
       const id = uid();
       state.busyPictures.push({id, label, category: category||null, dataUrl});
       await saveData();
+      libTabBusyFilter = null;
       renderLibraryTabBusy(document.getElementById('libraryTabBody'));
     };
     img.src = reader.result;
@@ -2194,6 +2306,7 @@ function reviewGroups(){
   return groupWordsForDisplay(state.words.filter(w=>w.hasAudio));
 }
 let reviewMode = 'activities';
+let reviewStyle = 'normal';
 let reviewActivityMPIndex = 0;
 let reviewActivitySelectedSubs = new Set();
 function renderReviewSetup(c){
@@ -2204,6 +2317,13 @@ function renderReviewSetup(c){
   }
   c.innerHTML = `
     <h3>Choose what to review</h3>
+    ${gridReviewNotEnough ? `<div class="empty" style="color:var(--red);margin-bottom:8px;">Grid Review needs at least 2 selected words that both have audio and a picture. Try selecting more, or check that your chosen words have photos attached.</div>` : ''}
+    <div class="field"><label>Review style</label>
+      <select onchange="setReviewStyle(this.value)">
+        <option value="normal" ${reviewStyle==='normal'?'selected':''}>Normal Review (hear it, then see it)</option>
+        <option value="grid" ${reviewStyle==='grid'?'selected':''}>Grid Review (hear it, click the right picture)</option>
+      </select>
+    </div>
     <div class="field"><label>Review type</label>
       <select onchange="setReviewMode(this.value)">
         <option value="activities" ${reviewMode==='activities'?'selected':''}>Review Activities</option>
@@ -2214,6 +2334,9 @@ function renderReviewSetup(c){
     <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
   `;
   renderReviewModeBody();
+}
+function setReviewStyle(style){
+  reviewStyle = style;
 }
 function setReviewMode(mode){
   reviewMode = mode;
@@ -2319,6 +2442,7 @@ function filterReviewChecklist(){
   });
 }
 function renderReview(c){
+  if(gridReviewActive){ renderGridReviewActive(c); return; }
   if(!reviewActive){
     renderReviewSetup(c);
     return;
@@ -2374,6 +2498,10 @@ function startReview(){
     const checked = [...document.querySelectorAll('.revWordCheck:checked')].map(cb=>cb.value);
     reviewSelected = new Set(checked);
   }
+  if(reviewStyle==='grid'){
+    startGridReview();
+    return;
+  }
   reviewActive = true;
   reviewStats = {seen:0, known:0};
   reviewSessionStart = Date.now();
@@ -2423,6 +2551,107 @@ function endReview(){
   }
   reviewActive = false; reviewCurrent = null; reviewSelected = null;
   renderReview(document.getElementById('content'));
+}
+
+// ---------- Grid Review ----------
+let gridReviewActive = false, gridReviewPool = [], gridReviewGrid = [], gridReviewCurrent = null,
+    gridReviewWrongAttempt = false, gridReviewRoundsSince = {}, gridReviewStats = {seen:0, known:0}, gridReviewNotEnough = false;
+function startGridReview(){
+  const pool = state.words.filter(w=> w.hasAudio && w.photo && reviewSelected.has(w.id));
+  if(pool.length<2){
+    gridReviewNotEnough = true;
+    reviewSelected = null;
+    renderReview(document.getElementById('content'));
+    return;
+  }
+  gridReviewNotEnough = false;
+  gridReviewPool = pool;
+  gridReviewRoundsSince = {};
+  gridReviewGrid = [];
+  gridReviewActive = true;
+  gridReviewStats = {seen:0, known:0};
+  reviewSessionStart = Date.now();
+  rebuildGridReviewGrid(null);
+  pickGridReviewWord();
+  renderReview(document.getElementById('content'));
+}
+function rebuildGridReviewGrid(forceIncludeId){
+  const ids = gridReviewPool.map(w=>w.id);
+  ids.forEach(id=>{
+    if(gridReviewGrid.includes(id)) gridReviewRoundsSince[id] = 0;
+    else gridReviewRoundsSince[id] = (gridReviewRoundsSince[id]||0) + 1;
+  });
+  let grid = [];
+  let candidates = ids.slice();
+  if(forceIncludeId){
+    grid.push(forceIncludeId);
+    candidates = candidates.filter(id=>id!==forceIncludeId);
+  }
+  const slots = Math.min(LIVE_GRID_MAX, ids.length) - grid.length;
+  if(slots>0 && candidates.length>0){
+    const weights = candidates.map(id=>(gridReviewRoundsSince[id]||0)+1);
+    grid = grid.concat(weightedSampleWithoutReplacement(candidates, weights, Math.min(slots, candidates.length)));
+  }
+  gridReviewGrid = shuffleArray(grid);
+}
+function pickGridReviewWord(){
+  const gridWords = gridReviewGrid.map(id=>gridReviewPool.find(w=>w.id===id)).filter(Boolean);
+  if(gridWords.length===0){ gridReviewCurrent = null; return; }
+  gridReviewCurrent = gridWords[Math.floor(Math.random()*gridWords.length)];
+  gridReviewWrongAttempt = false;
+}
+function handleGridPick(wordId){
+  if(!gridReviewCurrent) return;
+  if(wordId === gridReviewCurrent.id){
+    gridReviewStats.seen++;
+    const knewIt = !gridReviewWrongAttempt;
+    if(knewIt) gridReviewStats.known++;
+    const w = state.words.find(w=>w.id===wordId);
+    if(w){
+      w.level = knewIt ? Math.min(w.level+1, 2) : Math.max(w.level-1, 0);
+      w.lastReview = new Date().toISOString().slice(0,10);
+      w.reviewCount = (w.reviewCount||0) + 1;
+      if(!knewIt){ w.reviewMissCount = (w.reviewMissCount||0) + 1; w.suggestionDismissed = false; }
+    }
+    saveData();
+    rebuildGridReviewGrid(null);
+    pickGridReviewWord();
+    renderReview(document.getElementById('content'));
+  } else {
+    gridReviewWrongAttempt = true;
+    renderReview(document.getElementById('content'));
+  }
+}
+function endGridReview(){
+  if(reviewSessionStart){
+    const minutes = (Date.now()-reviewSessionStart)/60000;
+    if(minutes>0.1){
+      state.revisionMinutes = (state.revisionMinutes||0) + minutes;
+      saveData();
+    }
+    reviewSessionStart = null;
+  }
+  gridReviewActive = false; gridReviewCurrent = null; gridReviewPool = []; gridReviewGrid = []; reviewSelected = null;
+  renderReview(document.getElementById('content'));
+}
+function renderGridReviewActive(c){
+  if(!gridReviewCurrent){
+    c.innerHTML = `<div class="empty">Nothing left to review. <button class="ghost" onclick="endGridReview()">Back to setup</button></div>`;
+    return;
+  }
+  const gridWords = gridReviewGrid.map(id=>gridReviewPool.find(w=>w.id===id)).filter(Boolean);
+  c.innerHTML = `
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${gridReviewStats.seen} · knew ${gridReviewStats.known} this session</div>
+    <div id="gridReviewPlayer" class="meta" style="text-align:center;margin-bottom:10px;">Loading audio…</div>
+    ${gridReviewWrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — try again.</div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:10px;max-width:600px;margin:0 auto 20px;">
+      ${gridWords.map(w=>`<div onclick="handleGridPick('${w.id}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+    </div>
+    <div style="text-align:center;">
+      <button class="ghost danger" onclick="endGridReview()">End review</button>
+    </div>
+  `;
+  loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id);
 }
 
 // ---------- Word Review Suggestions ----------
