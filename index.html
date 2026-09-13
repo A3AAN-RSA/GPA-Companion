@@ -401,6 +401,7 @@ async function loadData(){
   state.photoLibrary = state.photoLibrary || [];
   state.busyPictures = state.busyPictures || [];
   state.alphabet = state.alphabet || [];
+  state.answerSounds = state.answerSounds || {know:[], dontknow:[], next:[], finish:[], yes:[], no:[]};
   state.materialsDismissed = state.materialsDismissed || {};
   state.revisionMinutes = state.revisionMinutes || 0;
   state.words.forEach(w=>{
@@ -2364,12 +2365,14 @@ function renderReviewSetup(c){
         <option value="grid" ${reviewStyle==='grid'?'selected':''}>Grid Review (hear it, click the right picture)</option>
       </select>
     </div>
+    ${reviewStyle==='grid' ? `<div class="empty" style="margin-bottom:8px;">Grid Review works best with pictures for "Where is...?" and "Which is...?" phrases.</div>` : ''}
     ${reviewStyle==='grid' ? `<div class="field"><label>Grid Review mode</label>
       <select onchange="setGridReviewMode(this.value)">
         <option value="all" ${gridReviewMode==='all'?'selected':''}>Show all selected words from the start</option>
         <option value="rrd" ${gridReviewMode==='rrd'?'selected':''}>Rough-and-Ready Dozen — introduce one at a time</option>
       </select>
     </div>` : ''}
+    <div id="rrdHintContainer">${reviewStyle==='grid' && gridReviewMode==='rrd' ? `<div class="empty" style="margin-bottom:8px;">Rough-and-Ready Dozen works best with pictures that include their articles.</div>` : ''}</div>
     <div class="field"><label>Review type</label>
       <select onchange="setReviewMode(this.value)">
         <option value="activities" ${reviewMode==='activities'?'selected':''}>Review Activities</option>
@@ -2378,7 +2381,12 @@ function renderReviewSetup(c){
     </div>
     <div id="reviewModeBody"></div>
     <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
+    <div style="margin-top:24px;">
+      <button class="ghost" onclick="toggleAnswerRecorderPanel()">${answerRecorderPanelOpen?'Hide':'Set up'} Answer Recorder</button>
+      <div id="answerRecorderPanel" style="margin-top:10px;"></div>
+    </div>
   `;
+  if(answerRecorderPanelOpen) renderAnswerRecorder(document.getElementById('answerRecorderPanel'));
   renderReviewModeBody();
 }
 function setReviewStyle(style){
@@ -2387,6 +2395,8 @@ function setReviewStyle(style){
 }
 function setGridReviewMode(mode){
   gridReviewMode = mode;
+  const el = document.getElementById('rrdHintContainer');
+  if(el) el.innerHTML = (reviewStyle==='grid' && gridReviewMode==='rrd') ? `<div class="empty" style="margin-bottom:8px;">Rough-and-Ready Dozen works best with pictures that include their articles.</div>` : '';
 }
 function setReviewMode(mode){
   reviewMode = mode;
@@ -2577,6 +2587,7 @@ function answerReview(knewIt){
   reviewRevealed = true;
   reviewStats.seen++;
   if(knewIt) reviewStats.known++;
+  playRandomAnswerSound(knewIt ? 'know' : 'dontknow');
   const w = state.words.find(w=>w.id===reviewCurrent.id);
   if(w){
     w.iceberg = knewIt ? Math.max(w.iceberg-1, 1) : Math.min(w.iceberg+1, 9);
@@ -2588,11 +2599,13 @@ function answerReview(knewIt){
   renderReview(document.getElementById('content'));
 }
 function nextReview(){
+  playRandomAnswerSound('next');
   pickNextReviewWord();
   renderReview(document.getElementById('content'));
 }
 let lastReviewSummary = null;
 function endReview(){
+  playRandomAnswerSound('finish');
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
     if(minutes>0.1){
@@ -2691,6 +2704,7 @@ function handleGridPick(wordId){
     gridReviewStats.seen++;
     const knewIt = !gridReviewWrongAttempt;
     if(knewIt) gridReviewStats.known++;
+    playRandomAnswerSound('yes');
     const w = state.words.find(w=>w.id===wordId);
     if(w){
       w.iceberg = knewIt ? Math.max(w.iceberg-1, 1) : Math.min(w.iceberg+1, 9);
@@ -2705,6 +2719,7 @@ function handleGridPick(wordId){
     renderReview(document.getElementById('content'));
   } else {
     gridReviewWrongAttempt = true;
+    playRandomAnswerSound('no');
     renderReview(document.getElementById('content'));
   }
 }
@@ -2747,6 +2762,89 @@ function renderGridReviewActive(c){
     </div>
   `;
   loadPlayerInto('gridReviewPlayer', 'word', gridReviewCurrent.id, true);
+}
+
+// ---------- Answer Recorder ----------
+let answerRecorderPanelOpen = false;
+const ANSWER_SOUND_CATEGORIES = [
+  {key:'know', label:"I know it"},
+  {key:'dontknow', label:"I don't know it"},
+  {key:'next', label:"Next"},
+  {key:'finish', label:"Finish review"},
+  {key:'yes', label:"Correct (Grid Review)"},
+  {key:'no', label:"Incorrect (Grid Review)"}
+];
+let answerRecorderCategory = 'know';
+function toggleAnswerRecorderPanel(){
+  answerRecorderPanelOpen = !answerRecorderPanelOpen;
+  const el = document.getElementById('answerRecorderPanel');
+  if(!el) return;
+  if(answerRecorderPanelOpen) renderAnswerRecorder(el); else el.innerHTML = '';
+}
+function renderAnswerRecorder(el){
+  el.innerHTML = `
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <div class="empty" style="margin-bottom:8px;">Optional — record real target-language responses (e.g. "That's right", "You got it" for correct; "No", "Try again" for incorrect). One plays back at random whenever you use the matching button, so review itself becomes listening practice.</div>
+      <div class="field"><label>Category</label>
+        <select onchange="setAnswerRecorderCategory(this.value)">
+          ${ANSWER_SOUND_CATEGORIES.map(c=>`<option value="${c.key}" ${answerRecorderCategory===c.key?'selected':''}>${c.label}</option>`).join('')}
+        </select>
+      </div>
+      <div id="answerSoundList" style="margin:8px 0;"></div>
+      <div class="field"><label>Label (what you're saying)</label><input id="answerSoundLabel" placeholder="e.g. That's right"></div>
+      <button class="record" onclick="addAnswerSound()">Record new clip</button>
+    </div>
+  `;
+  renderAnswerSoundList();
+}
+function setAnswerRecorderCategory(v){
+  answerRecorderCategory = v;
+  renderAnswerSoundList();
+}
+function renderAnswerSoundList(){
+  const el = document.getElementById('answerSoundList');
+  if(!el) return;
+  const list = state.answerSounds[answerRecorderCategory] || [];
+  el.innerHTML = list.length ? list.map(s=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--paper-line);">
+      <span style="flex:1;">${escapeHtml(s.label||'(untitled)')}</span>
+      <div id="ansAudio-${s.id}"></div>
+      <button class="ghost danger" style="font-size:.7rem;" onclick="deleteAnswerSound('${s.id}')">Remove</button>
+    </div>
+  `).join('') : `<div class="empty">No recordings yet for this category.</div>`;
+  list.forEach(s=>loadPlayerInto('ansAudio-'+s.id, 'word', s.id));
+}
+function addAnswerSound(){
+  const labelInput = document.getElementById('answerSoundLabel');
+  const label = labelInput.value.trim();
+  const id = uid();
+  const cat = answerRecorderCategory;
+  startWordRecording(id, 'answerSoundList', ()=>{
+    state.answerSounds[cat] = state.answerSounds[cat] || [];
+    state.answerSounds[cat].push({id, label});
+    saveData();
+    if(labelInput) labelInput.value = '';
+    renderAnswerSoundList();
+  });
+}
+async function deleteAnswerSound(id){
+  Object.keys(state.answerSounds).forEach(cat=>{
+    state.answerSounds[cat] = (state.answerSounds[cat]||[]).filter(s=>s.id!==id);
+  });
+  await saveData();
+  renderAnswerSoundList();
+}
+async function playRandomAnswerSound(category){
+  const list = (state.answerSounds && state.answerSounds[category]) || [];
+  if(list.length===0) return;
+  const pick = list[Math.floor(Math.random()*list.length)];
+  try{
+    const res = await window.storage.get('wordaudio:'+pick.id, false);
+    if(res && res.value){
+      const audio = new Audio(JSON.parse(res.value).dataUrl);
+      audio.play().catch(()=>{});
+    }
+  }catch(e){}
 }
 
 // ---------- Word Review Suggestions ----------
@@ -2976,10 +3074,12 @@ function answerAlphaReview(){
   renderAlphabet(document.getElementById('content'));
 }
 function nextAlphaReview(){
+  playRandomAnswerSound('next');
   pickNextAlphaWord();
   renderAlphabet(document.getElementById('content'));
 }
 function endAlphaReview(){
+  playRandomAnswerSound('finish');
   if(reviewSessionStart){
     const minutes = (Date.now()-reviewSessionStart)/60000;
     if(minutes>0.1){ state.revisionMinutes = (state.revisionMinutes||0)+minutes; saveData(); }
@@ -3079,12 +3179,14 @@ function handleAlphaGridPick(charId){
   if(charId === alphaGridCurrent.id){
     alphaGridStats.seen++;
     if(!alphaGridWrongAttempt) alphaGridStats.known++;
+    playRandomAnswerSound('yes');
     rebuildAlphaGrid(null);
     pickAlphaGridChar();
     alphaGridFeedback = 'correct';
     renderAlphabet(document.getElementById('content'));
   } else {
     alphaGridWrongAttempt = true;
+    playRandomAnswerSound('no');
     renderAlphabet(document.getElementById('content'));
   }
 }
@@ -3226,6 +3328,17 @@ function renderProfile(c){
     <h3 style="margin-top:26px;">Backup</h3>
     <div class="empty" style="margin-bottom:8px;">Export everything (lessons, words, sessions — not audio, which is too large for a text file) as a backup you control.</div>
     <button class="ghost" onclick="exportData()">Export data as JSON</button>
+    <h3 style="margin-top:26px;">Dropbox backup (includes audio)</h3>
+    ${dropboxTokens ? `
+      <div class="empty" style="margin-bottom:8px;">Connected to Dropbox. Backup includes everything — words, meeting progress, photos, and every recording.</div>
+      <button class="ghost" onclick="backupToDropbox()">Back up to Dropbox now</button>
+      <button class="ghost" onclick="restoreFromDropbox()">Restore from Dropbox</button>
+      <button class="ghost danger" onclick="disconnectDropbox()">Disconnect Dropbox</button>
+    ` : `
+      <div class="empty" style="margin-bottom:8px;">Connect once, then back up or restore manually from any device — nothing syncs automatically, so you're always in control of when data moves.</div>
+      <button class="primary" onclick="connectDropbox()">Connect Dropbox</button>
+    `}
+    <div id="dropboxStatus" class="meta" style="margin-top:8px;"></div>
   `;
 }
 function toggleAllowMaterialsEditing(val){
@@ -3254,7 +3367,141 @@ function exportData(){
   URL.revokeObjectURL(url);
 }
 
+// ---------- Dropbox backup/restore (PKCE, no server needed) ----------
+const DROPBOX_APP_KEY = 'n0w3cr4mhbh9jtj';
+let dropboxTokens = null;
+function base64UrlEncode(buffer){
+  let str = '';
+  const bytes = new Uint8Array(buffer);
+  for(let i=0;i<bytes.length;i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function generateCodeVerifier(){
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return base64UrlEncode(array.buffer);
+}
+async function generateCodeChallenge(verifier){
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return base64UrlEncode(digest);
+}
+function dropboxRedirectUri(){
+  return window.location.href.split('?')[0].split('#')[0];
+}
+async function loadDropboxTokens(){
+  try{
+    const res = await window.storage.get('dropbox-tokens', false);
+    if(res && res.value) dropboxTokens = JSON.parse(res.value);
+  }catch(e){ dropboxTokens = null; }
+}
+async function connectDropbox(){
+  const verifier = generateCodeVerifier();
+  await window.storage.set('dropbox-pkce-verifier', verifier, false);
+  const challenge = await generateCodeChallenge(verifier);
+  const params = new URLSearchParams({
+    client_id: DROPBOX_APP_KEY,
+    response_type: 'code',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    redirect_uri: dropboxRedirectUri(),
+    token_access_type: 'offline'
+  });
+  window.location.href = 'https://www.dropbox.com/oauth2/authorize?' + params.toString();
+}
+async function handleDropboxRedirect(){
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if(!code) return;
+  try{
+    const verifierRes = await window.storage.get('dropbox-pkce-verifier', false);
+    const verifier = verifierRes && verifierRes.value;
+    const body = new URLSearchParams({
+      code, grant_type:'authorization_code', client_id: DROPBOX_APP_KEY,
+      redirect_uri: dropboxRedirectUri(), code_verifier: verifier
+    });
+    const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body.toString()
+    });
+    const data = await res.json();
+    if(data.access_token){
+      dropboxTokens = {access_token:data.access_token, refresh_token:data.refresh_token, expires_at: Date.now()+(data.expires_in*1000)};
+      await window.storage.set('dropbox-tokens', JSON.stringify(dropboxTokens), false);
+    }
+  }catch(e){ console.error('Dropbox auth failed', e); }
+  window.history.replaceState({}, '', window.location.pathname);
+}
+async function disconnectDropbox(){
+  dropboxTokens = null;
+  await window.storage.delete('dropbox-tokens', false);
+  renderProfile(document.getElementById('content'));
+}
+async function ensureDropboxToken(){
+  if(!dropboxTokens) return null;
+  if(Date.now() < dropboxTokens.expires_at - 60000) return dropboxTokens.access_token;
+  try{
+    const body = new URLSearchParams({grant_type:'refresh_token', refresh_token:dropboxTokens.refresh_token, client_id:DROPBOX_APP_KEY});
+    const res = await fetch('https://api.dropboxapi.com/oauth2/token', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: body.toString()
+    });
+    const data = await res.json();
+    if(data.access_token){
+      dropboxTokens.access_token = data.access_token;
+      dropboxTokens.expires_at = Date.now() + (data.expires_in*1000);
+      await window.storage.set('dropbox-tokens', JSON.stringify(dropboxTokens), false);
+      return dropboxTokens.access_token;
+    }
+  }catch(e){ console.error('Dropbox refresh failed', e); }
+  return null;
+}
+async function backupToDropbox(){
+  const statusEl = document.getElementById('dropboxStatus');
+  if(statusEl) statusEl.textContent = 'Backing up…';
+  try{
+    const token = await ensureDropboxToken();
+    if(!token){ if(statusEl) statusEl.textContent = 'Not connected to Dropbox.'; return; }
+    const audioList = await window.storage.list('wordaudio:', false);
+    const audio = {};
+    for(const key of audioList.keys){
+      try{ const res = await window.storage.get(key, false); if(res && res.value) audio[key] = res.value; }catch(e){}
+    }
+    const bundle = {state, audio, exportedAt: new Date().toISOString()};
+    const blob = new Blob([JSON.stringify(bundle)], {type:'application/json'});
+    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+token,
+        'Dropbox-API-Arg': JSON.stringify({path:'/gpa-companion-backup.json', mode:'overwrite'}),
+        'Content-Type':'application/octet-stream'
+      },
+      body: blob
+    });
+    if(res.ok){ if(statusEl) statusEl.textContent = 'Backed up to Dropbox just now (including audio).'; }
+    else { const err = await res.text(); if(statusEl) statusEl.textContent = 'Backup failed: '+err.slice(0,200); }
+  }catch(e){ if(statusEl) statusEl.textContent = 'Backup failed: '+e.message; }
+}
+async function restoreFromDropbox(){
+  const statusEl = document.getElementById('dropboxStatus');
+  if(statusEl) statusEl.textContent = 'Restoring…';
+  try{
+    const token = await ensureDropboxToken();
+    if(!token){ if(statusEl) statusEl.textContent = 'Not connected to Dropbox.'; return; }
+    const res = await fetch('https://content.dropboxapi.com/2/files/download', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token, 'Dropbox-API-Arg': JSON.stringify({path:'/gpa-companion-backup.json'})}
+    });
+    if(!res.ok){ const err = await res.text(); if(statusEl) statusEl.textContent = 'Restore failed: '+err.slice(0,200); return; }
+    const bundle = await res.json();
+    if(bundle.state){ state = bundle.state; await saveData(); }
+    if(bundle.audio){
+      for(const key of Object.keys(bundle.audio)){ await window.storage.set(key, bundle.audio[key], false); }
+    }
+    if(statusEl) statusEl.textContent = 'Restored from Dropbox.';
+    render();
+  }catch(e){ if(statusEl) statusEl.textContent = 'Restore failed: '+e.message; }
+}
+
 loadData();
+handleDropboxRedirect().then(loadDropboxTokens).then(()=>{ if(activeTab==='profile') renderProfile(document.getElementById('content')); });
 </script>
 </body>
 </html>
