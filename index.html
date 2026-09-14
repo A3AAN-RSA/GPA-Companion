@@ -2342,8 +2342,7 @@ function renderSoloPractice(c){
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         ${pic ? `
           ${pic.src?`<img class="thumb" src="${pic.src}" style="max-width:180px;">`:''}
-          <div style="margin-top:10px;font-family:'Lora',serif;font-size:1.2rem;">${escapeHtml(pic.code||'')}</div>
-          <div class="tm" style="margin-top:4px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article' ? 'saying it with its article' : 'saying it in a sentence'}</div>
+          <div class="tm" style="margin-top:10px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article' ? 'saying it with its article' : 'saying it in a sentence'}</div>
         ` : `<div class="empty">Finishing up…</div>`}
       </div>
       <button class="ghost danger" style="margin-top:14px;" onclick="endSoloPractice()">End practice</button>
@@ -2409,7 +2408,7 @@ function isRecordingKey(key){
 function renderMaterialsBlock(key, formPrefix, contextText){
   const el = document.getElementById('mat-'+key);
   if(!el) return;
-  const gameKeys = isRecordingKey(key) ? gameKeysFor(key) : [key];
+  const gameKeys = gameKeysFor(key);
   const attached = [];
   gameKeys.forEach(k=>{
     ((state.activityMaterials && state.activityMaterials[k]) || []).forEach((a,idx)=>{
