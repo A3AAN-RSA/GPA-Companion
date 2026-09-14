@@ -2525,7 +2525,8 @@ async function saveAttachmentEdit(attKey, idx){
   await saveData();
   editingAttachmentId = null;
   editingAttachmentGender = null;
-  renderMeetings(document.getElementById('content'));
+  if(activeTab==='assign') renderAssign(document.getElementById('content'));
+  else renderMeetings(document.getElementById('content'));
 }
 function toggleMaterialsPicker(key){
   materialsPickerOpen[key] = !materialsPickerOpen[key];
@@ -2992,12 +2993,18 @@ function handleDragStart(ev, source, fileOrId){
   ev.dataTransfer.effectAllowed = 'copy';
   try{ ev.dataTransfer.setData('text/plain', source+':'+fileOrId); }catch(e){}
 }
-function handleDropOnActivity(ev, key){
+async function handleDropOnActivity(ev, key){
   ev.preventDefault();
   if(!dragItem) return;
   if(dragItem.source==='graphics'){
     const g = GRAPHICS_MANIFEST.find(x=>x.file===dragItem.fileOrId);
-    addAssignment(key, dragItem.fileOrId, g ? g.code : dragItem.fileOrId, null, 'graphics');
+    const code = g ? g.code : dragItem.fileOrId;
+    // Graphics-pack pictures need their own library copy so they get a stable id — that id is
+    // what lets Solo Practice (and Word Log/Review once recorded) find this exact picture later.
+    const finalSrc = await resolveAndNormalizePicture(`graphics/${dragItem.fileOrId}`, null);
+    const libId = uid();
+    state.photoLibrary.push({id: libId, label: code, category: null, dataUrl: finalSrc});
+    addAssignment(key, null, code, libId, 'library');
   } else if(dragItem.source==='busy'){
     const p = state.busyPictures.find(x=>x.id===dragItem.fileOrId);
     addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'busy');
@@ -3072,10 +3079,13 @@ function renderAssignZone(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${attached.length ? attached.map((a,idx)=>{
           const src = resolveAttachedSrc(a);
+          const attId = key+'|'+idx;
           return `<div style="text-align:center;width:70px;">
             <img src="${src}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
-            <div class="tm">${escapeHtml(a.code||'')}</div>
+            <div class="tm">${escapeHtml(a.code||'')}${a.gender?` (${a.gender==='M'?'Male':'Female'})`:''}</div>
+            <button class="ghost" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="toggleAttachmentEdit('${key}',${idx})">Edit</button>
             <button class="ghost danger" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${key}',${idx})">Remove</button>
+            <div id="matEdit-${attId}" style="margin-top:4px;"></div>
           </div>`;
         }).join('') : `<div class="empty">Drop a picture here</div>`}
       </div>
