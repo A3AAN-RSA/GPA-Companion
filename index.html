@@ -1919,6 +1919,26 @@ function wordsForGame(key){
     return ai-bi;
   });
 }
+const SOLO_WORD_SLOTS = ['sentence','article','bare'];
+function picturesForGame(key){
+  // Always derived fresh from the current attachments — this is what makes Assign Pictures,
+  // the meeting-plan reference area, and Solo Setup/Practice all stay in sync automatically,
+  // no matter which of the two places a picture was added, removed, or edited from.
+  const gameKeys = gameKeysFor(key);
+  const pics = [];
+  const seen = new Set();
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{
+      if(!a.libId || seen.has(a.libId)) return;
+      seen.add(a.libId);
+      pics.push({libId:a.libId, source:a.source, code:a.code, gender:a.gender||null, src:resolveAttachedSrc(a)});
+    });
+  });
+  return pics;
+}
+function wordsForPicture(libId){
+  return SOLO_WORD_SLOTS.map(slot => state.words.find(w=>w.sourceLibId===libId && w.wordSlot===slot) || null);
+}
 function showEnlargedImage(src){
   const overlay = document.getElementById('imageOverlay');
   const img = document.getElementById('imageOverlayImg');
@@ -2056,12 +2076,15 @@ function selectSoloQuestionWord(wordId){
   renderSoloSetup(document.getElementById('content'));
 }
 function soloReadiness(key){
-  const words = wordsForGame(key);
+  const pics = picturesForGame(key);
   const soloKeyStr = soloKeyFor(key);
   const questions = state.activityQuestions[soloKeyStr] || [];
-  const wordsReady = words.length>0 && words.every(w=>w.hasAudio && w.hasArticleAudio && w.hasSentenceAudio);
-  const questionsReady = words.length>0 && words.every(w=>questions.some(q=>q.wordId===w.id));
-  return {words, questions, wordsReady, questionsReady, ready: wordsReady && questionsReady};
+  const picsReady = pics.length>0 && pics.every(p=>{
+    const words = wordsForPicture(p.libId);
+    return words.every(w=>w && w.hasAudio);
+  });
+  const questionsReady = pics.length>0 && pics.every(p=>questions.some(q=>q.libId===p.libId));
+  return {pics, questions, picsReady, questionsReady, ready: picsReady && questionsReady};
 }
 function playStoredAudio(key){
   return new Promise(async (resolve)=>{
@@ -2079,40 +2102,43 @@ function playStoredAudio(key){
 function renderSoloSetup(c){
   const key = soloSetup;
   if(!key){ renderMeetings(c); return; }
-  const {words, questions, wordsReady, questionsReady, ready} = soloReadiness(key);
+  const {pics, questions, picsReady, questionsReady, ready} = soloReadiness(key);
   const soloKeyStr = soloKeyFor(key);
   c.innerHTML = `
     <h3>Set Up Solo Practice</h3>
-    <div class="empty" style="margin-bottom:10px;">Since there's no live nurturer this time, the app needs a few things recorded first for each word: the bare word, the word with its article, and an introduction sentence ("This is a man"). It also needs at least one spoken question per word. Once everything below is recorded, you can start practicing — and recording these now counts as logging them, so there's no separate wrap-up needed afterward.</div>
-    <h4>Words</h4>
-    ${words.length===0 ? `<div class="empty">No words logged for this activity yet — log them in Word Log first, tagged to this meeting plan and step.</div>` : words.map(w=>`
+    <div class="empty" style="margin-bottom:10px;">This always reflects whatever's currently attached to this activity — from Assign Pictures, or right here in the meeting plan. Since there's no live nurturer this time, the app needs a few things recorded first for each picture: the bare word, the word with its article, and an introduction sentence ("This is a man") — each becomes its own entry in Word Log, so all three are independently reviewable later. It also needs at least one spoken question per picture. Recording these counts as logging them, so there's no separate wrap-up needed afterward.</div>
+    <h4>Pictures</h4>
+    ${pics.length===0 ? `<div class="empty">No pictures attached to this activity yet — add some in Assign Pictures, or right here using "+ Attach a picture."</div>` : pics.map(p=>{
+      const [sentW, artW, bareW] = wordsForPicture(p.libId);
+      return `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-line);flex-wrap:wrap;">
-        ${w.photo?`<img src="${w.photo}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;">`:''}
-        <span style="flex:1;min-width:60px;">${escapeHtml(w.text)}</span>
+        ${p.src?`<img src="${p.src}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;">`:''}
+        <span style="flex:1;min-width:60px;">${escapeHtml(p.code||'')}${p.gender?` (${p.gender==='M'?'Male':'Female'})`:''}</span>
         <span class="tm">Word:</span>
-        <div id="soloBareStatus-${w.id}">${w.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloBare('${w.id}')">Record</button>`}</div>
+        <div id="soloSlotStatus-${p.libId}-bare">${bareW && bareW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','bare')">Record</button>`}</div>
         <span class="tm">With article:</span>
-        <div id="soloArticleStatus-${w.id}">${w.hasArticleAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloArticle('${w.id}')">Record</button>`}</div>
-        <span class="tm">"This is a ${escapeHtml(w.text)}":</span>
-        <div id="soloSentenceStatus-${w.id}">${w.hasSentenceAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloSentence('${w.id}')">Record</button>`}</div>
+        <div id="soloSlotStatus-${p.libId}-article">${artW && artW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','article')">Record</button>`}</div>
+        <span class="tm">"This is a ${escapeHtml(p.code||'')}":</span>
+        <div id="soloSlotStatus-${p.libId}-sentence">${sentW && sentW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','sentence')">Record</button>`}</div>
       </div>
-    `).join('')}
+    `;
+    }).join('')}
     <h4 style="margin-top:16px;">Questions</h4>
-    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and tap the picture each one is asking about. You can record more than one phrasing per picture, or different question forms for different pictures.</div>
-    <div id="soloQuestionList">${words.length===0 ? '' : (questions.length ? questions.map(q=>{
-      const w = words.find(w=>w.id===q.wordId);
+    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and tap the picture each one is asking about. You can record more than one phrasing per picture.</div>
+    <div id="soloQuestionList">${pics.length===0 ? '' : (questions.length ? questions.map(q=>{
+      const p = pics.find(p=>p.libId===q.libId);
       return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${w && w.photo ? `<img src="${w.photo}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;">` : (w?escapeHtml(w.text):'(unknown)')}</span>
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${p && p.src ? `<img src="${p.src}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;">` : (p?escapeHtml(p.code):'(removed)')}</span>
         <div id="soloQAudio-${q.id}"></div>
         <button class="ghost danger" style="font-size:.7rem;" onclick="deleteSoloQuestion('${soloKeyStr}','${q.id}')">Remove</button>
       </div>`;
     }).join('') : `<div class="empty">No questions recorded yet.</div>`)}</div>
-    ${words.length ? `
+    ${pics.length ? `
     <div class="field"><label>This question is asking about — tap a picture</label>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-width:400px;">
-        ${words.map(w=>`<div onclick="selectSoloQuestionWord('${w.id}')" style="cursor:pointer;text-align:center;">
-          <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordId===w.id?'var(--teal)':'var(--paper-line)'};background:#fff;">
-            ${w.photo ? `<img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${w.text?escapeHtml(w.text):'(no picture)'}</div>`}
+        ${pics.map(p=>`<div onclick="selectSoloQuestionWord('${p.libId}')" style="cursor:pointer;text-align:center;">
+          <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordId===p.libId?'var(--teal)':'var(--paper-line)'};background:#fff;">
+            ${p.src ? `<img src="${p.src}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${p.code?escapeHtml(p.code):'(no picture)'}</div>`}
           </div>
         </div>`).join('')}
       </div>
@@ -2121,43 +2147,51 @@ function renderSoloSetup(c){
     <div id="soloQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
     ` : ''}
     <div style="margin-top:16px;">
-      ${ready ? `<button class="primary" onclick="startSoloPractice('${key}')">Begin Solo Practice</button>` : `<div class="empty">${!wordsReady?"Record every word's bare, article-form, and sentence audio above. ":''}${!questionsReady?'Every word needs at least one recorded question.':''}</div>`}
+      ${ready ? `<button class="primary" onclick="startSoloPractice('${key}')">Begin Solo Practice</button>` : `<div class="empty">${!picsReady?"Record every picture's bare, article-form, and sentence audio above. ":''}${!questionsReady?'Every picture needs at least one recorded question.':''}</div>`}
       <button class="ghost" onclick="closeSoloSetup()">Back</button>
     </div>
   `;
   questions.forEach(q=>loadPlayerInto('soloQAudio-'+q.id, 'word', q.id));
 }
-function recordSoloBare(wordId){
-  startWordRecording(wordId, 'soloBareStatus-'+wordId, ()=>{
+function recordActivitySlot(key, libId, slot){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const existing = state.words.find(w=>w.sourceLibId===libId && w.wordSlot===slot);
+  const wordId = existing ? existing.id : uid();
+  const elId = 'soloSlotStatus-'+libId+'-'+slot;
+  startWordRecording(wordId, elId, ()=>{
+    let w = state.words.find(x=>x.id===wordId);
+    if(!w){
+      const gameKeys = gameKeysFor(key);
+      let attachment = null, ownerKey = key;
+      for(const k of gameKeys){
+        const found = ((state.activityMaterials&&state.activityMaterials[k])||[]).find(a=>a.libId===libId);
+        if(found){ attachment = found; ownerKey = k; break; }
+      }
+      const parts = ownerKey.split('-');
+      const libEntry = state.photoLibrary.find(p=>p.id===libId);
+      w = {
+        id: wordId, text: (attachment&&attachment.code) || (libEntry&&libEntry.label) || '',
+        meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
+        photo: libEntry ? libEntry.dataUrl : '', gender: (attachment&&attachment.gender)||null,
+        entryType:'picture', sourceLibId: libId, wordSlot: slot,
+        hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+      };
+      state.words.push(w);
+    }
+    w.hasAudio = true;
+    saveData();
     renderSoloSetup(document.getElementById('content'));
   });
-}
-function recordSoloArticle(wordId){
-  startWordRecording(wordId, 'soloArticleStatus-'+wordId, ()=>{
-    const w = state.words.find(w=>w.id===wordId);
-    if(w) w.hasArticleAudio = true;
-    saveData();
-    renderSoloSetup(document.getElementById('content'));
-  }, 'wordaudio:'+wordId+':article');
-}
-function recordSoloSentence(wordId){
-  startWordRecording(wordId, 'soloSentenceStatus-'+wordId, ()=>{
-    const w = state.words.find(w=>w.id===wordId);
-    if(w) w.hasSentenceAudio = true;
-    saveData();
-    renderSoloSetup(document.getElementById('content'));
-  }, 'wordaudio:'+wordId+':sentence');
 }
 function recordSoloQuestion(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
   if(!soloQuestionSelectedWordId) return;
   const id = uid();
   const soloKeyStr = soloKeyFor(key);
+  const libId = soloQuestionSelectedWordId;
   startWordRecording(id, 'soloQuestionRecordStatus', ()=>{
-    const wordId = soloQuestionSelectedWordId;
-    if(!wordId) return;
     state.activityQuestions[soloKeyStr] = state.activityQuestions[soloKeyStr] || [];
-    state.activityQuestions[soloKeyStr].push({id, wordId});
+    state.activityQuestions[soloKeyStr].push({id, libId});
     saveData();
     const statusEl = document.getElementById('soloQuestionRecordStatus');
     if(statusEl) statusEl.innerHTML = '';
@@ -2171,14 +2205,14 @@ async function deleteSoloQuestion(soloKeyStr, id){
 }
 function startSoloPractice(key){
   preloadAnswerSounds();
-  const {words, questions} = soloReadiness(key);
+  const {pics, questions} = soloReadiness(key);
   soloSetup = null;
   soloPractice = {
-    key, words, questions,
+    key, pics, questions,
     introduced: [],
-    remaining: words.map(w=>w.id),
+    remaining: pics.map(p=>p.libId),
     phase: 'intro',
-    introducingWordId: null,
+    introducingLibId: null,
     introSlot: SOLO_INTRO_SLOTS[0],
     introRepeatsLeft: 2,
     currentGrid: [],
@@ -2190,21 +2224,16 @@ function startSoloPractice(key){
   const parts = key.split('-');
   startStepTimer(Number(parts[0]), Number(parts[1]));
   render();
-  introduceSoloWord();
+  introduceSoloPicture();
 }
 const SOLO_INTRO_SLOTS = ['sentence','article','bare'];
-function soloAudioKeyForSlot(wordId, slot){
-  if(slot==='bare') return 'wordaudio:'+wordId;
-  if(slot==='article') return 'wordaudio:'+wordId+':article';
-  return 'wordaudio:'+wordId+':sentence';
-}
-function introduceSoloWord(){
+function introduceSoloPicture(){
   const sp = soloPractice;
   if(!sp || sp.remaining.length===0) return;
-  const wordId = sp.remaining.shift();
-  sp.introduced.push(wordId);
+  const libId = sp.remaining.shift();
+  sp.introduced.push(libId);
   sp.phase = 'intro';
-  sp.introducingWordId = wordId;
+  sp.introducingLibId = libId;
   sp.introSlot = SOLO_INTRO_SLOTS[0];
   sp.introRepeatsLeft = 2;
   runSoloIntroStep();
@@ -2212,11 +2241,10 @@ function introduceSoloWord(){
 async function runSoloIntroStep(){
   const sp = soloPractice;
   if(!sp || sp.phase!=='intro') return;
-  const word = sp.words.find(w=>w.id===sp.introducingWordId);
-  if(!word) return;
+  const [sentW, artW, bareW] = wordsForPicture(sp.introducingLibId);
+  const slotWord = sp.introSlot==='sentence' ? sentW : sp.introSlot==='article' ? artW : bareW;
   render();
-  const audioKey = soloAudioKeyForSlot(word.id, sp.introSlot);
-  await playStoredAudio(audioKey);
+  if(slotWord) await playStoredAudio('wordaudio:'+slotWord.id);
   if(!soloPractice || soloPractice.phase!=='intro') return;
   sp.introRepeatsLeft--;
   if(sp.introRepeatsLeft<=0){
@@ -2227,9 +2255,9 @@ async function runSoloIntroStep(){
       runSoloIntroStep();
       return;
     }
-    // finished introducing this word — bootstrap needs at least 2 before quizzing starts
+    // finished introducing this picture — bootstrap needs at least 2 before quizzing starts
     if(sp.introduced.length < 2 && sp.remaining.length > 0){
-      introduceSoloWord();
+      introduceSoloPicture();
       return;
     }
     startSoloQuizPhase();
@@ -2246,7 +2274,7 @@ function startSoloQuizPhase(){
 function pickSoloQuestion(){
   const sp = soloPractice;
   if(!sp) return;
-  const eligible = sp.questions.filter(q=>sp.introduced.includes(q.wordId));
+  const eligible = sp.questions.filter(q=>sp.introduced.includes(q.libId));
   if(eligible.length===0) return;
   sp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
   sp.currentGrid = shuffleArray(sp.introduced.slice());
@@ -2258,22 +2286,22 @@ function pickSoloQuestion(){
 function soloIntroduceNext(){
   const sp = soloPractice;
   if(!sp || sp.remaining.length===0) return;
-  introduceSoloWord();
+  introduceSoloPicture();
 }
-function handleSoloPick(wordId){
+function handleSoloPick(libId){
   const sp = soloPractice;
   if(!sp || sp.phase!=='quiz' || !sp.currentQuestion) return;
-  const correct = sp.currentQuestion.wordId;
-  if(wordId===correct){
+  const correct = sp.currentQuestion.libId;
+  if(libId===correct){
     sp.stats.seen++;
     const knewIt = !sp.wrongAttempt;
     if(knewIt) sp.stats.known++;
-    const w = state.words.find(x=>x.id===wordId);
-    if(w){
+    // Answering the picture correctly reinforces every phrase-form recorded for it.
+    state.words.filter(w=>w.sourceLibId===libId).forEach(w=>{
       w.iceberg = knewIt ? Math.max(w.iceberg-1,1) : Math.min(w.iceberg+1,9);
       w.lastReview = new Date().toISOString().slice(0,10);
       w.reviewCount = (w.reviewCount||0)+1;
-    }
+    });
     saveData();
     sp.feedback = 'correct';
     render();
@@ -2303,18 +2331,18 @@ function renderSoloPractice(c){
   const est = estimateForKey(sp.key);
   const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
   if(sp.phase==='intro'){
-    const word = sp.words.find(w=>w.id===sp.introducingWordId);
+    const pic = sp.pics.find(p=>p.libId===sp.introducingLibId);
     c.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
         ${estHtml}
       </div>
       <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;">Introducing a new word — listening only for now.</div>
+      <div class="empty" style="margin-bottom:10px;">Introducing a new picture — listening only for now.</div>
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-        ${word ? `
-          ${word.photo?`<img class="thumb" src="${word.photo}" style="max-width:180px;">`:''}
-          <div style="margin-top:10px;font-family:'Lora',serif;font-size:1.2rem;">${escapeHtml(word.text)}</div>
+        ${pic ? `
+          ${pic.src?`<img class="thumb" src="${pic.src}" style="max-width:180px;">`:''}
+          <div style="margin-top:10px;font-family:'Lora',serif;font-size:1.2rem;">${escapeHtml(pic.code||'')}</div>
           <div class="tm" style="margin-top:4px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article' ? 'saying it with its article' : 'saying it in a sentence'}</div>
         ` : `<div class="empty">Finishing up…</div>`}
       </div>
@@ -2322,18 +2350,18 @@ function renderSoloPractice(c){
     `;
     return;
   }
-  const gridWords = sp.currentGrid.map(id=>sp.words.find(w=>w.id===id)).filter(Boolean);
+  const gridPics = sp.currentGrid.map(libId=>sp.pics.find(p=>p.libId===libId)).filter(Boolean);
   c.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
       ${estHtml}
     </div>
     <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · ${sp.introduced.length}/${sp.words.length} introduced</div>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · ${sp.introduced.length}/${sp.pics.length} introduced</div>
     ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
-      ${gridWords.map(w=>`<div onclick="handleSoloPick('${w.id}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+      ${gridPics.map(p=>`<div onclick="handleSoloPick('${p.libId}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${p.src}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce Next</button>` : ''}
@@ -2487,6 +2515,11 @@ async function saveAttachmentEdit(attKey, idx){
       a.file = null;
       a.libId = newLibId;
       a.source = 'library';
+    }
+    // Propagate to any word(s) already recorded against this exact picture, so a gender
+    // change made here is reflected everywhere that picture and its words are used.
+    if(a.libId){
+      state.words.filter(w=>w.sourceLibId===a.libId).forEach(w=>{ w.photo = finalSrc; w.gender = newGender; });
     }
   }
   await saveData();
@@ -2647,19 +2680,9 @@ async function addPictureToActivityAndWord(key){
   const libId = uid();
   state.photoLibrary.push({id: libId, label, category: null, dataUrl: finalSrc, gender: gender||undefined});
 
-  const parts = key.split('-');
-  const mpN = Number(parts[0]);
-  const stepIdx = Number(parts[1]);
-  state.words.push({
-    id: uid(), text: label, meetingPlan: mpN, stepIndex: stepIdx,
-    photo: finalSrc, gender: gender||null, entryType:'picture', sourceLibId: libId,
-    hasAudio:false, hasArticleAudio:false, hasSentenceAudio:false,
-    iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
-  });
-
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
-  state.activityMaterials[key].push({file:null, code:label, libId, source:'library'});
+  state.activityMaterials[key].push({file:null, code:label, libId, source:'library', gender: gender||null});
 
   await saveData();
   materialsPickerSelected[key] = null;
@@ -2688,13 +2711,23 @@ async function removeAttachedAt(key, idx){
   if(!state.activityMaterials || !state.activityMaterials[key]) return;
   const a = state.activityMaterials[key][idx];
   if(a && a.libId){
-    const wIdx = state.words.findIndex(w=>w.sourceLibId===a.libId);
-    if(wIdx>=0) state.words.splice(wIdx,1);
+    removeWordsAndQuestionsForLibId(a.libId);
   }
   state.activityMaterials[key].splice(idx,1);
   await saveData();
   if(activeTab==='assign') renderAssign(document.getElementById('content'));
   else renderMeetings(document.getElementById('content'));
+}
+function removeWordsAndQuestionsForLibId(libId){
+  // Cascades a picture's removal to every word recorded against it (all three phrase-forms,
+  // if present), and any recorded questions that pointed at that picture — so nothing orphaned
+  // is left behind in Word Log, Review, or a Solo Setup question list.
+  state.words = state.words.filter(w=>w.sourceLibId!==libId);
+  if(state.activityQuestions){
+    Object.keys(state.activityQuestions).forEach(sk=>{
+      state.activityQuestions[sk] = state.activityQuestions[sk].filter(q=>q.libId!==libId);
+    });
+  }
 }
 function resolveAttachedSrc(a){
   if(a.libId){
