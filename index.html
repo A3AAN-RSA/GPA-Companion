@@ -1903,7 +1903,21 @@ function wordsForGame(key){
   const mpN = Number(parts[0]);
   const gameKeys = gameKeysFor(key);
   const stepIdxs = gameKeys.map(k=>Number(k.split('-')[1]));
-  return state.words.filter(w=>w.meetingPlan===mpN && stepIdxs.includes(w.stepIndex));
+  const words = state.words.filter(w=>w.meetingPlan===mpN && stepIdxs.includes(w.stepIndex));
+  // Order to match the current attachment order where a link exists, so removing/reordering
+  // reference pictures is reflected in solo practice rather than following raw creation order.
+  const orderedLibIds = [];
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{ if(a.libId) orderedLibIds.push(a.libId); });
+  });
+  return words.slice().sort((a,b)=>{
+    const ai = a.sourceLibId ? orderedLibIds.indexOf(a.sourceLibId) : -1;
+    const bi = b.sourceLibId ? orderedLibIds.indexOf(b.sourceLibId) : -1;
+    if(ai===-1 && bi===-1) return 0;
+    if(ai===-1) return 1;
+    if(bi===-1) return -1;
+    return ai-bi;
+  });
 }
 function showEnlargedImage(src){
   const overlay = document.getElementById('imageOverlay');
@@ -2380,13 +2394,16 @@ function renderMaterialsBlock(key, formPrefix, contextText){
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
       ${attached.map(a=>{
         const src = resolveAttachedSrc(a);
+        const attId = a._key+'|'+a._idx;
         return `
         <div style="text-align:center;width:80px;">
           <img src="${src}" onclick="showEnlargedImageFor('${a._key}',${a._idx})" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);cursor:pointer;">
-          <div class="tm">${escapeHtml(a.code||'')}</div>
+          <div class="tm">${escapeHtml(a.code||'')}${a.gender?` (${a.gender==='M'?'Male':'Female'})`:''}</div>
           <a href="${src}" download="${escapeHtml(a.code||'photo')}.jpg" class="ghost" style="display:block;font-size:.65rem;padding:2px;margin-top:2px;text-decoration:none;">Download</a>
           ${formPrefix ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="useAttachedForRecordingAt('${formPrefix}','${a._key}',${a._idx})">Use for recording</button>` : ''}
+          ${canEdit ? `<button class="ghost" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="toggleAttachmentEdit('${a._key}',${a._idx})">Edit</button>` : ''}
           ${canEdit ? `<button class="ghost danger" style="font-size:.65rem;padding:2px 4px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${a._key}',${a._idx})">Remove</button>` : ''}
+          <div id="matEdit-${attId}" style="margin-top:4px;"></div>
         </div>`;
       }).join('')}
     </div>`;
@@ -2399,6 +2416,83 @@ function renderMaterialsBlock(key, formPrefix, contextText){
   }
   el.innerHTML = html;
   if(materialsPickerOpen[key]) renderMaterialsPicker(key);
+}
+let editingAttachmentId = null;
+let editingAttachmentGender = null;
+function toggleAttachmentEdit(attKey, idx){
+  const attId = attKey+'|'+idx;
+  if(editingAttachmentId===attId){
+    editingAttachmentId = null;
+    editingAttachmentGender = null;
+    const el = document.getElementById('matEdit-'+attId);
+    if(el) el.innerHTML = '';
+    return;
+  }
+  editingAttachmentId = attId;
+  const a = (state.activityMaterials[attKey]||[])[idx];
+  editingAttachmentGender = a ? (a.gender||null) : null;
+  renderAttachmentEditForm(attKey, idx);
+}
+function renderAttachmentEditForm(attKey, idx){
+  const attId = attKey+'|'+idx;
+  const el = document.getElementById('matEdit-'+attId);
+  if(!el) return;
+  const a = (state.activityMaterials[attKey]||[])[idx];
+  if(!a) return;
+  const g = editingAttachmentGender;
+  el.innerHTML = `
+    <div style="padding:6px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;text-align:left;">
+      <div class="field"><label style="font-size:.65rem;">Label</label><input id="attEditLabel-${attId}" value="${escapeHtml(a.code||'')}" style="font-size:.7rem;padding:3px;"></div>
+      <div class="field"><label style="font-size:.65rem;">Gender</label>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;">
+          <button type="button" class="ghost" style="font-size:.6rem;padding:2px 5px;${!g?'font-weight:600;':''}" onclick="setAttachmentEditGender('${attKey}',${idx},null)">None</button>
+          <button type="button" class="ghost" style="font-size:.6rem;padding:2px 5px;${g==='M'?'font-weight:600;':''}" onclick="setAttachmentEditGender('${attKey}',${idx},'M')">Male</button>
+          <button type="button" class="ghost" style="font-size:.6rem;padding:2px 5px;${g==='F'?'font-weight:600;':''}" onclick="setAttachmentEditGender('${attKey}',${idx},'F')">Female</button>
+        </div>
+      </div>
+      <button class="primary" style="font-size:.65rem;padding:3px 6px;width:100%;margin-top:3px;" onclick="saveAttachmentEdit('${attKey}',${idx})">Save</button>
+    </div>
+  `;
+}
+function setAttachmentEditGender(attKey, idx, gender){
+  editingAttachmentGender = gender;
+  renderAttachmentEditForm(attKey, idx);
+}
+async function saveAttachmentEdit(attKey, idx){
+  const a = (state.activityMaterials[attKey]||[])[idx];
+  if(!a) return;
+  const attId = attKey+'|'+idx;
+  const labelEl = document.getElementById('attEditLabel-'+attId);
+  const label = labelEl ? labelEl.value.trim() : (a.code||'');
+  const newGender = editingAttachmentGender || null;
+  const genderChanged = newGender !== (a.gender||null);
+  a.code = label;
+  a.gender = newGender;
+  if(genderChanged){
+    const rawSrc = resolveAttachedSrc(a);
+    const finalSrc = await resolveAndNormalizePicture(rawSrc, newGender);
+    if(a.libId && a.source==='library'){
+      const p = state.photoLibrary.find(p=>p.id===a.libId);
+      if(p){ p.dataUrl = finalSrc; p.label = label; p.gender = newGender||undefined; }
+    } else if(a.libId && a.source==='busy'){
+      const p = state.busyPictures.find(p=>p.id===a.libId);
+      if(p){ p.dataUrl = finalSrc; p.label = label; }
+    } else if(a.libId && a.source==='lexicarry'){
+      const p = state.lexicarryPictures.find(p=>p.id===a.libId);
+      if(p){ p.dataUrl = finalSrc; p.label = label; }
+    } else {
+      // graphics-pack-sourced (or no libId) — convert to an editable library copy
+      const newLibId = uid();
+      state.photoLibrary.push({id:newLibId, label, category:null, dataUrl:finalSrc, gender:newGender||undefined});
+      a.file = null;
+      a.libId = newLibId;
+      a.source = 'library';
+    }
+  }
+  await saveData();
+  editingAttachmentId = null;
+  editingAttachmentGender = null;
+  renderMeetings(document.getElementById('content'));
 }
 function toggleMaterialsPicker(key){
   materialsPickerOpen[key] = !materialsPickerOpen[key];
@@ -2558,7 +2652,7 @@ async function addPictureToActivityAndWord(key){
   const stepIdx = Number(parts[1]);
   state.words.push({
     id: uid(), text: label, meetingPlan: mpN, stepIndex: stepIdx,
-    photo: finalSrc, gender: gender||null, entryType:'picture',
+    photo: finalSrc, gender: gender||null, entryType:'picture', sourceLibId: libId,
     hasAudio:false, hasArticleAudio:false, hasSentenceAudio:false,
     iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
   });
@@ -2592,6 +2686,11 @@ async function toggleAttachedImage(key, file, code, libId){
 }
 async function removeAttachedAt(key, idx){
   if(!state.activityMaterials || !state.activityMaterials[key]) return;
+  const a = state.activityMaterials[key][idx];
+  if(a && a.libId){
+    const wIdx = state.words.findIndex(w=>w.sourceLibId===a.libId);
+    if(wIdx>=0) state.words.splice(wIdx,1);
+  }
   state.activityMaterials[key].splice(idx,1);
   await saveData();
   if(activeTab==='assign') renderAssign(document.getElementById('content'));
@@ -3097,6 +3196,7 @@ function renderLibraryTabBody(){
   else if(libraryTabSource==='lexicarry') renderLibraryTabLexicarry(el);
   else renderLibraryTabLessons(el);
 }
+let editingCustomGraphicId = null;
 function renderLibraryTabGraphics(el){
   const pages = graphicsPages();
   const lastPage = lastGraphicsPage();
@@ -3112,13 +3212,24 @@ function renderLibraryTabGraphics(el){
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:18px;">
       ${items.map(g=>`<div style="text-align:center;"><img src="graphics/${g.file}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);"><div class="tm">${escapeHtml(g.code)}</div></div>`).join('')}
-      ${onLastPage ? customItems.map(p=>`
+      ${onLastPage ? customItems.map(p=>{
+        if(editingCustomGraphicId===p.id){
+          return `<div style="grid-column:span 2;text-align:center;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+            <img src="${p.dataUrl}" style="max-width:80px;border-radius:3px;border:1px solid var(--paper-line);"><br>
+            <div class="field"><label>Label</label><input id="cgEditLabel-${p.id}" value="${escapeHtml(p.label||'')}"></div>
+            <button class="primary" style="font-size:.7rem;" onclick="saveEditCustomGraphic('${p.id}')">Save</button>
+            <button class="ghost" style="font-size:.7rem;" onclick="cancelEditCustomGraphic()">Cancel</button>
+          </div>`;
+        }
+        return `
         <div style="position:relative;text-align:center;">
           <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          <button onclick="startEditCustomGraphic('${p.id}')" title="Edit" style="position:absolute;top:2px;left:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;padding:0;">&#9998;</button>
           <button onclick="deleteCustomGraphic('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
         </div>
-      `).join('') : ''}
+      `;
+      }).join('') : ''}
     </div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
       <h4 style="margin-top:0;">Add your own image to the Graphics Pack</h4>
@@ -3127,6 +3238,23 @@ function renderLibraryTabGraphics(el){
       <button class="ghost" onclick="addCustomGraphic()">Add to Graphics Pack</button>
     </div>
   `;
+}
+function startEditCustomGraphic(id){
+  editingCustomGraphicId = id;
+  renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
+}
+function cancelEditCustomGraphic(){
+  editingCustomGraphicId = null;
+  renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
+}
+async function saveEditCustomGraphic(id){
+  const p = state.photoLibrary.find(p=>p.id===id);
+  if(!p) return;
+  const labelEl = document.getElementById('cgEditLabel-'+id);
+  p.label = labelEl ? labelEl.value.trim() : p.label;
+  await saveData();
+  editingCustomGraphicId = null;
+  renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
 }
 function addCustomGraphic(){
   const fileInput = document.getElementById('customGraphicUpload');
@@ -3272,6 +3400,7 @@ function addToPhotoLibraryTab(){
 }
 let libTabBusyFilter = null;
 let libTabBusyGender = null;
+let editingBusyPhotoId = null;
 function renderLibraryTabBusy(el){
   const cats = busyCategories();
   const items = libTabBusyFilter ? state.busyPictures.filter(p=>p.category===libTabBusyFilter) : state.busyPictures;
@@ -3293,15 +3422,46 @@ function renderLibraryTabBusy(el){
       </select>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
-      ${items.length ? items.map(p=>`
+      ${items.length ? items.map(p=>{
+        if(editingBusyPhotoId===p.id){
+          return `<div style="grid-column:span 2;text-align:center;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+            <img src="${p.dataUrl}" style="max-width:80px;border-radius:3px;border:1px solid var(--paper-line);"><br>
+            <div class="field"><label>Label</label><input id="busyEditLabel-${p.id}" value="${escapeHtml(p.label||'')}"></div>
+            <div class="field"><label>Category</label>${categorySelectHtml('busyEditCategory-'+p.id, cats, p.category||'')}</div>
+            <button class="primary" style="font-size:.7rem;" onclick="saveEditBusyPhotoTab('${p.id}')">Save</button>
+            <button class="ghost" style="font-size:.7rem;" onclick="cancelEditBusyPhotoTab()">Cancel</button>
+          </div>`;
+        }
+        return `
         <div style="position:relative;text-align:center;">
           <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(p.label||p.category||'(untitled)')}</div>
+          <button onclick="startEditBusyPhotoTab('${p.id}')" title="Edit" style="position:absolute;top:2px;left:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;padding:0;">&#9998;</button>
           <button onclick="deleteBusyPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
         </div>
-      `).join('') : `<div class="empty">Nothing in this category yet.</div>`}
+      `;
+      }).join('') : `<div class="empty">Nothing in this category yet.</div>`}
     </div>
   `;
+}
+function startEditBusyPhotoTab(id){
+  editingBusyPhotoId = id;
+  renderLibraryTabBusy(document.getElementById('libraryTabBody'));
+}
+function cancelEditBusyPhotoTab(){
+  editingBusyPhotoId = null;
+  renderLibraryTabBusy(document.getElementById('libraryTabBody'));
+}
+async function saveEditBusyPhotoTab(id){
+  const p = state.busyPictures.find(p=>p.id===id);
+  if(!p) return;
+  const labelEl = document.getElementById('busyEditLabel-'+id);
+  const cat = readCategorySelectValue('busyEditCategory-'+id);
+  p.label = labelEl ? labelEl.value.trim() : p.label;
+  p.category = cat || null;
+  await saveData();
+  editingBusyPhotoId = null;
+  renderLibraryTabBusy(document.getElementById('libraryTabBody'));
 }
 function libTabBusyFilterByIndex(val){
   const idx = Number(val);
@@ -3481,10 +3641,12 @@ function renderWords(c){
       ${w.spelling && w.spelling.length ? `<div class="meta" style="font-size:1.3rem;font-family:'Lora',serif;margin:4px 0;">${w.spelling.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('')}</div>` : ''}
       <div id="wAudio-${w.id}"></div>
       <div id="wPhotoEdit-${w.id}"></div>
+      <div id="wEdit-${w.id}"></div>
       <div id="wSpell-${w.id}"></div>
       <div class="actions">
         <button class="ghost" onclick="startWordRecording('${w.id}')">Record audio</button>
         <button class="ghost" onclick="togglePhotoEdit('${w.id}')">${w.photo?'Change photo':'Add photo'}</button>
+        <button class="ghost" onclick="toggleWordEdit('${w.id}')">Edit text / gender</button>
         <button class="ghost" onclick="toggleSpellEdit('${w.id}')">Spell using alphabet</button>
         <button class="ghost danger" onclick="deleteWord('${w.id}')">Delete</button>
       </div>
@@ -3548,6 +3710,54 @@ function savePhotoEdit(wordId){
     img.src = reader.result;
   };
   reader.readAsDataURL(fileInput.files[0]);
+}
+let wordEditGender = {};
+function toggleWordEdit(wordId){
+  const el = document.getElementById('wEdit-'+wordId);
+  if(!el) return;
+  if(el.innerHTML){ el.innerHTML=''; delete wordEditGender[wordId]; return; }
+  const w = state.words.find(w=>w.id===wordId);
+  if(!w) return;
+  wordEditGender[wordId] = w.gender || null;
+  renderWordEditForm(wordId);
+}
+function renderWordEditForm(wordId){
+  const el = document.getElementById('wEdit-'+wordId);
+  if(!el) return;
+  const w = state.words.find(w=>w.id===wordId);
+  if(!w) return;
+  const g = wordEditGender[wordId];
+  el.innerHTML = `
+    <div class="field" style="margin-top:6px;"><label>Text</label><input id="editText-${wordId}" value="${escapeHtml(w.text||'')}"></div>
+    <div class="field"><label>Gender (optional — applies the label to the current photo)</label>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="ghost" style="${!g?'font-weight:600;':''}" onclick="setWordEditGender('${wordId}',null)">None</button>
+        <button type="button" class="ghost" style="${g==='M'?'font-weight:600;':''}" onclick="setWordEditGender('${wordId}','M')">Male</button>
+        <button type="button" class="ghost" style="${g==='F'?'font-weight:600;':''}" onclick="setWordEditGender('${wordId}','F')">Female</button>
+      </div>
+    </div>
+    <button class="ghost" onclick="saveWordEdit('${wordId}')">Save</button>
+  `;
+}
+function setWordEditGender(wordId, gender){
+  wordEditGender[wordId] = gender;
+  renderWordEditForm(wordId);
+}
+async function saveWordEdit(wordId){
+  const w = state.words.find(w=>w.id===wordId);
+  if(!w) return;
+  const textEl = document.getElementById('editText-'+wordId);
+  if(textEl) w.text = textEl.value.trim();
+  const newGender = wordEditGender[wordId] || null;
+  if(newGender !== (w.gender||null) && w.photo){
+    w.photo = await resolveAndNormalizePicture(w.photo, newGender);
+  }
+  w.gender = newGender;
+  await saveData();
+  const el2 = document.getElementById('wEdit-'+wordId);
+  if(el2) el2.innerHTML = '';
+  delete wordEditGender[wordId];
+  renderWords(document.getElementById('content'));
 }
 let spellBuilder = {};
 function toggleSpellEdit(wordId){
