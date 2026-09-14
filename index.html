@@ -1994,6 +1994,7 @@ function endLiveActivity(){
 // ---------- Solo (no-nurturer) activity mode ----------
 let pendingActivityKey = null;
 let soloSetup = null;
+let soloQuestionSelectedWordId = null;
 let soloPractice = null;
 function promptActivityMode(key){
   pendingActivityKey = key;
@@ -2013,11 +2014,17 @@ function chooseInApp(key){
 }
 function openSoloSetup(key){
   soloSetup = key;
+  soloQuestionSelectedWordId = null;
   render();
 }
 function closeSoloSetup(){
   soloSetup = null;
+  soloQuestionSelectedWordId = null;
   render();
+}
+function selectSoloQuestionWord(wordId){
+  soloQuestionSelectedWordId = wordId;
+  renderSoloSetup(document.getElementById('content'));
 }
 function soloReadiness(key){
   const words = wordsForGame(key);
@@ -2062,20 +2069,26 @@ function renderSoloSetup(c){
       </div>
     `).join('')}
     <h4 style="margin-top:16px;">Questions</h4>
-    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and say which word each one is asking about. You can record more than one phrasing per word, or different question forms for different words.</div>
+    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and tap the picture each one is asking about. You can record more than one phrasing per picture, or different question forms for different pictures.</div>
     <div id="soloQuestionList">${words.length===0 ? '' : (questions.length ? questions.map(q=>{
       const w = words.find(w=>w.id===q.wordId);
       return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="flex:1;">Asks about: ${w?escapeHtml(w.text):'(unknown)'}</span>
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${w && w.photo ? `<img src="${w.photo}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;">` : (w?escapeHtml(w.text):'(unknown)')}</span>
         <div id="soloQAudio-${q.id}"></div>
         <button class="ghost danger" style="font-size:.7rem;" onclick="deleteSoloQuestion('${soloKeyStr}','${q.id}')">Remove</button>
       </div>`;
     }).join('') : `<div class="empty">No questions recorded yet.</div>`)}</div>
     ${words.length ? `
-    <div class="field"><label>This question is asking about</label>
-      <select id="soloQuestionWordSelect">${words.map(w=>`<option value="${w.id}">${escapeHtml(w.text)}</option>`).join('')}</select>
+    <div class="field"><label>This question is asking about — tap a picture</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-width:400px;">
+        ${words.map(w=>`<div onclick="selectSoloQuestionWord('${w.id}')" style="cursor:pointer;text-align:center;">
+          <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordId===w.id?'var(--teal)':'var(--paper-line)'};background:#fff;">
+            ${w.photo ? `<img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${w.text?escapeHtml(w.text):'(no picture)'}</div>`}
+          </div>
+        </div>`).join('')}
+      </div>
     </div>
-    <button class="record" onclick="recordSoloQuestion('${key}')">Record new question</button>
+    <button class="record" onclick="recordSoloQuestion('${key}')" ${soloQuestionSelectedWordId?'':'disabled'}>Record new question</button>
     <div id="soloQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
     ` : ''}
     <div style="margin-top:16px;">
@@ -2108,12 +2121,12 @@ function recordSoloSentence(wordId){
 }
 function recordSoloQuestion(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
-  const wordSelect = document.getElementById('soloQuestionWordSelect');
-  const wordId = wordSelect ? wordSelect.value : null;
-  if(!wordId) return;
+  if(!soloQuestionSelectedWordId) return;
   const id = uid();
   const soloKeyStr = soloKeyFor(key);
   startWordRecording(id, 'soloQuestionRecordStatus', ()=>{
+    const wordId = soloQuestionSelectedWordId;
+    if(!wordId) return;
     state.activityQuestions[soloKeyStr] = state.activityQuestions[soloKeyStr] || [];
     state.activityQuestions[soloKeyStr].push({id, wordId});
     saveData();
