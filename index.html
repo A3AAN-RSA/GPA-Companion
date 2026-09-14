@@ -2486,6 +2486,35 @@ function setAttachmentEditGender(attKey, idx, gender){
   editingAttachmentGender = gender;
   renderAttachmentEditForm(attKey, idx);
 }
+async function repairOldAttachments(){
+  const statusEl = document.getElementById('repairStatus');
+  state.activityMaterials = state.activityMaterials || {};
+  const keys = Object.keys(state.activityMaterials);
+  let total = 0, fixed = 0, failed = 0;
+  keys.forEach(k => { (state.activityMaterials[k]||[]).forEach(a => { if(!a.libId) total++; }); });
+  if(total===0){ if(statusEl) statusEl.textContent = 'Nothing to repair — every attachment already has a library link.'; return; }
+  let done = 0;
+  for(const k of keys){
+    const list = state.activityMaterials[k] || [];
+    for(const a of list){
+      if(a.libId) continue;
+      done++;
+      if(statusEl) statusEl.textContent = `Repairing ${done} of ${total}…`;
+      try{
+        const rawSrc = resolveAttachedSrc(a);
+        const finalSrc = await resolveAndNormalizePicture(rawSrc, a.gender||null);
+        const newLibId = uid();
+        state.photoLibrary.push({id:newLibId, label:a.code||'', category:null, dataUrl:finalSrc, gender:a.gender||undefined});
+        a.file = null;
+        a.libId = newLibId;
+        a.source = 'library';
+        fixed++;
+      }catch(e){ failed++; }
+    }
+  }
+  await saveData();
+  if(statusEl) statusEl.textContent = `Done — repaired ${fixed}, ${failed} failed, out of ${total} total. These should now appear in Solo Practice.`;
+}
 async function saveAttachmentEdit(attKey, idx){
   const a = (state.activityMaterials[attKey]||[])[idx];
   if(!a) return;
@@ -3379,6 +3408,7 @@ function renderLibraryTabMine(el){
           <div class="tm">${escapeHtml(p.label||'(untitled)')}${p.gender?` <span class="tag">${p.gender==='M'?'Male':'Female'}</span>`:''}</div>
           <button onclick="startEditLibraryPhotoTab('${p.id}')" title="Edit" style="position:absolute;top:2px;left:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;padding:0;">&#9998;</button>
           <button onclick="deleteLibraryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+          <button onclick="movePictureBetweenCollections('${p.id}','library','lexicarry')" class="ghost" style="font-size:.6rem;padding:1px 3px;width:100%;margin-top:2px;">Move to Lexicarry</button>
         </div>
       `;
       }).join('') : `<div class="empty">Nothing here yet.</div>`}
@@ -3409,6 +3439,23 @@ function libTabLibraryFilterByIndex(val){
   const cats = libraryCategories();
   libTabLibraryFilter = idx<0 ? null : cats[idx];
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+async function movePictureBetweenCollections(id, fromCollection, toCollection){
+  const fromArr = fromCollection==='library' ? state.photoLibrary : state.lexicarryPictures;
+  const toArr = toCollection==='library' ? state.photoLibrary : state.lexicarryPictures;
+  const idx = fromArr.findIndex(p=>p.id===id);
+  if(idx<0) return;
+  const [item] = fromArr.splice(idx,1);
+  toArr.push(item);
+  // Anything already attached to an activity (or otherwise resolved) via this id needs its
+  // "source" updated too, or it would stop resolving correctly after the move.
+  if(state.activityMaterials){
+    Object.keys(state.activityMaterials).forEach(k=>{
+      state.activityMaterials[k].forEach(a=>{ if(a.libId===id) a.source = toCollection; });
+    });
+  }
+  await saveData();
+  renderLibraryTabBody();
 }
 async function deleteLibraryPhotoTab(id){
   state.photoLibrary = state.photoLibrary.filter(p=>p.id!==id);
@@ -3582,6 +3629,7 @@ function renderLibraryTabLexicarry(el){
           <div class="tm">${escapeHtml(p.label||p.category||'(untitled)')}</div>
           <button onclick="startEditLexicarryPhotoTab('${p.id}')" title="Edit" style="position:absolute;top:2px;left:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;padding:0;">&#9998;</button>
           <button onclick="deleteLexicarryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+          <button onclick="movePictureBetweenCollections('${p.id}','lexicarry','library')" class="ghost" style="font-size:.6rem;padding:1px 3px;width:100%;margin-top:2px;">Move to My Photo Library</button>
         </div>
       `;
       }).join('') : `<div class="empty">Nothing in this category yet.</div>`}
@@ -5039,6 +5087,10 @@ function renderProfile(c){
     <div class="empty" style="margin-bottom:8px;">New recordings now save as MP3, which plays reliably on every device, including iPhone/iPad. Older recordings made before this change may still be in a format that doesn't play everywhere — convert them once to fix that.</div>
     <button class="ghost" onclick="convertAllRecordingsToMp3()">Convert all existing recordings to MP3</button>
     <div id="mp3ConvertStatus" class="meta" style="margin-top:6px;"></div>
+    <h3 style="margin-top:26px;">Repair older reference pictures</h3>
+    <div class="empty" style="margin-bottom:8px;">Pictures attached to activities before the current picker existed are invisible to Solo Practice, even though they still show up correctly everywhere else. This converts every old-format attachment into the current format, in one pass, across every activity — nothing is removed, and this is safe to run more than once.</div>
+    <button class="ghost" onclick="repairOldAttachments()">Repair old reference pictures</button>
+    <div id="repairStatus" class="meta" style="margin-top:6px;"></div>
     <h3 style="margin-top:26px;">Dropbox backup (includes audio)</h3>
     ${dropboxTokens ? `
       <div class="empty" style="margin-bottom:8px;">Connected to Dropbox. Backup includes everything — words, meeting progress, photos, and every recording.</div>
