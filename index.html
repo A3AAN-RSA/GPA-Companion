@@ -1551,6 +1551,7 @@ function renderDisplayInputFor(prefix){
   }
 }
 function graphicsPages(){ return [...new Set(GRAPHICS_MANIFEST.map(g=>g.page))].sort((a,b)=>a-b); }
+function lastGraphicsPage(){ const pages = graphicsPages(); return pages.length ? pages[pages.length-1] : 1; }
 function graphicsPageNav(prefix, delta){
   const pages = graphicsPages();
   const idx = pages.indexOf(graphicsBrowsePage[prefix]);
@@ -1844,6 +1845,11 @@ function renderReferencePicker(prefix){
 // ---------- Attach reference pictures to an activity's materials ----------
 let materialsPickerOpen = {};
 let materialsBrowsePage = {};
+let materialsPickerSource = {};
+let materialsPickerFilter = {};
+let materialsPickerSelected = {};
+let materialsPickGender = {};
+let materialsPickLabel = {};
 const STOPWORDS = new Set(['the','and','or','of','to','in','on','at','for','with','a','an','is','are','etc','more','other','words','word','some','words,','around','into','from','words.']);
 function keywordsFrom(str){
   return (str||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>=3 && !STOPWORDS.has(w));
@@ -2397,6 +2403,8 @@ function renderMaterialsBlock(key, formPrefix, contextText){
 function toggleMaterialsPicker(key){
   materialsPickerOpen[key] = !materialsPickerOpen[key];
   if(!materialsBrowsePage[key]) materialsBrowsePage[key] = GRAPHICS_MANIFEST[0].page;
+  if(!materialsPickerSource[key]) materialsPickerSource[key] = 'graphics';
+  materialsPickerSelected[key] = null;
   renderMeetings(document.getElementById('content'));
 }
 function materialsPageNav(key, delta){
@@ -2414,27 +2422,156 @@ function materialsJumpPage(key, val){
 function renderMaterialsPicker(key){
   const el = document.getElementById('mat-picker-'+key);
   if(!el) return;
-  const page = materialsBrowsePage[key];
-  const pages = graphicsPages();
-  const items = GRAPHICS_MANIFEST.filter(g=>g.page===page);
-  const attached = (state.activityMaterials && state.activityMaterials[key]) || [];
-  el.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-      <button class="ghost" onclick="materialsPageNav('${key}',-1)">&laquo; Prev</button>
-      <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${page}" onchange="materialsJumpPage('${key}', this.value)"> of ${pages[pages.length-1]}</span>
-      <button class="ghost" onclick="materialsPageNav('${key}',1)">Next &raquo;</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
-      ${items.map(g=>{
-        const isAttached = attached.some(a=>a.file===g.file);
-        return `<div onclick="toggleAttachedImage('${key}','${g.file}','${g.code}')" style="cursor:pointer;text-align:center;border:2px solid ${isAttached?'var(--teal)':'transparent'};border-radius:3px;padding:2px;">
+  const source = materialsPickerSource[key] || 'graphics';
+  const filter = materialsPickerFilter[key] || null;
+  const selected = materialsPickerSelected[key];
+  const gender = materialsPickGender[key] || null;
+
+  let galleryHtml = '';
+  if(source==='graphics'){
+    const page = materialsBrowsePage[key] || GRAPHICS_MANIFEST[0].page;
+    const pages = graphicsPages();
+    const items = GRAPHICS_MANIFEST.filter(g=>g.page===page);
+    galleryHtml = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="materialsPageNav('${key}',-1)">&laquo; Prev</button>
+        <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${page}" onchange="materialsJumpPage('${key}', this.value)"> of ${pages[pages.length-1]}</span>
+        <button class="ghost" onclick="materialsPageNav('${key}',1)">Next &raquo;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.map(g=>`<div onclick="selectMaterialsPickerItem('${key}','graphics','${g.file}','${escapeHtml(g.code).replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
           <img src="graphics/${g.file}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
-          <div class="tm">${escapeHtml(g.code)}${isAttached?' ✓':''}</div>
-        </div>`;
-      }).join('')}
+          <div class="tm">${escapeHtml(g.code)}</div>
+        </div>`).join('')}
+      </div>
+    `;
+  } else {
+    const list = source==='library' ? state.photoLibrary.filter(p=>!p.isCustomGraphic)
+      : source==='busy' ? state.busyPictures
+      : state.lexicarryPictures;
+    const cats = source==='library' ? libraryCategories() : source==='busy' ? busyCategories() : lexicarryCategories();
+    const items = filter ? list.filter(p=>p.category===filter) : list;
+    galleryHtml = `
+      <div style="margin-bottom:6px;">
+        <button class="ghost" style="${!filter?'font-weight:600;':''}" onclick="setMaterialsPickerFilter('${key}',null)">All</button>
+        ${cats.map(c=>`<button class="ghost" style="margin-left:4px;${filter===c?'font-weight:600;':''}" onclick="setMaterialsPickerFilter('${key}','${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.length ? items.map(p=>`<div onclick="selectMaterialsPickerItem('${key}','${source}','${p.id}','${escapeHtml(p.label||p.category||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+          <div class="tm">${escapeHtml(p.label||p.category||'')}</div>
+        </div>`).join('') : `<div class="empty">Nothing here yet.</div>`}
+      </div>
+    `;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="ghost" style="${source==='graphics'?'font-weight:600;':''}" onclick="setMaterialsPickerSource('${key}','graphics')">Graphics Pack</button>
+      <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="setMaterialsPickerSource('${key}','library')">My Photo Library</button>
+      <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="setMaterialsPickerSource('${key}','busy')">Busy Pictures</button>
+      <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="setMaterialsPickerSource('${key}','lexicarry')">Lexicarry</button>
     </div>
-    <div class="empty" style="margin-top:4px;">Tap to attach or remove. You can pick more than one.</div>
+    ${galleryHtml}
+    ${selected ? `
+      <div style="margin-top:8px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+        <img src="${resolveMaterialsPickSrc(selected.source, selected.fileOrId)}" style="max-width:70px;border-radius:3px;border:1px solid var(--paper-line);display:block;margin-bottom:6px;">
+        <div class="field"><label>Label</label><input id="matPickLabel-${key}" value="${escapeHtml(materialsPickLabel[key]!=null ? materialsPickLabel[key] : selected.label)}" onchange="setMaterialsPickLabel('${key}', this.value)"></div>
+        <div class="field"><label>Gender (optional — for languages where this word has one)</label>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="ghost" style="${!gender?'font-weight:600;':''}" onclick="setMaterialsPickGender('${key}',null)">None</button>
+            <button type="button" class="ghost" style="${gender==='M'?'font-weight:600;':''}" onclick="setMaterialsPickGender('${key}','M')">Male</button>
+            <button type="button" class="ghost" style="${gender==='F'?'font-weight:600;':''}" onclick="setMaterialsPickGender('${key}','F')">Female</button>
+          </div>
+        </div>
+        <button class="primary" onclick="addPictureToActivityAndWord('${key}')">Add to this activity</button>
+        <button class="ghost" onclick="cancelMaterialsPickerSelection('${key}')">Cancel</button>
+      </div>
+    ` : `<div class="empty" style="margin-top:4px;">Tap a picture to add it as a new word in this activity. You can add the same picture more than once — useful when one language has separate words for something English treats as one, like a gendered noun.</div>`}
   `;
+}
+function setMaterialsPickerSource(key, src){
+  materialsPickerSource[key] = src;
+  materialsPickerFilter[key] = null;
+  materialsPickerSelected[key] = null;
+  renderMaterialsPicker(key);
+}
+function setMaterialsPickerFilter(key, cat){
+  materialsPickerFilter[key] = cat;
+  renderMaterialsPicker(key);
+}
+function selectMaterialsPickerItem(key, source, fileOrId, label){
+  materialsPickerSelected[key] = {source, fileOrId, label: label||''};
+  materialsPickGender[key] = null;
+  materialsPickLabel[key] = label||'';
+  renderMaterialsPicker(key);
+}
+function setMaterialsPickLabel(key, val){
+  materialsPickLabel[key] = val;
+}
+function cancelMaterialsPickerSelection(key){
+  materialsPickerSelected[key] = null;
+  materialsPickLabel[key] = null;
+  renderMaterialsPicker(key);
+}
+function setMaterialsPickGender(key, gender){
+  materialsPickGender[key] = gender;
+  renderMaterialsPicker(key);
+}
+function resolveMaterialsPickSrc(source, fileOrId){
+  if(source==='graphics') return `graphics/${fileOrId}`;
+  if(source==='library') return (state.photoLibrary.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  if(source==='busy') return (state.busyPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  if(source==='lexicarry') return (state.lexicarryPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  return '';
+}
+function resolveAndNormalizePicture(src, gender){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onerror = ()=> resolve(src);
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img,0,0);
+      if(gender) drawGenderLabel(canvas, gender);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = src;
+  });
+}
+async function addPictureToActivityAndWord(key){
+  const selected = materialsPickerSelected[key];
+  if(!selected) return;
+  const labelEl = document.getElementById('matPickLabel-'+key);
+  const liveLabel = labelEl ? labelEl.value : null;
+  const label = (liveLabel!=null ? liveLabel : (materialsPickLabel[key]!=null ? materialsPickLabel[key] : selected.label)).trim();
+  const gender = materialsPickGender[key] || null;
+  const rawSrc = resolveMaterialsPickSrc(selected.source, selected.fileOrId);
+  if(!rawSrc) return;
+  const finalSrc = await resolveAndNormalizePicture(rawSrc, gender);
+
+  const libId = uid();
+  state.photoLibrary.push({id: libId, label, category: null, dataUrl: finalSrc, gender: gender||undefined});
+
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const stepIdx = Number(parts[1]);
+  state.words.push({
+    id: uid(), text: label, meetingPlan: mpN, stepIndex: stepIdx,
+    photo: finalSrc, gender: gender||null, entryType:'picture',
+    hasAudio:false, hasArticleAudio:false, hasSentenceAudio:false,
+    iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+  });
+
+  state.activityMaterials = state.activityMaterials || {};
+  state.activityMaterials[key] = state.activityMaterials[key] || [];
+  state.activityMaterials[key].push({file:null, code:label, libId, source:'library'});
+
+  await saveData();
+  materialsPickerSelected[key] = null;
+  materialsPickGender[key] = null;
+  materialsPickLabel[key] = null;
+  renderMeetings(document.getElementById('content'));
 }
 async function toggleAttachedImage(key, file, code, libId){
   state.activityMaterials = state.activityMaterials || {};
@@ -2823,7 +2960,7 @@ function renderAssign(c){
   }
   const pages = graphicsPages();
   const galleryItems = assignGallerySource==='graphics'
-    ? [...GRAPHICS_MANIFEST.filter(g=>g.page===assignGraphicsPage).map(g=>({...g, _kind:'manifest'})), ...state.photoLibrary.filter(p=>p.isCustomGraphic).map(p=>({...p, _kind:'customgraphic'}))]
+    ? [...GRAPHICS_MANIFEST.filter(g=>g.page===assignGraphicsPage).map(g=>({...g, _kind:'manifest'})), ...(assignGraphicsPage===lastGraphicsPage() ? state.photoLibrary.filter(p=>p.isCustomGraphic).map(p=>({...p, _kind:'customgraphic'})) : [])]
     : assignGallerySource==='busy'
       ? (assignBusyFilter ? state.busyPictures.filter(p=>p.category===assignBusyFilter) : state.busyPictures)
       : assignGallerySource==='lexicarry'
@@ -2962,33 +3099,32 @@ function renderLibraryTabBody(){
 }
 function renderLibraryTabGraphics(el){
   const pages = graphicsPages();
+  const lastPage = lastGraphicsPage();
   const items = GRAPHICS_MANIFEST.filter(g=>g.page===libTabGraphicsPage);
   const customItems = state.photoLibrary.filter(p=>p.isCustomGraphic);
+  const onLastPage = libTabGraphicsPage===lastPage;
   el.innerHTML = `
-    <div class="empty" style="margin-bottom:6px;">The official graphics pack is fixed content from the source PDF — but you can add your own images to it below too.</div>
+    <div class="empty" style="margin-bottom:6px;">The official graphics pack is fixed content from the source PDF — but you can add your own images to it below too. New images join the last page, so they browse naturally along with everything else instead of sitting off to the side.</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
       <button class="ghost" onclick="libTabGraphicsPageNav(-1)">&laquo; Prev</button>
-      <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${libTabGraphicsPage}" onchange="libTabGraphicsJumpPage(this.value)"> of ${pages[pages.length-1]}</span>
+      <span class="meta">Page <input type="number" style="width:50px;padding:3px;" value="${libTabGraphicsPage}" onchange="libTabGraphicsJumpPage(this.value)"> of ${lastPage}</span>
       <button class="ghost" onclick="libTabGraphicsPageNav(1)">Next &raquo;</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:18px;">
       ${items.map(g=>`<div style="text-align:center;"><img src="graphics/${g.file}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);"><div class="tm">${escapeHtml(g.code)}</div></div>`).join('')}
+      ${onLastPage ? customItems.map(p=>`
+        <div style="position:relative;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
+          <button onclick="deleteCustomGraphic('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+        </div>
+      `).join('') : ''}
     </div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
       <h4 style="margin-top:0;">Add your own image to the Graphics Pack</h4>
       <div class="field"><input type="file" id="customGraphicUpload" accept="image/*"></div>
       <div class="field"><label>Label</label><input id="customGraphicLabel" placeholder="e.g. local market stall"></div>
       <button class="ghost" onclick="addCustomGraphic()">Add to Graphics Pack</button>
-    </div>
-    <div class="empty" style="margin-bottom:6px;">Your added images (shown here regardless of page, and available in Assign Pictures too)</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;">
-      ${customItems.length ? customItems.map(p=>`
-        <div style="position:relative;text-align:center;">
-          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
-          <div class="tm">${escapeHtml(p.label||'(untitled)')}</div>
-          <button onclick="deleteCustomGraphic('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
-        </div>
-      `).join('') : `<div class="empty">None added yet.</div>`}
     </div>
   `;
 }
@@ -3010,6 +3146,7 @@ function addCustomGraphic(){
       const id = uid();
       state.photoLibrary.push({id, label, category:null, dataUrl, isCustomGraphic:true});
       await saveData();
+      libTabGraphicsPage = lastGraphicsPage();
       renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
     };
     img.src = reader.result;
