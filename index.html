@@ -1382,6 +1382,15 @@ function computeStepEstimates(detail){
   const playEach = playCount>0 ? Math.round(playBudget/playCount) : 0;
   return detail.steps.map(s => s.needsRecording ? WRAP_MIN : playEach);
 }
+function estimateForKey(key){
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const stepIdx = Number(parts[1]);
+  const detail = MEETING_DETAILS[mpN];
+  if(!detail) return null;
+  const estimates = computeStepEstimates(detail);
+  return estimates[stepIdx] != null ? estimates[stepIdx] : null;
+}
 function paceComment(actualMin, estMin){
   const diff = actualMin-estMin;
   if(Math.abs(diff)<=2) return `logged ${actualMin} min — right on pace`;
@@ -2141,6 +2150,7 @@ async function deleteSoloQuestion(soloKeyStr, id){
   renderSoloSetup(document.getElementById('content'));
 }
 function startSoloPractice(key){
+  preloadAnswerSounds();
   const {words, questions} = soloReadiness(key);
   soloSetup = null;
   soloPractice = {
@@ -2149,7 +2159,7 @@ function startSoloPractice(key){
     remaining: words.map(w=>w.id),
     phase: 'intro',
     introducingWordId: null,
-    introSlot: 'bare',
+    introSlot: SOLO_INTRO_SLOTS[0],
     introRepeatsLeft: 2,
     currentGrid: [],
     currentQuestion: null,
@@ -2162,7 +2172,7 @@ function startSoloPractice(key){
   render();
   introduceSoloWord();
 }
-const SOLO_INTRO_SLOTS = ['bare','article','sentence'];
+const SOLO_INTRO_SLOTS = ['sentence','article','bare'];
 function soloAudioKeyForSlot(wordId, slot){
   if(slot==='bare') return 'wordaudio:'+wordId;
   if(slot==='article') return 'wordaudio:'+wordId+':article';
@@ -2175,7 +2185,7 @@ function introduceSoloWord(){
   sp.introduced.push(wordId);
   sp.phase = 'intro';
   sp.introducingWordId = wordId;
-  sp.introSlot = 'bare';
+  sp.introSlot = SOLO_INTRO_SLOTS[0];
   sp.introRepeatsLeft = 2;
   runSoloIntroStep();
 }
@@ -2270,11 +2280,16 @@ function renderSoloPractice(c){
   const sp = soloPractice;
   if(!sp){ renderMeetings(c); return; }
   const timerId = 'stepTimerDisp-'+sp.key;
+  const est = estimateForKey(sp.key);
+  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
   if(sp.phase==='intro'){
     const word = sp.words.find(w=>w.id===sp.introducingWordId);
     c.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+        ${estHtml}
+      </div>
       <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;"><span id="${timerId}">00:00</span> elapsed</div>
       <div class="empty" style="margin-bottom:10px;">Introducing a new word — listening only for now.</div>
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         ${word ? `
@@ -2289,8 +2304,12 @@ function renderSoloPractice(c){
   }
   const gridWords = sp.currentGrid.map(id=>sp.words.find(w=>w.id===id)).filter(Boolean);
   c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+      ${estHtml}
+    </div>
     <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · <span id="${timerId}">00:00</span> elapsed · ${sp.introduced.length}/${sp.words.length} introduced</div>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · ${sp.introduced.length}/${sp.words.length} introduced</div>
     ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
@@ -2308,7 +2327,12 @@ function renderLiveActivity(c){
   if(!la) return;
   const gridItems = la.currentGrid.map(id=>la.pool.find(p=>p.id===id)).filter(Boolean);
   const modeLabel = la.mode==='new' ? 'New' : (la.mode==='quiz' ? 'Quiz' : '');
+  const est = estimateForKey(la.startKey);
   c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span id="stepTimerDisp-${la.startKey}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+      ${est!=null ? `<span class="tm">~${est} min estimated</span>` : ''}
+    </div>
     <div style="text-align:center;margin-bottom:14px;">
       ${modeLabel ? `<span class="tag ochre" style="font-size:1rem;padding:6px 18px;">${modeLabel}</span>` : `<div class="empty">Tap "Introduce Next" to begin.</div>`}
     </div>
