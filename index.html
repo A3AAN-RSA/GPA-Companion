@@ -2145,8 +2145,10 @@ function startSoloPractice(key){
   soloSetup = null;
   soloPractice = {
     key, words, questions,
+    introduced: [],
+    remaining: words.map(w=>w.id),
     phase: 'intro',
-    introWordIdx: 0,
+    introducingWordId: null,
     introSlot: 'bare',
     introRepeatsLeft: 2,
     currentGrid: [],
@@ -2158,7 +2160,7 @@ function startSoloPractice(key){
   const parts = key.split('-');
   startStepTimer(Number(parts[0]), Number(parts[1]));
   render();
-  runSoloIntroStep();
+  introduceSoloWord();
 }
 const SOLO_INTRO_SLOTS = ['bare','article','sentence'];
 function soloAudioKeyForSlot(wordId, slot){
@@ -2166,11 +2168,22 @@ function soloAudioKeyForSlot(wordId, slot){
   if(slot==='article') return 'wordaudio:'+wordId+':article';
   return 'wordaudio:'+wordId+':sentence';
 }
+function introduceSoloWord(){
+  const sp = soloPractice;
+  if(!sp || sp.remaining.length===0) return;
+  const wordId = sp.remaining.shift();
+  sp.introduced.push(wordId);
+  sp.phase = 'intro';
+  sp.introducingWordId = wordId;
+  sp.introSlot = 'bare';
+  sp.introRepeatsLeft = 2;
+  runSoloIntroStep();
+}
 async function runSoloIntroStep(){
   const sp = soloPractice;
   if(!sp || sp.phase!=='intro') return;
-  const word = sp.words[sp.introWordIdx];
-  if(!word){ startSoloQuizPhase(); return; }
+  const word = sp.words.find(w=>w.id===sp.introducingWordId);
+  if(!word) return;
   render();
   const audioKey = soloAudioKeyForSlot(word.id, sp.introSlot);
   await playStoredAudio(audioKey);
@@ -2181,11 +2194,16 @@ async function runSoloIntroStep(){
     if(slotIdx < SOLO_INTRO_SLOTS.length-1){
       sp.introSlot = SOLO_INTRO_SLOTS[slotIdx+1];
       sp.introRepeatsLeft = 2;
-    } else {
-      sp.introSlot = SOLO_INTRO_SLOTS[0];
-      sp.introRepeatsLeft = 2;
-      sp.introWordIdx++;
+      runSoloIntroStep();
+      return;
     }
+    // finished introducing this word — bootstrap needs at least 2 before quizzing starts
+    if(sp.introduced.length < 2 && sp.remaining.length > 0){
+      introduceSoloWord();
+      return;
+    }
+    startSoloQuizPhase();
+    return;
   }
   runSoloIntroStep();
 }
@@ -2197,13 +2215,20 @@ function startSoloQuizPhase(){
 }
 function pickSoloQuestion(){
   const sp = soloPractice;
-  if(!sp || sp.questions.length===0) return;
-  sp.currentQuestion = sp.questions[Math.floor(Math.random()*sp.questions.length)];
-  sp.currentGrid = shuffleArray(sp.words.map(w=>w.id));
+  if(!sp) return;
+  const eligible = sp.questions.filter(q=>sp.introduced.includes(q.wordId));
+  if(eligible.length===0) return;
+  sp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  sp.currentGrid = shuffleArray(sp.introduced.slice());
   sp.wrongAttempt = false;
   sp.feedback = null;
   render();
   playStoredAudio('wordaudio:'+sp.currentQuestion.id);
+}
+function soloIntroduceNext(){
+  const sp = soloPractice;
+  if(!sp || sp.remaining.length===0) return;
+  introduceSoloWord();
 }
 function handleSoloPick(wordId){
   const sp = soloPractice;
@@ -2244,11 +2269,13 @@ function endSoloPractice(){
 function renderSoloPractice(c){
   const sp = soloPractice;
   if(!sp){ renderMeetings(c); return; }
+  const timerId = 'stepTimerDisp-'+sp.key;
   if(sp.phase==='intro'){
-    const word = sp.words[sp.introWordIdx];
+    const word = sp.words.find(w=>w.id===sp.introducingWordId);
     c.innerHTML = `
       <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;">Introducing each word — listening only for now.</div>
+      <div class="empty" style="margin-bottom:10px;"><span id="${timerId}">00:00</span> elapsed</div>
+      <div class="empty" style="margin-bottom:10px;">Introducing a new word — listening only for now.</div>
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         ${word ? `
           ${word.photo?`<img class="thumb" src="${word.photo}" style="max-width:180px;">`:''}
@@ -2263,13 +2290,14 @@ function renderSoloPractice(c){
   const gridWords = sp.currentGrid.map(id=>sp.words.find(w=>w.id===id)).filter(Boolean);
   c.innerHTML = `
     <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · <span id="reviewSessionTimerDisp">00:00</span> elapsed</div>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · <span id="${timerId}">00:00</span> elapsed · ${sp.introduced.length}/${sp.words.length} introduced</div>
     ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
       ${gridWords.map(w=>`<div onclick="handleSoloPick('${w.id}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
     </div>
-    <div style="text-align:center;">
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce Next</button>` : ''}
       <button class="ghost danger" onclick="endSoloPractice()">End practice</button>
     </div>
   `;
