@@ -1047,7 +1047,27 @@ function render(){
   else if(activeTab==='library') renderLibrary(c);
   else if(activeTab==='profile') renderProfile(c);
 }
-function setTab(id){ activeTab=id; render(); }
+function activeSessionBlockReason(){
+  if(liveActivity) return "the activity you're doing";
+  if(soloPractice) return 'your solo practice session';
+  if(reviewActive) return 'your review session';
+  if(gridReviewActive) return 'your grid review session';
+  if(alphaReviewActive) return 'your alphabet review session';
+  if(alphaGridActive) return 'your alphabet grid review session';
+  if(readingTestActive) return 'your reading test';
+  if(activeTimer && activeTimer.running) return 'the timer';
+  if(revisionTimer && revisionTimer.running) return 'the revision timer';
+  return null;
+}
+function setTab(id){
+  if(id===activeTab) return;
+  const reason = activeSessionBlockReason();
+  if(reason){
+    alert(`Please stop or end ${reason} first — use its own Stop/End button — before switching tabs.`);
+    return;
+  }
+  activeTab=id; render();
+}
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 function entryTypeTag(w){
   const t = w.entryType || 'word';
@@ -2143,7 +2163,7 @@ function renderSoloSetup(c){
         </div>`).join('')}
       </div>
     </div>
-    <button class="record" onclick="recordSoloQuestion('${key}')" ${soloQuestionSelectedWordId?'':'disabled'}>Record new question</button>
+    <button class="record" onclick="recordSoloQuestion('${key}')" ${soloQuestionSelectedWordId?'':'disabled'}>Record new question/command</button>
     <div id="soloQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
     ` : ''}
     <div style="margin-top:16px;">
