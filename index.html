@@ -935,6 +935,9 @@ const BUSY_PICTURE_DEFAULT_CATEGORIES = ["Bajaj scenes","City","Emotions","Footb
 function busyCategories(){
   return [...new Set([...BUSY_PICTURE_DEFAULT_CATEGORIES, ...state.busyPictures.map(p=>p.category).filter(Boolean)])].sort();
 }
+function lexicarryCategories(){
+  return [...new Set(state.lexicarryPictures.map(p=>p.category).filter(Boolean))].sort();
+}
 function drawGenderLabel(canvas, gender){
   if(!gender) return;
   const ctx = canvas.getContext('2d');
@@ -995,6 +998,7 @@ async function loadData(){
   state.activityMaterials = state.activityMaterials || {};
   state.photoLibrary = state.photoLibrary || [];
   state.busyPictures = state.busyPictures || [];
+  state.lexicarryPictures = state.lexicarryPictures || [];
   state.alphabet = state.alphabet || [];
   state.answerSounds = state.answerSounds || {know:[], dontknow:[], next:[], finish:[], yes:[], no:[]};
   state.materialsDismissed = state.materialsDismissed || {};
@@ -1007,6 +1011,7 @@ async function loadData(){
     }
   });
   state.activityNurturerAudio = state.activityNurturerAudio || {};
+  state.activityQuestions = state.activityQuestions || {};
   loaded = true;
   render();
 }
@@ -1033,7 +1038,7 @@ function render(){
   if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
   if(activeTab==='dashboard') renderDashboard(c);
   else if(activeTab==='orientation') renderOrientation(c);
-  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else renderMeetings(c); }
+  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else if(soloPractice) renderSoloPractice(c); else if(soloSetup) renderSoloSetup(c); else renderMeetings(c); }
   else if(activeTab==='words') renderWords(c);
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
@@ -1228,8 +1233,16 @@ function renderMeetings(c){
             </div>
             ${(!s.needsRecording && (i===0 || detail.steps[i-1].game!==s.game)) ? (()=>{
               const poolSize = gameKeysFor(key).reduce((sum,k)=>sum+(((state.activityMaterials&&state.activityMaterials[k])||[]).length),0);
+              if(pendingActivityKey===key){
+                return `<div style="margin:10px 0 0 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <span class="tm">How are you doing this activity?</span>
+                  <button class="primary" onclick="chooseWithNurturer('${key}')">With Nurturer</button>
+                  <button class="ghost" onclick="chooseInApp('${key}')">In App (no nurturer)</button>
+                  <button class="ghost" onclick="cancelActivityModeChoice()">Cancel</button>
+                </div>`;
+              }
               return poolSize>0
-                ? `<div style="margin:10px 0 0 24px;"><button class="primary" onclick="startLiveActivity('${key}')">Start Activity (${poolSize} picture${poolSize===1?'':'s'})</button></div>`
+                ? `<div style="margin:10px 0 0 24px;"><button class="primary" onclick="promptActivityMode('${key}')">Start Activity (${poolSize} picture${poolSize===1?'':'s'})</button></div>`
                 : `<div class="empty" style="margin:10px 0 0 24px;">Assign reference pictures to this game in Assign Pictures to enable Start Activity.</div>`;
             })() : ''}
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0 24px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
@@ -1580,7 +1593,7 @@ function renderGraphicsPicker(prefix){
 let librarySelection = {};
 let libraryFilter = {};
 function libraryCategories(){
-  return [...new Set(['Lexicarry', ...state.photoLibrary.map(p=>p.category).filter(Boolean)])].sort();
+  return [...new Set(state.photoLibrary.map(p=>p.category).filter(Boolean))].sort();
 }
 function libraryFilterSet(prefix, cat){
   libraryFilter[prefix] = cat;
@@ -1862,6 +1875,21 @@ function gameKeysFor(key){
   detail.steps.forEach((s,i)=>{ if(s.game===step.game) keys.push(mpN+'-'+i); });
   return keys.length ? keys : [key];
 }
+function soloKeyFor(key){
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const detail = MEETING_DETAILS[mpN];
+  const stepIdx = Number(parts[1]);
+  const step = detail && detail.steps[stepIdx];
+  return mpN+'::'+(step ? step.game : parts[1]);
+}
+function wordsForGame(key){
+  const parts = key.split('-');
+  const mpN = Number(parts[0]);
+  const gameKeys = gameKeysFor(key);
+  const stepIdxs = gameKeys.map(k=>Number(k.split('-')[1]));
+  return state.words.filter(w=>w.meetingPlan===mpN && stepIdxs.includes(w.stepIndex));
+}
 function showEnlargedImage(src){
   const overlay = document.getElementById('imageOverlay');
   const img = document.getElementById('imageOverlayImg');
@@ -1962,6 +1990,278 @@ function endLiveActivity(){
   liveActivity = null;
   render();
 }
+
+// ---------- Solo (no-nurturer) activity mode ----------
+let pendingActivityKey = null;
+let soloSetup = null;
+let soloPractice = null;
+function promptActivityMode(key){
+  pendingActivityKey = key;
+  renderMeetings(document.getElementById('content'));
+}
+function cancelActivityModeChoice(){
+  pendingActivityKey = null;
+  renderMeetings(document.getElementById('content'));
+}
+function chooseWithNurturer(key){
+  pendingActivityKey = null;
+  startLiveActivity(key);
+}
+function chooseInApp(key){
+  pendingActivityKey = null;
+  openSoloSetup(key);
+}
+function openSoloSetup(key){
+  soloSetup = key;
+  render();
+}
+function closeSoloSetup(){
+  soloSetup = null;
+  render();
+}
+function soloReadiness(key){
+  const words = wordsForGame(key);
+  const soloKeyStr = soloKeyFor(key);
+  const questions = state.activityQuestions[soloKeyStr] || [];
+  const wordsReady = words.length>0 && words.every(w=>w.hasAudio && w.hasArticleAudio && w.hasSentenceAudio);
+  const questionsReady = words.length>0 && words.every(w=>questions.some(q=>q.wordId===w.id));
+  return {words, questions, wordsReady, questionsReady, ready: wordsReady && questionsReady};
+}
+function playStoredAudio(key){
+  return new Promise(async (resolve)=>{
+    try{
+      const res = await window.storage.get(key, false);
+      if(res && res.value){
+        const audio = new Audio(JSON.parse(res.value).dataUrl);
+        audio.onended = ()=>resolve();
+        audio.onerror = ()=>resolve();
+        audio.play().catch(()=>resolve());
+      } else resolve();
+    }catch(e){ resolve(); }
+  });
+}
+function renderSoloSetup(c){
+  const key = soloSetup;
+  if(!key){ renderMeetings(c); return; }
+  const {words, questions, wordsReady, questionsReady, ready} = soloReadiness(key);
+  const soloKeyStr = soloKeyFor(key);
+  c.innerHTML = `
+    <h3>Set Up Solo Practice</h3>
+    <div class="empty" style="margin-bottom:10px;">Since there's no live nurturer this time, the app needs a few things recorded first for each word: the bare word, the word with its article, and an introduction sentence ("This is a man"). It also needs at least one spoken question per word. Once everything below is recorded, you can start practicing — and recording these now counts as logging them, so there's no separate wrap-up needed afterward.</div>
+    <h4>Words</h4>
+    ${words.length===0 ? `<div class="empty">No words logged for this activity yet — log them in Word Log first, tagged to this meeting plan and step.</div>` : words.map(w=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-line);flex-wrap:wrap;">
+        ${w.photo?`<img src="${w.photo}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;">`:''}
+        <span style="flex:1;min-width:60px;">${escapeHtml(w.text)}</span>
+        <span class="tm">Word:</span>
+        <div id="soloBareStatus-${w.id}">${w.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloBare('${w.id}')">Record</button>`}</div>
+        <span class="tm">With article:</span>
+        <div id="soloArticleStatus-${w.id}">${w.hasArticleAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloArticle('${w.id}')">Record</button>`}</div>
+        <span class="tm">"This is a ${escapeHtml(w.text)}":</span>
+        <div id="soloSentenceStatus-${w.id}">${w.hasSentenceAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordSoloSentence('${w.id}')">Record</button>`}</div>
+      </div>
+    `).join('')}
+    <h4 style="margin-top:16px;">Questions</h4>
+    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and say which word each one is asking about. You can record more than one phrasing per word, or different question forms for different words.</div>
+    <div id="soloQuestionList">${words.length===0 ? '' : (questions.length ? questions.map(q=>{
+      const w = words.find(w=>w.id===q.wordId);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <span style="flex:1;">Asks about: ${w?escapeHtml(w.text):'(unknown)'}</span>
+        <div id="soloQAudio-${q.id}"></div>
+        <button class="ghost danger" style="font-size:.7rem;" onclick="deleteSoloQuestion('${soloKeyStr}','${q.id}')">Remove</button>
+      </div>`;
+    }).join('') : `<div class="empty">No questions recorded yet.</div>`)}</div>
+    ${words.length ? `
+    <div class="field"><label>This question is asking about</label>
+      <select id="soloQuestionWordSelect">${words.map(w=>`<option value="${w.id}">${escapeHtml(w.text)}</option>`).join('')}</select>
+    </div>
+    <button class="record" onclick="recordSoloQuestion('${key}')">Record new question</button>
+    <div id="soloQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
+    ` : ''}
+    <div style="margin-top:16px;">
+      ${ready ? `<button class="primary" onclick="startSoloPractice('${key}')">Begin Solo Practice</button>` : `<div class="empty">${!wordsReady?"Record every word's bare, article-form, and sentence audio above. ":''}${!questionsReady?'Every word needs at least one recorded question.':''}</div>`}
+      <button class="ghost" onclick="closeSoloSetup()">Back</button>
+    </div>
+  `;
+  questions.forEach(q=>loadPlayerInto('soloQAudio-'+q.id, 'word', q.id));
+}
+function recordSoloBare(wordId){
+  startWordRecording(wordId, 'soloBareStatus-'+wordId, ()=>{
+    renderSoloSetup(document.getElementById('content'));
+  });
+}
+function recordSoloArticle(wordId){
+  startWordRecording(wordId, 'soloArticleStatus-'+wordId, ()=>{
+    const w = state.words.find(w=>w.id===wordId);
+    if(w) w.hasArticleAudio = true;
+    saveData();
+    renderSoloSetup(document.getElementById('content'));
+  }, 'wordaudio:'+wordId+':article');
+}
+function recordSoloSentence(wordId){
+  startWordRecording(wordId, 'soloSentenceStatus-'+wordId, ()=>{
+    const w = state.words.find(w=>w.id===wordId);
+    if(w) w.hasSentenceAudio = true;
+    saveData();
+    renderSoloSetup(document.getElementById('content'));
+  }, 'wordaudio:'+wordId+':sentence');
+}
+function recordSoloQuestion(key){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const wordSelect = document.getElementById('soloQuestionWordSelect');
+  const wordId = wordSelect ? wordSelect.value : null;
+  if(!wordId) return;
+  const id = uid();
+  const soloKeyStr = soloKeyFor(key);
+  startWordRecording(id, 'soloQuestionRecordStatus', ()=>{
+    state.activityQuestions[soloKeyStr] = state.activityQuestions[soloKeyStr] || [];
+    state.activityQuestions[soloKeyStr].push({id, wordId});
+    saveData();
+    const statusEl = document.getElementById('soloQuestionRecordStatus');
+    if(statusEl) statusEl.innerHTML = '';
+    renderSoloSetup(document.getElementById('content'));
+  }, 'wordaudio:'+id);
+}
+async function deleteSoloQuestion(soloKeyStr, id){
+  state.activityQuestions[soloKeyStr] = (state.activityQuestions[soloKeyStr]||[]).filter(q=>q.id!==id);
+  await saveData();
+  renderSoloSetup(document.getElementById('content'));
+}
+function startSoloPractice(key){
+  const {words, questions} = soloReadiness(key);
+  soloSetup = null;
+  soloPractice = {
+    key, words, questions,
+    phase: 'intro',
+    introWordIdx: 0,
+    introSlot: 'bare',
+    introRepeatsLeft: 2,
+    currentGrid: [],
+    currentQuestion: null,
+    stats: {seen:0, known:0},
+    wrongAttempt: false,
+    feedback: null
+  };
+  const parts = key.split('-');
+  startStepTimer(Number(parts[0]), Number(parts[1]));
+  render();
+  runSoloIntroStep();
+}
+const SOLO_INTRO_SLOTS = ['bare','article','sentence'];
+function soloAudioKeyForSlot(wordId, slot){
+  if(slot==='bare') return 'wordaudio:'+wordId;
+  if(slot==='article') return 'wordaudio:'+wordId+':article';
+  return 'wordaudio:'+wordId+':sentence';
+}
+async function runSoloIntroStep(){
+  const sp = soloPractice;
+  if(!sp || sp.phase!=='intro') return;
+  const word = sp.words[sp.introWordIdx];
+  if(!word){ startSoloQuizPhase(); return; }
+  render();
+  const audioKey = soloAudioKeyForSlot(word.id, sp.introSlot);
+  await playStoredAudio(audioKey);
+  if(!soloPractice || soloPractice.phase!=='intro') return;
+  sp.introRepeatsLeft--;
+  if(sp.introRepeatsLeft<=0){
+    const slotIdx = SOLO_INTRO_SLOTS.indexOf(sp.introSlot);
+    if(slotIdx < SOLO_INTRO_SLOTS.length-1){
+      sp.introSlot = SOLO_INTRO_SLOTS[slotIdx+1];
+      sp.introRepeatsLeft = 2;
+    } else {
+      sp.introSlot = SOLO_INTRO_SLOTS[0];
+      sp.introRepeatsLeft = 2;
+      sp.introWordIdx++;
+    }
+  }
+  runSoloIntroStep();
+}
+function startSoloQuizPhase(){
+  const sp = soloPractice;
+  if(!sp) return;
+  sp.phase = 'quiz';
+  pickSoloQuestion();
+}
+function pickSoloQuestion(){
+  const sp = soloPractice;
+  if(!sp || sp.questions.length===0) return;
+  sp.currentQuestion = sp.questions[Math.floor(Math.random()*sp.questions.length)];
+  sp.currentGrid = shuffleArray(sp.words.map(w=>w.id));
+  sp.wrongAttempt = false;
+  sp.feedback = null;
+  render();
+  playStoredAudio('wordaudio:'+sp.currentQuestion.id);
+}
+function handleSoloPick(wordId){
+  const sp = soloPractice;
+  if(!sp || sp.phase!=='quiz' || !sp.currentQuestion) return;
+  const correct = sp.currentQuestion.wordId;
+  if(wordId===correct){
+    sp.stats.seen++;
+    const knewIt = !sp.wrongAttempt;
+    if(knewIt) sp.stats.known++;
+    const w = state.words.find(x=>x.id===wordId);
+    if(w){
+      w.iceberg = knewIt ? Math.max(w.iceberg-1,1) : Math.min(w.iceberg+1,9);
+      w.lastReview = new Date().toISOString().slice(0,10);
+      w.reviewCount = (w.reviewCount||0)+1;
+    }
+    saveData();
+    sp.feedback = 'correct';
+    render();
+    playRandomAnswerSound('yes').then(()=>{
+      if(soloPractice) pickSoloQuestion();
+    });
+  } else {
+    sp.wrongAttempt = true;
+    render();
+    playRandomAnswerSound('no').then(()=>{
+      if(soloPractice && soloPractice.currentQuestion) playStoredAudio('wordaudio:'+soloPractice.currentQuestion.id);
+    });
+  }
+}
+function endSoloPractice(){
+  if(soloPractice && soloPractice.key){
+    const parts = soloPractice.key.split('-');
+    stopStepTimer(Number(parts[0]), Number(parts[1]));
+  }
+  soloPractice = null;
+  render();
+}
+function renderSoloPractice(c){
+  const sp = soloPractice;
+  if(!sp){ renderMeetings(c); return; }
+  if(sp.phase==='intro'){
+    const word = sp.words[sp.introWordIdx];
+    c.innerHTML = `
+      <h3>Solo Practice</h3>
+      <div class="empty" style="margin-bottom:10px;">Introducing each word — listening only for now.</div>
+      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
+        ${word ? `
+          ${word.photo?`<img class="thumb" src="${word.photo}" style="max-width:180px;">`:''}
+          <div style="margin-top:10px;font-family:'Lora',serif;font-size:1.2rem;">${escapeHtml(word.text)}</div>
+          <div class="tm" style="margin-top:4px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article' ? 'saying it with its article' : 'saying it in a sentence'}</div>
+        ` : `<div class="empty">Finishing up…</div>`}
+      </div>
+      <button class="ghost danger" style="margin-top:14px;" onclick="endSoloPractice()">End practice</button>
+    `;
+    return;
+  }
+  const gridWords = sp.currentGrid.map(id=>sp.words.find(w=>w.id===id)).filter(Boolean);
+  c.innerHTML = `
+    <h3>Solo Practice — Quiz</h3>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · <span id="reviewSessionTimerDisp">00:00</span> elapsed</div>
+    ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
+    ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
+      ${gridWords.map(w=>`<div onclick="handleSoloPick('${w.id}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+    </div>
+    <div style="text-align:center;">
+      <button class="ghost danger" onclick="endSoloPractice()">End practice</button>
+    </div>
+  `;
+}
+
 function renderLiveActivity(c){
   const la = liveActivity;
   if(!la) return;
@@ -2098,6 +2398,7 @@ async function removeAttachedAt(key, idx){
 function resolveAttachedSrc(a){
   if(a.libId){
     if(a.source==='busy') return (state.busyPictures.find(p=>p.id===a.libId)||{}).dataUrl || '';
+    if(a.source==='lexicarry') return (state.lexicarryPictures.find(p=>p.id===a.libId)||{}).dataUrl || '';
     return (state.photoLibrary.find(p=>p.id===a.libId)||{}).dataUrl || '';
   }
   return a.file ? `graphics/${a.file}` : '';
@@ -2334,6 +2635,7 @@ let assignGallerySource = 'graphics';
 let assignGraphicsPage = 1;
 let assignLibraryFilter = null;
 let assignBusyFilter = null;
+let assignLexicarryFilter = null;
 let assignSelectedKey = null;
 let dragItem = null;
 function allActivityTargets(){
@@ -2365,6 +2667,9 @@ function handleDropOnActivity(ev, key){
   } else if(dragItem.source==='busy'){
     const p = state.busyPictures.find(x=>x.id===dragItem.fileOrId);
     addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'busy');
+  } else if(dragItem.source==='lexicarry'){
+    const p = state.lexicarryPictures.find(x=>x.id===dragItem.fileOrId);
+    addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'lexicarry');
   } else {
     const p = state.photoLibrary.find(x=>x.id===dragItem.fileOrId);
     addAssignment(key, null, p ? (p.label||p.category||'') : '', dragItem.fileOrId, 'library');
@@ -2411,6 +2716,14 @@ function setAssignBusyFilterByIndex(idx){
   const cats = busyCategories();
   setAssignBusyFilter(idx<0 ? null : cats[idx]);
 }
+function setAssignLexicarryFilter(cat){
+  assignLexicarryFilter = cat;
+  renderAssign(document.getElementById('content'));
+}
+function setAssignLexicarryFilterByIndex(idx){
+  const cats = lexicarryCategories();
+  setAssignLexicarryFilter(idx<0 ? null : cats[idx]);
+}
 function setAssignActivity(key){
   assignSelectedKey = key;
   renderAssignZone();
@@ -2448,9 +2761,12 @@ function renderAssign(c){
     ? [...GRAPHICS_MANIFEST.filter(g=>g.page===assignGraphicsPage).map(g=>({...g, _kind:'manifest'})), ...state.photoLibrary.filter(p=>p.isCustomGraphic).map(p=>({...p, _kind:'customgraphic'}))]
     : assignGallerySource==='busy'
       ? (assignBusyFilter ? state.busyPictures.filter(p=>p.category===assignBusyFilter) : state.busyPictures)
-      : (assignLibraryFilter ? state.photoLibrary.filter(p=>p.category===assignLibraryFilter && !p.isCustomGraphic) : state.photoLibrary.filter(p=>!p.isCustomGraphic));
+      : assignGallerySource==='lexicarry'
+        ? (assignLexicarryFilter ? state.lexicarryPictures.filter(p=>p.category===assignLexicarryFilter) : state.lexicarryPictures)
+        : (assignLibraryFilter ? state.photoLibrary.filter(p=>p.category===assignLibraryFilter && !p.isCustomGraphic) : state.photoLibrary.filter(p=>!p.isCustomGraphic));
   const libCats = libraryCategories();
   const busyCats = busyCategories();
+  const lexicarryCats = lexicarryCategories();
   const targets = allActivityTargets();
   if(!assignSelectedKey || !targets.some(t=>t.key===assignSelectedKey)) assignSelectedKey = targets[0] ? targets[0].key : null;
 
@@ -2461,6 +2777,7 @@ function renderAssign(c){
       <button class="ghost" style="${assignGallerySource==='graphics'?'font-weight:600;':''}" onclick="setAssignSource('graphics')">Graphics Pack</button>
       <button class="ghost" style="${assignGallerySource==='library'?'font-weight:600;':''}" onclick="setAssignSource('library')">My Photo Library</button>
       <button class="ghost" style="${assignGallerySource==='busy'?'font-weight:600;':''}" onclick="setAssignSource('busy')">Busy Pictures</button>
+      <button class="ghost" style="${assignGallerySource==='lexicarry'?'font-weight:600;':''}" onclick="setAssignSource('lexicarry')">Lexicarry</button>
     </div>
   `;
   if(assignGallerySource==='graphics'){
@@ -2474,6 +2791,11 @@ function renderAssign(c){
     html += `<div style="margin-bottom:6px;">
       <button class="ghost" style="${!assignBusyFilter?'font-weight:600;':''}" onclick="setAssignBusyFilterByIndex(-1)">All</button>
       ${busyCats.map((cat,ci)=>`<button class="ghost" style="margin-left:4px;${assignBusyFilter===cat?'font-weight:600;':''}" onclick="setAssignBusyFilterByIndex(${ci})">${escapeHtml(cat)}</button>`).join('')}
+    </div>`;
+  } else if(assignGallerySource==='lexicarry'){
+    html += `<div style="margin-bottom:6px;">
+      <button class="ghost" style="${!assignLexicarryFilter?'font-weight:600;':''}" onclick="setAssignLexicarryFilterByIndex(-1)">All</button>
+      ${lexicarryCats.map((cat,ci)=>`<button class="ghost" style="margin-left:4px;${assignLexicarryFilter===cat?'font-weight:600;':''}" onclick="setAssignLexicarryFilterByIndex(${ci})">${escapeHtml(cat)}</button>`).join('')}
     </div>`;
   } else {
     html += `<div style="margin-bottom:6px;">
@@ -2498,6 +2820,11 @@ function renderAssign(c){
           <img src="${item.dataUrl}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
           <div class="tm">${escapeHtml(item.label||item.category||'')}</div>
         </div>`;
+      } else if(assignGallerySource==='lexicarry'){
+        return `<div draggable="true" ondragstart="handleDragStart(event,'lexicarry','${item.id}')" style="cursor:grab;text-align:center;">
+          <img src="${item.dataUrl}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(item.label||item.category||'')}</div>
+        </div>`;
       } else {
         return `<div draggable="true" ondragstart="handleDragStart(event,'library','${item.id}')" style="cursor:grab;text-align:center;">
           <img src="${item.dataUrl}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
@@ -2516,6 +2843,25 @@ function renderAssign(c){
   renderAssignZone();
 }
 
+function categorySelectHtml(idPrefix, categories, currentValue){
+  return `
+    <select id="${idPrefix}Select" onchange="document.getElementById('${idPrefix}New').style.display = this.value==='__new__' ? 'block':'none';">
+      <option value="">(none)</option>
+      ${categories.map(c=>`<option value="${escapeHtml(c)}" ${currentValue===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+      <option value="__new__">+ Add new category...</option>
+    </select>
+    <input id="${idPrefix}New" placeholder="New category name" style="display:none;margin-top:4px;">
+  `;
+}
+function readCategorySelectValue(idPrefix){
+  const sel = document.getElementById(idPrefix+'Select');
+  if(!sel) return '';
+  if(sel.value==='__new__'){
+    const newEl = document.getElementById(idPrefix+'New');
+    return newEl ? newEl.value.trim() : '';
+  }
+  return sel.value;
+}
 // ---------- Picture Library tab ----------
 let libraryTabSource = 'graphics';
 let libTabGraphicsPage = 1;
@@ -2528,6 +2874,7 @@ function renderLibrary(c){
         <option value="graphics" ${libraryTabSource==='graphics'?'selected':''}>Graphics Pack</option>
         <option value="mine" ${libraryTabSource==='mine'?'selected':''}>My Photo Library</option>
         <option value="busy" ${libraryTabSource==='busy'?'selected':''}>Busy Pictures</option>
+        <option value="lexicarry" ${libraryTabSource==='lexicarry'?'selected':''}>Lexicarry</option>
         <option value="lessons" ${libraryTabSource==='lessons'?'selected':''}>Added from Lessons</option>
       </select>
     </div>
@@ -2545,6 +2892,7 @@ function renderLibraryTabBody(){
   if(libraryTabSource==='graphics') renderLibraryTabGraphics(el);
   else if(libraryTabSource==='mine') renderLibraryTabMine(el);
   else if(libraryTabSource==='busy') renderLibraryTabBusy(el);
+  else if(libraryTabSource==='lexicarry') renderLibraryTabLexicarry(el);
   else renderLibraryTabLessons(el);
 }
 function renderLibraryTabGraphics(el){
@@ -2631,9 +2979,7 @@ function renderLibraryTabMine(el){
       <div class="field"><input type="file" id="libTabUpload" accept="image/*"></div>
       <div class="row">
         <div class="field"><label>Label</label><input id="libTabLabel" placeholder="e.g. our kitchen table"></div>
-        <div class="field"><label>Category</label><input id="libTabCategory" list="libTabCatList" placeholder="e.g. Home, Market">
-          <datalist id="libTabCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
-        </div>
+        <div class="field"><label>Category</label>${categorySelectHtml('libTabCategory', cats, '')}</div>
       </div>
       <button class="ghost" onclick="addToPhotoLibraryTab()">Add to library</button>
     </div>
@@ -2649,7 +2995,7 @@ function renderLibraryTabMine(el){
           return `<div style="grid-column:span 2;text-align:center;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
             <img src="${p.dataUrl}" style="max-width:80px;border-radius:3px;border:1px solid var(--paper-line);"><br>
             <div class="field"><label>Label</label><input id="libEditLabel-${p.id}" value="${escapeHtml(p.label||'')}"></div>
-            <div class="field"><label>Category</label><input id="libEditCategory-${p.id}" list="libTabCatList" value="${escapeHtml(p.category||'')}"></div>
+            <div class="field"><label>Category</label>${categorySelectHtml('libEditCategory-'+p.id, cats, p.category||'')}</div>
             <button class="primary" style="font-size:.7rem;" onclick="saveEditLibraryPhotoTab('${p.id}')">Save</button>
             <button class="ghost" style="font-size:.7rem;" onclick="cancelEditLibraryPhotoTab()">Cancel</button>
           </div>`;
@@ -2678,9 +3024,9 @@ async function saveEditLibraryPhotoTab(id){
   const p = state.photoLibrary.find(p=>p.id===id);
   if(!p) return;
   const labelEl = document.getElementById('libEditLabel-'+id);
-  const catEl = document.getElementById('libEditCategory-'+id);
+  const cat = readCategorySelectValue('libEditCategory-'+id);
   p.label = labelEl ? labelEl.value.trim() : p.label;
-  p.category = catEl && catEl.value.trim() ? catEl.value.trim() : null;
+  p.category = cat || null;
   await saveData();
   editingLibPhotoId = null;
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
@@ -2700,7 +3046,7 @@ function addToPhotoLibraryTab(){
   const fileInput = document.getElementById('libTabUpload');
   if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
   const label = document.getElementById('libTabLabel').value.trim();
-  const category = document.getElementById('libTabCategory').value.trim();
+  const category = readCategorySelectValue('libTabCategory');
   const reader = new FileReader();
   reader.onload = ()=>{
     const img = new Image();
@@ -2734,9 +3080,7 @@ function renderLibraryTabBusy(el){
       <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*"></div>
       <div class="row">
         <div class="field"><label>Label</label><input id="libTabBusyLabel" placeholder="e.g. market stall scene"></div>
-        <div class="field"><label>Category</label><input id="libTabBusyCategory" list="libTabBusyCatList" placeholder="e.g. Market, Street">
-          <datalist id="libTabBusyCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist>
-        </div>
+        <div class="field"><label>Category</label>${categorySelectHtml('libTabBusyCategory', cats, '')}</div>
       </div>
       <button class="ghost" onclick="addToBusyPicturesTab()">Add busy picture</button>
     </div>
@@ -2772,7 +3116,7 @@ function addToBusyPicturesTab(){
   const fileInput = document.getElementById('libTabBusyUpload');
   if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
   const label = document.getElementById('libTabBusyLabel').value.trim();
-  const category = document.getElementById('libTabBusyCategory').value.trim();
+  const category = readCategorySelectValue('libTabBusyCategory');
   const reader = new FileReader();
   reader.onload = ()=>{
     const img = new Image();
@@ -2789,6 +3133,107 @@ function addToBusyPicturesTab(){
       await saveData();
       libTabBusyFilter = null;
       renderLibraryTabBusy(document.getElementById('libraryTabBody'));
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+let libTabLexicarryFilter = null;
+let editingLexicarryPhotoId = null;
+function renderLibraryTabLexicarry(el){
+  const cats = lexicarryCategories();
+  const items = libTabLexicarryFilter ? state.lexicarryPictures.filter(p=>p.category===libTabLexicarryFilter) : state.lexicarryPictures;
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Pictures from your Lexicarry resource — a separate collection from My Photo Library and Busy Pictures.</div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
+      <h4 style="margin-top:0;">Add a new Lexicarry picture</h4>
+      <div class="field"><input type="file" id="libTabLexicarryUpload" accept="image/*"></div>
+      <div class="row">
+        <div class="field"><label>Label</label><input id="libTabLexicarryLabel" placeholder="e.g. page 12, market scene"></div>
+        <div class="field"><label>Category</label>${categorySelectHtml('libTabLexicarryCategory', cats, '')}</div>
+      </div>
+      <button class="ghost" onclick="addToLexicarryTab()">Add to Lexicarry</button>
+    </div>
+    <div class="field"><label>Filter by category</label>
+      <select onchange="libTabLexicarryFilterByIndex(this.value)">
+        <option value="-1">All</option>
+        ${cats.map((c,ci)=>`<option value="${ci}" ${libTabLexicarryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:14px;">
+      ${items.length ? items.map(p=>{
+        if(editingLexicarryPhotoId===p.id){
+          return `<div style="grid-column:span 2;text-align:center;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+            <img src="${p.dataUrl}" style="max-width:80px;border-radius:3px;border:1px solid var(--paper-line);"><br>
+            <div class="field"><label>Label</label><input id="lexEditLabel-${p.id}" value="${escapeHtml(p.label||'')}"></div>
+            <div class="field"><label>Category</label>${categorySelectHtml('lexEditCategory-'+p.id, cats, p.category||'')}</div>
+            <button class="primary" style="font-size:.7rem;" onclick="saveEditLexicarryPhotoTab('${p.id}')">Save</button>
+            <button class="ghost" style="font-size:.7rem;" onclick="cancelEditLexicarryPhotoTab()">Cancel</button>
+          </div>`;
+        }
+        return `
+        <div style="position:relative;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+          <div class="tm">${escapeHtml(p.label||p.category||'(untitled)')}</div>
+          <button onclick="startEditLexicarryPhotoTab('${p.id}')" title="Edit" style="position:absolute;top:2px;left:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;padding:0;">&#9998;</button>
+          <button onclick="deleteLexicarryPhotoTab('${p.id}')" title="Remove" style="position:absolute;top:2px;right:2px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:18px;height:18px;font-size:.65rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+        </div>
+      `;
+      }).join('') : `<div class="empty">Nothing in this category yet.</div>`}
+    </div>
+  `;
+}
+function libTabLexicarryFilterByIndex(val){
+  const idx = Number(val);
+  const cats = lexicarryCategories();
+  libTabLexicarryFilter = idx<0 ? null : cats[idx];
+  renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
+}
+function startEditLexicarryPhotoTab(id){
+  editingLexicarryPhotoId = id;
+  renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
+}
+function cancelEditLexicarryPhotoTab(){
+  editingLexicarryPhotoId = null;
+  renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
+}
+async function saveEditLexicarryPhotoTab(id){
+  const p = state.lexicarryPictures.find(p=>p.id===id);
+  if(!p) return;
+  const labelEl = document.getElementById('lexEditLabel-'+id);
+  const cat = readCategorySelectValue('lexEditCategory-'+id);
+  p.label = labelEl ? labelEl.value.trim() : p.label;
+  p.category = cat || null;
+  await saveData();
+  editingLexicarryPhotoId = null;
+  renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
+}
+async function deleteLexicarryPhotoTab(id){
+  state.lexicarryPictures = state.lexicarryPictures.filter(p=>p.id!==id);
+  await saveData();
+  renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
+}
+function addToLexicarryTab(){
+  const fileInput = document.getElementById('libTabLexicarryUpload');
+  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
+  const label = document.getElementById('libTabLexicarryLabel').value.trim();
+  const category = readCategorySelectValue('libTabLexicarryCategory');
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const img = new Image();
+    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
+    img.onload = async ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 600;
+      const scale = Math.min(1, maxW/img.width);
+      canvas.width = img.width*scale; canvas.height = img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      const id = uid();
+      state.lexicarryPictures.push({id, label, category: category||null, dataUrl});
+      await saveData();
+      libTabLexicarryFilter = null;
+      renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
     };
     img.src = reader.result;
   };
@@ -3023,7 +3468,7 @@ async function convertAllRecordingsToMp3(){
   if(statusEl) statusEl.textContent = `Done — converted ${done}, already MP3 ${skipped}, failed ${failed} (out of ${keys.length} total).`;
 }
 let recordingInFlight = false;
-async function startWordRecording(wordId, targetElId, onDone){
+async function startWordRecording(wordId, targetElId, onDone, storageKey){
   if(recordingInFlight) return;
   const elId = targetElId || ('wAudio-'+wordId);
   const el = document.getElementById(elId);
@@ -3045,9 +3490,12 @@ async function startWordRecording(wordId, targetElId, onDone){
       el.innerHTML = '<span class="meta">Converting…</span>';
       try{
         const mp3DataUrl = await convertToMp3(blob);
-        await window.storage.set('wordaudio:'+wordId, JSON.stringify({dataUrl:mp3DataUrl}), false);
-        const w = state.words.find(w=>w.id===wordId);
-        if(w) w.hasAudio = true;
+        const key = storageKey || ('wordaudio:'+wordId);
+        await window.storage.set(key, JSON.stringify({dataUrl:mp3DataUrl}), false);
+        if(!storageKey){
+          const w = state.words.find(w=>w.id===wordId);
+          if(w) w.hasAudio = true;
+        }
         await saveData();
         if(onDone){ onDone(); }
         else { const freshEl = document.getElementById(elId); if(freshEl) freshEl.innerHTML = `<audio controls src="${mp3DataUrl}"></audio>`; }
@@ -4083,11 +4531,21 @@ function renderReadingTestActive(el){
   if(readingTestRevealed) loadPlayerInto('readingTestPlayer', 'word', w.id, true);
 }
 
+function resolveWordAudioKey(id){
+  const w = state.words.find(w=>w.id===id);
+  if(!w) return 'wordaudio:'+id;
+  const variants = [];
+  if(w.hasAudio) variants.push('wordaudio:'+id);
+  if(w.hasArticleAudio) variants.push('wordaudio:'+id+':article');
+  if(w.hasSentenceAudio) variants.push('wordaudio:'+id+':sentence');
+  if(variants.length===0) return 'wordaudio:'+id;
+  return variants[Math.floor(Math.random()*variants.length)];
+}
 async function loadPlayerInto(elId, kind, id, autoplay){
   const el = document.getElementById(elId);
   if(!el) return;
   try{
-    const key = kind==='general' ? 'audio:'+id : 'wordaudio:'+id;
+    const key = kind==='general' ? 'audio:'+id : (kind==='word' ? resolveWordAudioKey(id) : 'wordaudio:'+id);
     const res = await window.storage.get(key, false);
     if(res && res.value) el.innerHTML = `<audio controls ${autoplay?'autoplay':''} src="${JSON.parse(res.value).dataUrl}"></audio>`;
     else el.innerHTML = '<span class="empty">Clip not found.</span>';
