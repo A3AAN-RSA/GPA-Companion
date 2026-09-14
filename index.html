@@ -2112,7 +2112,7 @@ function renderSoloSetup(c){
       const [sentW, artW, bareW] = wordsForPicture(p.libId);
       return `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-line);flex-wrap:wrap;">
-        ${p.src?`<img src="${p.src}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;">`:''}
+        ${p.src?`<img src="${p.src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;">`:''}
         <span style="flex:1;min-width:60px;">${escapeHtml(p.code||'')}${p.gender?` (${p.gender==='M'?'Male':'Female'})`:''}</span>
         <span class="tm">Word:</span>
         <div id="soloSlotStatus-${p.libId}-bare">${bareW && bareW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','bare')">Record</button>`}</div>
@@ -2128,7 +2128,7 @@ function renderSoloSetup(c){
     <div id="soloQuestionList">${pics.length===0 ? '' : (questions.length ? questions.map(q=>{
       const p = pics.find(p=>p.libId===q.libId);
       return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${p && p.src ? `<img src="${p.src}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;">` : (p?escapeHtml(p.code):'(removed)')}</span>
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${p && p.src ? `<img src="${p.src}" style="width:28px;height:28px;object-fit:contain;border-radius:3px;">` : (p?escapeHtml(p.code):'(removed)')}</span>
         <div id="soloQAudio-${q.id}"></div>
         <button class="ghost danger" style="font-size:.7rem;" onclick="deleteSoloQuestion('${soloKeyStr}','${q.id}')">Remove</button>
       </div>`;
@@ -2138,7 +2138,7 @@ function renderSoloSetup(c){
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-width:400px;">
         ${pics.map(p=>`<div onclick="selectSoloQuestionWord('${p.libId}')" style="cursor:pointer;text-align:center;">
           <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordId===p.libId?'var(--teal)':'var(--paper-line)'};background:#fff;">
-            ${p.src ? `<img src="${p.src}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${p.code?escapeHtml(p.code):'(no picture)'}</div>`}
+            ${p.src ? `<img src="${p.src}" style="width:100%;height:100%;object-fit:contain;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${p.code?escapeHtml(p.code):'(no picture)'}</div>`}
           </div>
         </div>`).join('')}
       </div>
@@ -2360,7 +2360,7 @@ function renderSoloPractice(c){
     ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
-      ${gridPics.map(p=>`<div onclick="handleSoloPick('${p.libId}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${p.src}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+      ${gridPics.map(p=>`<div onclick="handleSoloPick('${p.libId}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${p.src}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce Next</button>` : ''}
@@ -2384,7 +2384,7 @@ function renderLiveActivity(c){
       ${modeLabel ? `<span class="tag ochre" style="font-size:1rem;padding:6px 18px;">${modeLabel}</span>` : `<div class="empty">Tap "Introduce Next" to begin.</div>`}
     </div>
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 22px;">
-      ${gridItems.map(it=>`<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;border:1px solid var(--paper-line);background:#fff;"><img src="${it.src}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+      ${gridItems.map(it=>`<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;border:1px solid var(--paper-line);background:#fff;"><img src="${it.src}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
       <button class="primary" onclick="liveIntroduceNext()" ${la.remaining.length===0?'disabled':''}>Introduce Next</button>
@@ -4468,7 +4468,7 @@ function renderGridReviewActive(c, autoplay){
     ${gridReviewWrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — try again.</div>` : ''}
     ${gridReviewFeedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
-      ${gridWords.map(w=>`<div ${isIntro?'':`onclick="handleGridPick('${w.id}')"`} style="cursor:${isIntro?'default':'pointer'};aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid ${isIntro && w.id===gridReviewCurrent.id?'var(--teal)':'var(--paper-line)'};background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:cover;"></div>`).join('')}
+      ${gridWords.map(w=>`<div ${isIntro?'':`onclick="handleGridPick('${w.id}')"`} style="cursor:${isIntro?'default':'pointer'};aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid ${isIntro && w.id===gridReviewCurrent.id?'var(--teal)':'var(--paper-line)'};background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${gridReviewMode==='rrd' ? `
@@ -4606,7 +4606,7 @@ function renderSuggestions(c){
     return `
     <div class="entry">
       <div style="display:flex;gap:10px;align-items:flex-start;">
-        ${w.photo ? `<img src="${w.photo}" style="width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--paper-line);flex-shrink:0;">` : ''}
+        ${w.photo ? `<img src="${w.photo}" style="width:56px;height:56px;object-fit:contain;border-radius:4px;border:1px solid var(--paper-line);flex-shrink:0;">` : ''}
         <div style="flex:1;min-width:0;">
           <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">missed ${w.reviewMissCount||0}/${w.reviewCount||0} reviews</span></div>
           <div class="meta">${origin}</div>
