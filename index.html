@@ -1087,19 +1087,64 @@ function renderDashboard(c){
   const {phase, info, startH, endH, hoursIntoPhase} = currentPhaseInfo();
   const meetingsTouched = Object.values(state.meetingComplete).filter(s=>s==='done').length;
 
-  // Actual pace from logged session history (self-adjusting as you log more)
   const sessDates = state.sessions.map(s=>s.date).filter(Boolean).sort();
-  let actualPace = null;
+  let weeksElapsed = null;
   if(sessDates.length>=2){
     const first = new Date(sessDates[0]), last = new Date();
-    const weeksElapsed = Math.max((last-first)/(7*86400000), 1/7);
-    actualPace = h/weeksElapsed;
+    weeksElapsed = Math.max((last-first)/(7*86400000), 1/7);
   }
+  const actualPace = weeksElapsed!=null ? h/weeksElapsed : null;
   const statedPace = Number(state.profile.hoursPerWeek)||0;
-  const pace = actualPace || statedPace;
 
   let forecastLine = 'Log a couple of sessions (or add your weekly hours in Profile) to see a forecast.';
-  if(endH && pace>0){
+  let hoursCompareLine = '';
+  if(phase===1){
+    // Phase 1 has a fixed, known set of 40 meeting plans — completing all of them is the real
+    // finish line, regardless of whether that happens to take under or over 100 hours. Each
+    // meeting plan's "worth" is weighted by its own estimated length (a longer meeting plan
+    // counts for more of the 100-hour budget than a short one), rather than treating all 40
+    // as equal. Hours are shown separately below purely as a comparison against that estimate.
+    const totalMeetings = 40;
+    const weights = meetingPlanHourWeights();
+    const doneNs = Object.keys(state.meetingComplete).filter(k=>state.meetingComplete[k]==='done').map(Number);
+    const weightedHoursDone = doneNs.reduce((sum,n)=> sum + (weights[n]||0), 0);
+    const remainingWeightedHours = Math.max(100-weightedHoursDone,0);
+
+    let currentFinishDateIso = null;
+    if(remainingWeightedHours<=0){
+      forecastLine = `All ${totalMeetings} of Phase 1's meeting plans are complete!`;
+    } else if(weeksElapsed!=null && weightedHoursDone>0){
+      const weightedPace = weightedHoursDone/weeksElapsed;
+      const weeksNeeded = remainingWeightedHours/weightedPace;
+      const finishDate = new Date(Date.now() + weeksNeeded*7*86400000);
+      currentFinishDateIso = finishDate.toISOString().slice(0,10);
+      const dateStr = finishDate.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+      forecastLine = `Based on the meeting plans you've actually completed so far (${meetingsTouched}/${totalMeetings}), you're on track to finish Phase 1 around <strong>${dateStr}</strong>.`;
+    } else if(statedPace>0){
+      const weeksNeeded = remainingWeightedHours/statedPace;
+      const finishDate = new Date(Date.now() + weeksNeeded*7*86400000);
+      currentFinishDateIso = finishDate.toISOString().slice(0,10);
+      const dateStr = finishDate.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+      forecastLine = `Based on the ${statedPace} hrs/week you set in Profile — no meeting plans completed yet to measure a real pace from — you're on track to finish Phase 1 around <strong>${dateStr}</strong>.`;
+    }
+    if(state.originalFinishDate){
+      const origDate = new Date(state.originalFinishDate+'T00:00:00');
+      const origDateStr = origDate.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+      if(currentFinishDateIso && currentFinishDateIso!==state.originalFinishDate){
+        const diffDays = Math.round((new Date(currentFinishDateIso+'T00:00:00')-origDate)/86400000);
+        forecastLine += ` Your original estimate, from when you first set your weekly hours, was <strong>${origDateStr}</strong> — you're now tracking about ${Math.abs(diffDays)} day${Math.abs(diffDays)===1?'':'s'} ${diffDays>0?'later':'earlier'} than that.`;
+      } else if(!currentFinishDateIso){
+        forecastLine += ` Your original estimate, from when you first set your weekly hours, was <strong>${origDateStr}</strong>.`;
+      }
+    }
+    const diff = h - weightedHoursDone;
+    if(meetingsTouched>0){
+      hoursCompareLine = `You're at ${h.toFixed(1)} hours logged, having completed ${meetingsTouched}/${totalMeetings} meeting plans — weighted by each one's length, that's about ${weightedHoursDone.toFixed(1)} of the 100 hours' worth of Phase 1 content. So you're currently running ${Math.abs(diff).toFixed(1)} hours ${diff>=0?'over':'under'} the original estimate for how far you'd expect to be at this point. That's just informational — finishing the activities is what actually completes Phase 1, not hitting a particular hour count.`;
+    } else {
+      hoursCompareLine = `You're at ${h.toFixed(1)} hours logged so far. Once you complete a meeting plan, this will start comparing your actual hours against the original ~100-hour estimate for Phase 1.`;
+    }
+  } else if(endH && actualPace!=null || (phase!==1 && statedPace>0 && endH)){
+    const pace = actualPace || statedPace;
     const remaining = Math.max(endH-h,0);
     if(remaining<=0){
       forecastLine = `Phase ${phase}'s ${endH-startH}-hour target is reached!`;
@@ -1139,6 +1184,7 @@ function renderDashboard(c){
     <div class="meta" style="margin-bottom:4px;"><strong>Understanding:</strong> ${info.understand}</div>
     <div class="meta" style="margin-bottom:10px;"><strong>Talking:</strong> ${info.talk}</div>
     <div class="empty" style="margin-bottom:16px;">${forecastLine}</div>
+    ${hoursCompareLine ? `<div class="empty" style="margin-bottom:16px;">${hoursCompareLine}</div>` : ''}
     <div class="empty" style="margin-bottom:16px;">Revision hours (~1.5 hrs planned per meeting plan across all ${MEETING_PLANS.length} of Phase 1) come from the Review section at the top of Meeting Plans and time spent in the Review tab — kept separate from the hours above, since revision isn't progress through the curriculum.</div>
   `;
 }
@@ -1410,6 +1456,34 @@ function estimateForKey(key){
   if(!detail) return null;
   const estimates = computeStepEstimates(detail);
   return estimates[stepIdx] != null ? estimates[stepIdx] : null;
+}
+function estimateMeetingPlanMinutes(n){
+  const detail = MEETING_DETAILS[n];
+  if(!detail) return null;
+  return computeStepEstimates(detail).reduce((a,b)=>a+b,0);
+}
+function meetingPlanHourWeights(){
+  // Splits the 100-hour Phase 1 budget across all 40 meeting plans proportionally to each one's
+  // estimated length, so a longer meeting plan gets a bigger share and a shorter one gets less —
+  // rather than dividing evenly. Meeting plans not yet built out in full detail use the average
+  // of the ones that are, as the best available estimate until they're detailed too.
+  const knownMinutes = {};
+  let sumKnown = 0, knownCount = 0;
+  for(let n=1;n<=40;n++){
+    const mins = estimateMeetingPlanMinutes(n);
+    if(mins!=null){ knownMinutes[n]=mins; sumKnown+=mins; knownCount++; }
+  }
+  const avgMinutes = knownCount>0 ? sumKnown/knownCount : 150;
+  const allMinutes = {};
+  let totalMinutes = 0;
+  for(let n=1;n<=40;n++){
+    const m = knownMinutes[n]!=null ? knownMinutes[n] : avgMinutes;
+    allMinutes[n] = m;
+    totalMinutes += m;
+  }
+  const weights = {};
+  for(let n=1;n<=40;n++){ weights[n] = totalMinutes>0 ? (allMinutes[n]/totalMinutes)*100 : 2.5; }
+  return weights;
 }
 function paceComment(actualMin, estMin){
   const diff = actualMin-estMin;
@@ -2935,7 +3009,29 @@ function toggleStep(planN, stepIdx){
   const arr = state.stepProgress[planN] || [];
   arr[stepIdx] = !arr[stepIdx];
   state.stepProgress[planN] = arr;
+  autoUpdateMeetingStatus(planN);
   saveData(); renderMeetings(document.getElementById('content'));
+}
+function autoUpdateMeetingStatus(planN){
+  // Checking off steps now drives the meeting's status automatically, rather than requiring a
+  // separate, easy-to-forget manual dropdown. This only ever moves status forward (none -> progress
+  // -> done) — it never downgrades a "done" a person already reached, whether that came from
+  // finishing every step or from explicitly setting the dropdown themselves.
+  const mp = MEETING_PLANS.find(m=>m.n===planN);
+  if(!mp || !mp.detailed) return;
+  const detail = MEETING_DETAILS[planN];
+  if(!detail) return;
+  const totalSteps = detail.steps.length;
+  const checked = (state.stepProgress[planN]||[]).filter(Boolean).length;
+  const current = state.meetingComplete[planN];
+  if(current==='done') return;
+  if(totalSteps>0 && checked>=totalSteps){
+    state.meetingComplete[planN] = 'done';
+  } else if(checked>0){
+    state.meetingComplete[planN] = 'progress';
+  } else if(current==='progress'){
+    state.meetingComplete[planN] = 'none';
+  }
 }
 const OBJECT_BANKS = {
   photography: {match:['video','photo','camera','film'],
@@ -5128,6 +5224,7 @@ function toggleAllowMaterialsEditing(val){
   saveData();
 }
 function saveProfile(){
+  const hoursPerWeek = document.getElementById('pHours').value;
   state.profile = {
     name: document.getElementById('pName').value.trim(),
     language: document.getElementById('pLang').value.trim(),
@@ -5136,8 +5233,13 @@ function saveProfile(){
     location: document.getElementById('pLocation').value.trim(),
     profession: document.getElementById('pProfession').value.trim(),
     interests: document.getElementById('pInterests').value.trim(),
-    hoursPerWeek: document.getElementById('pHours').value,
+    hoursPerWeek: hoursPerWeek,
   };
+  if(!state.originalFinishDate && Number(hoursPerWeek)>0){
+    const weeksNeeded = 100/Number(hoursPerWeek);
+    const finishDate = new Date(Date.now() + weeksNeeded*7*86400000);
+    state.originalFinishDate = finishDate.toISOString().slice(0,10);
+  }
   saveData(); renderProfile(document.getElementById('content'));
 }
 function exportData(){
