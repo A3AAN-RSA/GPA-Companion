@@ -1013,6 +1013,7 @@ async function loadData(){
   state.activityNurturerAudio = state.activityNurturerAudio || {};
   state.activityQuestions = state.activityQuestions || {};
   state.positionActivities = state.positionActivities || {};
+  state.actionCombos = state.actionCombos || {};
   loaded = true;
   render();
 }
@@ -1039,7 +1040,7 @@ function render(){
   if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
   if(activeTab==='dashboard') renderDashboard(c);
   else if(activeTab==='orientation') renderOrientation(c);
-  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else if(soloPractice) renderSoloPractice(c); else if(soloSetup) renderSoloSetup(c); else if(positionPractice) renderPositionPractice(c); else if(positionSetup) renderPositionSetup(c); else renderMeetings(c); }
+  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else if(soloPractice) renderSoloPractice(c); else if(soloSetup) renderSoloSetup(c); else if(positionPractice) renderPositionPractice(c); else if(positionSetup) renderPositionSetup(c); else if(actionComboPractice) renderActionComboPractice(c); else if(actionComboSetup) renderActionComboSetup(c); else renderMeetings(c); }
   else if(activeTab==='words') renderWords(c);
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
@@ -1052,6 +1053,7 @@ function activeSessionBlockReason(){
   if(liveActivity) return "the activity you're doing";
   if(soloPractice) return 'your solo practice session';
   if(positionPractice) return 'your solo practice session';
+  if(actionComboPractice) return 'your solo practice session';
   if(reviewActive) return 'your review session';
   if(gridReviewActive) return 'your grid review session';
   if(alphaReviewActive) return 'your alphabet review session';
@@ -1314,6 +1316,7 @@ function renderMeetings(c){
                   <span class="tm">What kind of activity is this?</span>
                   <button class="primary" onclick="chooseWordIntroMode('${key}')">Word Introduction</button>
                   <button class="ghost" onclick="chooseCombinationMode('${key}')">Position Combinations</button>
+                  <button class="ghost" onclick="chooseActionComboMode('${key}')">Action + Object Combinations</button>
                   <button class="ghost" onclick="cancelActivityModeChoice()">Cancel</button>
                 </div>`;
               }
@@ -2175,6 +2178,10 @@ function chooseCombinationMode(key){
   pendingInAppChoiceKey = null;
   openPositionSetup(key);
 }
+function chooseActionComboMode(key){
+  pendingInAppChoiceKey = null;
+  openActionComboSetup(key);
+}
 let pendingInAppChoiceKey = null;
 function openSoloSetup(key){
   soloSetup = key;
@@ -3006,6 +3013,467 @@ function renderPositionPractice(c){
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce Next</button>` : ''}
       <button class="ghost danger" onclick="endPositionPractice()">End practice</button>
+    </div>
+  `;
+}
+
+// ---------- Type 3 solo practice: action + object combinations ----------
+let actionComboSetup = null;
+let acPickerSource = 'graphics';
+let acPickerFilter = null;
+let acPickerGraphicsPage = null;
+let acComboActionLibId = null;
+let acComboObjLibId = null;
+let acQuestionComboId = null;
+function openActionComboSetup(key){
+  state.actionCombos[key] = state.actionCombos[key] || {actions:[], objects:[], combinations:[], questions:[]};
+  actionComboSetup = key;
+  acPickerSource = 'graphics';
+  acPickerFilter = null;
+  acComboActionLibId = null;
+  acComboObjLibId = null;
+  acQuestionComboId = null;
+  render();
+}
+function closeActionComboSetup(){
+  actionComboSetup = null;
+  render();
+}
+function acData(key){
+  return state.actionCombos[key || actionComboSetup];
+}
+function renderACPickerGallery(mode){
+  const source = acPickerSource;
+  const filter = acPickerFilter;
+  let galleryHtml = '';
+  if(source==='graphics'){
+    if(!acPickerGraphicsPage) acPickerGraphicsPage = GRAPHICS_MANIFEST[0].page;
+    const pages = graphicsPages();
+    const items = GRAPHICS_MANIFEST.filter(g=>g.page===acPickerGraphicsPage);
+    galleryHtml = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="acPickerPageNav(-1)">&laquo; Prev</button>
+        <span class="meta">Page ${acPickerGraphicsPage} of ${pages[pages.length-1]}</span>
+        <button class="ghost" onclick="acPickerPageNav(1)">Next &raquo;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px;max-height:180px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.map(g=>`<div onclick="acPickItem('${mode}','graphics','${g.file}','${escapeHtml(g.code).replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="graphics/${g.file}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('')}
+      </div>`;
+  } else {
+    const list = source==='library' ? state.photoLibrary.filter(p=>!p.isCustomGraphic) : source==='busy' ? state.busyPictures : state.lexicarryPictures;
+    const cats = source==='library' ? libraryCategories() : source==='busy' ? busyCategories() : lexicarryCategories();
+    const items = filter ? list.filter(p=>p.category===filter) : list;
+    galleryHtml = `
+      <div style="margin-bottom:6px;">
+        <button class="ghost" style="${!filter?'font-weight:600;':''}" onclick="acPickerSetFilter(null)">All</button>
+        ${cats.map(c=>`<button class="ghost" style="margin-left:4px;${filter===c?'font-weight:600;':''}" onclick="acPickerSetFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px;max-height:180px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.length ? items.map(p=>`<div onclick="acPickItem('${mode}','${source}','${p.id}','${escapeHtml(p.label||p.category||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('') : `<div class="empty">Nothing here yet.</div>`}
+      </div>`;
+  }
+  return `
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="ghost" style="${source==='graphics'?'font-weight:600;':''}" onclick="acPickerSetSource('graphics')">Graphics Pack</button>
+      <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="acPickerSetSource('library')">My Photo Library</button>
+      <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="acPickerSetSource('busy')">Busy Pictures</button>
+      <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="acPickerSetSource('lexicarry')">Lexicarry</button>
+    </div>
+    ${galleryHtml}
+  `;
+}
+function acPickerSetSource(src){ acPickerSource=src; acPickerFilter=null; renderActionComboSetup(document.getElementById('content')); }
+function acPickerSetFilter(cat){ acPickerFilter=cat; renderActionComboSetup(document.getElementById('content')); }
+function acPickerPageNav(delta){
+  const pages = graphicsPages();
+  const idx = pages.indexOf(acPickerGraphicsPage);
+  acPickerGraphicsPage = pages[Math.min(Math.max(idx+delta,0), pages.length-1)];
+  renderActionComboSetup(document.getElementById('content'));
+}
+function acPickItem(mode, source, fileOrId, label){
+  const data = acData();
+  if(!data) return;
+  const src = resolvePosPickSrc(source, fileOrId);
+  const pool = mode==='action' ? data.actions : data.objects;
+  if(!pool.some(o=>o.libId===fileOrId && o.source===source)){
+    pool.push({source, libId:fileOrId, src, code:label});
+  }
+  saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+async function acRemoveAction(libId){
+  const data = acData();
+  if(!data) return;
+  data.actions = data.actions.filter(a=>a.libId!==libId);
+  const removedCombos = data.combinations.filter(c=>c.actionLibId===libId).map(c=>c.id);
+  data.combinations = data.combinations.filter(c=>c.actionLibId!==libId);
+  data.questions = data.questions.filter(q=>!removedCombos.includes(q.comboId));
+  await saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+async function acRemoveObject(libId){
+  const data = acData();
+  if(!data) return;
+  data.objects = data.objects.filter(o=>o.libId!==libId);
+  const removedCombos = data.combinations.filter(c=>c.objLibId===libId).map(c=>c.id);
+  data.combinations = data.combinations.filter(c=>c.objLibId!==libId);
+  data.questions = data.questions.filter(q=>!removedCombos.includes(q.comboId));
+  await saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+function acSelectComboAction(libId){ acComboActionLibId = libId; renderActionComboSetup(document.getElementById('content')); }
+function acSelectComboObject(libId){ acComboObjLibId = libId; renderActionComboSetup(document.getElementById('content')); }
+function acRecordCombination(key){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const data = acData(key);
+  if(!data || !acComboActionLibId || !acComboObjLibId) return;
+  const existing = data.combinations.find(c=>c.actionLibId===acComboActionLibId && c.objLibId===acComboObjLibId);
+  const wordId = existing ? existing.wordId : uid();
+  startWordRecording(wordId, 'acComboRecordStatus', ()=>{
+    let w = state.words.find(x=>x.id===wordId);
+    const action = data.actions.find(a=>a.libId===acComboActionLibId);
+    const obj = data.objects.find(o=>o.libId===acComboObjLibId);
+    if(!w){
+      const parts = key.split('-');
+      w = {
+        id: wordId, text: `${action?action.code:''} ${obj?obj.code:''}`.trim(),
+        meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
+        photo: obj ? obj.src : (action?action.src:''), entryType:'combination',
+        hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+      };
+      state.words.push(w);
+    }
+    w.hasAudio = true;
+    if(!existing){
+      data.combinations.push({id:uid(), actionLibId:acComboActionLibId, objLibId:acComboObjLibId, wordId});
+    }
+    acComboActionLibId = null; acComboObjLibId = null;
+    saveData();
+    renderActionComboSetup(document.getElementById('content'));
+  });
+}
+async function acDeleteCombination(comboId){
+  const data = acData();
+  if(!data) return;
+  const combo = data.combinations.find(c=>c.id===comboId);
+  if(combo) state.words = state.words.filter(w=>w.id!==combo.wordId);
+  data.combinations = data.combinations.filter(c=>c.id!==comboId);
+  data.questions = data.questions.filter(q=>q.comboId!==comboId);
+  await saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+function acSelectQuestionCombo(comboId){ acQuestionComboId = comboId; renderActionComboSetup(document.getElementById('content')); }
+function acRecordQuestion(key){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  if(!acQuestionComboId) return;
+  const data = acData(key);
+  const id = uid();
+  const comboId = acQuestionComboId;
+  startWordRecording(id, 'acQuestionRecordStatus', ()=>{
+    data.questions.push({id, comboId});
+    acQuestionComboId = null;
+    saveData();
+    const statusEl = document.getElementById('acQuestionRecordStatus');
+    if(statusEl) statusEl.innerHTML = '';
+    renderActionComboSetup(document.getElementById('content'));
+  }, 'wordaudio:'+id);
+}
+async function acDeleteQuestion(qId){
+  const data = acData();
+  if(!data) return;
+  data.questions = data.questions.filter(q=>q.id!==qId);
+  await saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+function acReadiness(key){
+  const data = acData(key);
+  if(!data) return {ready:false};
+  const hasActions = data.actions.length>=1;
+  const hasObjects = data.objects.length>=1;
+  const recordedCombos = data.combinations.filter(c=>{ const w=state.words.find(x=>x.id===c.wordId); return w && w.hasAudio; });
+  const combosReady = recordedCombos.length>=2;
+  const questionsReady = data.questions.length>=1 && data.questions.every(q=>recordedCombos.some(c=>c.id===q.comboId));
+  return {hasActions, hasObjects, combosReady, questionsReady, recordedCombos, ready: hasActions && hasObjects && combosReady && questionsReady};
+}
+function acComboThumb(data, combo, size){
+  const action = data.actions.find(a=>a.libId===combo.actionLibId);
+  const obj = data.objects.find(o=>o.libId===combo.objLibId);
+  if(!action || !obj) return '';
+  const s = size||60;
+  return `<div style="display:flex;gap:2px;">
+    <img src="${action.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
+    <img src="${obj.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
+  </div>`;
+}
+function renderActionComboSetup(c){
+  const key = actionComboSetup;
+  if(!key){ renderMeetings(c); return; }
+  const data = acData(key);
+  const r = acReadiness(key);
+  c.innerHTML = `
+    <h3>Set Up: Action + Object Combinations</h3>
+    <div class="empty" style="margin-bottom:10px;">Build a pool of actions (touch, pick up, put down) and a pool of objects, then record the full natural command for each action+object pairing you want to use — "Pick up the chair." Recording these counts as logging them.</div>
+
+    <h4>1. Actions</h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      ${data.actions.map(a=>`<div style="position:relative;text-align:center;width:56px;">
+        <img src="${a.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <button onclick="acRemoveAction('${a.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+      </div>`).join('')}
+    </div>
+    ${renderACPickerGallery('action')}
+
+    <h4 style="margin-top:16px;">2. Objects</h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      ${data.objects.map(o=>`<div style="position:relative;text-align:center;width:56px;">
+        <img src="${o.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <button onclick="acRemoveObject('${o.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+      </div>`).join('')}
+    </div>
+    ${renderACPickerGallery('object')}
+
+    ${data.actions.length && data.objects.length ? `
+    <h4 style="margin-top:16px;">3. Record combinations</h4>
+    <div class="empty" style="margin-bottom:6px;">Pick an action and an object, then record the full command — need at least 2 to begin practice.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
+      <div>
+        <div class="tm">Action</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+          ${data.actions.map(a=>`<img src="${a.src}" onclick="acSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="tm">Object</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+          ${data.objects.map(o=>`<img src="${o.src}" onclick="acSelectComboObject('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        </div>
+      </div>
+    </div>
+    <button class="record" onclick="acRecordCombination('${key}')" ${acComboActionLibId&&acComboObjLibId?'':'disabled'}>Record this combination</button>
+    <div id="acComboRecordStatus" class="meta" style="margin:6px 0;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      ${data.combinations.map(combo=>{
+        return `<div style="text-align:center;">
+          ${acComboThumb(data, combo)}
+          <div id="acComboAudio-${combo.id}"></div>
+          <button class="ghost danger" style="font-size:.6rem;padding:1px 4px;" onclick="acDeleteCombination('${combo.id}')">Remove</button>
+        </div>`;
+      }).join('')}
+    </div>
+    ` : ''}
+
+    ${r.combosReady ? `
+    <h4 style="margin-top:16px;">4. Questions</h4>
+    <div class="empty" style="margin-bottom:6px;">Record the spoken command for a combination — e.g. "Pick up the chair" — tap a recorded combination below, then record.</div>
+    <div id="acQuestionList">${data.questions.map(q=>{
+      const combo = data.combinations.find(c=>c.id===q.comboId);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${combo?acComboThumb(data,combo,32):'(removed)'}</span>
+        <div id="acQAudio-${q.id}"></div>
+        <button class="ghost danger" style="font-size:.7rem;" onclick="acDeleteQuestion('${q.id}')">Remove</button>
+      </div>`;
+    }).join('') || '<div class="empty">No questions recorded yet.</div>'}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+      ${r.recordedCombos.map(combo=>`<div onclick="acSelectQuestionCombo('${combo.id}')" style="cursor:pointer;border:2px solid ${acQuestionComboId===combo.id?'var(--teal)':'transparent'};border-radius:4px;">${acComboThumb(data,combo,40)}</div>`).join('')}
+    </div>
+    <button class="record" onclick="acRecordQuestion('${key}')" ${acQuestionComboId?'':'disabled'}>Record new question/command</button>
+    <div id="acQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
+    ` : ''}
+
+    <div style="margin-top:16px;">
+      ${r.ready ? `<button class="primary" onclick="startActionComboPractice('${key}')">Begin Solo Practice</button>` : `<div class="empty">Complete the steps above (at least 1 action, at least 1 object, at least 2 recorded combinations, and at least 1 question) to begin.</div>`}
+      <button class="ghost" onclick="closeActionComboSetup()">Back</button>
+    </div>
+  `;
+  data.combinations.forEach(combo=>loadPlayerInto('acComboAudio-'+combo.id, 'word', combo.wordId));
+  data.questions.forEach(q=>loadPlayerInto('acQAudio-'+q.id, 'word', q.id));
+}
+
+let actionComboPractice = null;
+async function startActionComboPractice(key){
+  await preloadAnswerSounds();
+  const data = acData(key);
+  const r = acReadiness(key);
+  actionComboSetup = null;
+  actionComboPractice = {
+    key, data,
+    introduced: [],
+    remaining: r.recordedCombos.map(c=>c.id),
+    phase:'intro',
+    introducingComboId:null,
+    currentQuestion:null,
+    selectedActionLibId:null,
+    selectedObjLibId:null,
+    stats:{seen:0, known:0},
+    wrongAttempt:false,
+    feedback:null
+  };
+  const parts = key.split('-');
+  startStepTimer(Number(parts[0]), Number(parts[1]));
+  render();
+  acIntroduceCombo();
+}
+function acIntroduceCombo(){
+  const acp = actionComboPractice;
+  if(!acp || acp.remaining.length===0) return;
+  const comboId = acp.remaining.shift();
+  acp.introduced.push(comboId);
+  acp.phase = 'intro';
+  acp.introducingComboId = comboId;
+  runACIntroStep();
+}
+async function runACIntroStep(){
+  const acp = actionComboPractice;
+  if(!acp || acp.phase!=='intro') return;
+  const combo = acp.data.combinations.find(c=>c.id===acp.introducingComboId);
+  render();
+  if(combo) await playStoredAudio('wordaudio:'+combo.wordId);
+  if(!actionComboPractice || actionComboPractice.phase!=='intro') return;
+  if(acp.introduced.length < 2 && acp.remaining.length > 0){
+    acIntroduceCombo();
+    return;
+  }
+  startACQuizPhase();
+}
+function startACQuizPhase(){
+  const acp = actionComboPractice;
+  if(!acp) return;
+  acp.phase = 'quiz';
+  pickACQuestion();
+}
+function pickACQuestion(){
+  const acp = actionComboPractice;
+  if(!acp) return;
+  const eligible = acp.data.questions.filter(q=>acp.introduced.includes(q.comboId));
+  if(eligible.length===0) return;
+  acp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  acp.selectedActionLibId = null;
+  acp.selectedObjLibId = null;
+  acp.wrongAttempt = false;
+  acp.feedback = null;
+  render();
+  playStoredAudio('wordaudio:'+acp.currentQuestion.id);
+}
+function acIntroduceNext(){
+  const acp = actionComboPractice;
+  if(!acp || acp.remaining.length===0) return;
+  acIntroduceCombo();
+}
+function acSelectQuizAction(libId){
+  const acp = actionComboPractice;
+  if(!acp || acp.phase!=='quiz') return;
+  acp.selectedActionLibId = libId;
+  render();
+  if(acp.selectedActionLibId && acp.selectedObjLibId) handleACCheck();
+}
+function acSelectQuizObject(libId){
+  const acp = actionComboPractice;
+  if(!acp || acp.phase!=='quiz') return;
+  acp.selectedObjLibId = libId;
+  render();
+  if(acp.selectedActionLibId && acp.selectedObjLibId) handleACCheck();
+}
+function handleACCheck(){
+  const acp = actionComboPractice;
+  if(!acp || !acp.currentQuestion) return;
+  const combo = acp.data.combinations.find(c=>c.id===acp.currentQuestion.comboId);
+  if(!combo) return;
+  const correct = acp.selectedActionLibId===combo.actionLibId && acp.selectedObjLibId===combo.objLibId;
+  if(correct){
+    acp.stats.seen++;
+    const knewIt = !acp.wrongAttempt;
+    if(knewIt) acp.stats.known++;
+    const w = state.words.find(x=>x.id===combo.wordId);
+    if(w){
+      w.iceberg = knewIt ? Math.max(w.iceberg-1,1) : Math.min(w.iceberg+1,9);
+      w.lastReview = new Date().toISOString().slice(0,10);
+      w.reviewCount = (w.reviewCount||0)+1;
+    }
+    saveData();
+    acp.feedback = 'correct';
+    render();
+    playRandomAnswerSound('yes').then(()=>{ if(actionComboPractice) pickACQuestion(); });
+  } else {
+    acp.wrongAttempt = true;
+    acp.selectedActionLibId = null;
+    acp.selectedObjLibId = null;
+    render();
+    playRandomAnswerSound('no').then(()=>{
+      if(actionComboPractice && actionComboPractice.currentQuestion) playStoredAudio('wordaudio:'+actionComboPractice.currentQuestion.id);
+    });
+  }
+}
+function endActionComboPractice(){
+  if(actionComboPractice && actionComboPractice.key){
+    const parts = actionComboPractice.key.split('-');
+    stopStepTimer(Number(parts[0]), Number(parts[1]));
+  }
+  actionComboPractice = null;
+  render();
+}
+function renderActionComboPractice(c){
+  const acp = actionComboPractice;
+  if(!acp){ renderMeetings(c); return; }
+  const timerId = 'stepTimerDisp-'+acp.key;
+  const est = estimateForKey(acp.key);
+  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
+  const data = acp.data;
+  if(acp.phase==='intro'){
+    const combo = data.combinations.find(c=>c.id===acp.introducingComboId);
+    const action = combo ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
+    const obj = combo ? data.objects.find(o=>o.libId===combo.objLibId) : null;
+    c.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+        ${estHtml}
+      </div>
+      <h3>Solo Practice</h3>
+      <div class="empty" style="margin-bottom:10px;">Introducing a new combination — listening only for now.</div>
+      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
+        <div style="display:flex;gap:14px;justify-content:center;align-items:center;">
+          ${action?`<img src="${action.src}" style="max-width:100px;max-height:100px;object-fit:contain;">`:''}
+          ${obj?`<img src="${obj.src}" style="max-width:100px;max-height:100px;object-fit:contain;">`:''}
+        </div>
+      </div>
+      <button class="ghost danger" style="margin-top:14px;" onclick="endActionComboPractice()">End practice</button>
+    `;
+    return;
+  }
+  const introducedCombos = acp.introduced.map(id=>data.combinations.find(c=>c.id===id)).filter(Boolean);
+  const actionIds = [...new Set(introducedCombos.map(c=>c.actionLibId))];
+  const objIds = [...new Set(introducedCombos.map(c=>c.objLibId))];
+  c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+      ${estHtml}
+    </div>
+    <h3>Solo Practice — Quiz</h3>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${acp.stats.seen} · knew ${acp.stats.known} this session · ${acp.introduced.length}/${data.combinations.length} introduced. Tap the matching action, then the matching object.</div>
+    ${acp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
+    ${acp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
+    <div class="tm" style="margin-bottom:4px;">Action</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      ${actionIds.map(libId=>{
+        const a = data.actions.find(x=>x.libId===libId);
+        if(!a) return '';
+        return `<img src="${a.src}" onclick="acSelectQuizAction('${libId}')" style="width:60px;height:60px;object-fit:contain;border-radius:6px;border:2px solid ${acp.selectedActionLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+      }).join('')}
+    </div>
+    <div class="tm" style="margin-bottom:4px;">Object</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      ${objIds.map(libId=>{
+        const o = data.objects.find(x=>x.libId===libId);
+        if(!o) return '';
+        return `<img src="${o.src}" onclick="acSelectQuizObject('${libId}')" style="width:60px;height:60px;object-fit:contain;border-radius:6px;border:2px solid ${acp.selectedObjLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      ${acp.remaining.length>0 ? `<button class="primary" onclick="acIntroduceNext()">Introduce Next</button>` : ''}
+      <button class="ghost danger" onclick="endActionComboPractice()">End practice</button>
     </div>
   `;
 }
