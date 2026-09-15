@@ -2318,8 +2318,8 @@ async function deleteSoloQuestion(soloKeyStr, id){
   await saveData();
   renderSoloSetup(document.getElementById('content'));
 }
-function startSoloPractice(key){
-  preloadAnswerSounds();
+async function startSoloPractice(key){
+  await preloadAnswerSounds();
   const {pics, questions} = soloReadiness(key);
   soloSetup = null;
   soloPractice = {
@@ -2819,8 +2819,8 @@ function renderPositionSetup(c){
 }
 
 let positionPractice = null;
-function startPositionPractice(key){
-  preloadAnswerSounds();
+async function startPositionPractice(key){
+  await preloadAnswerSounds();
   const data = posData(key);
   const r = posReadiness(key);
   positionSetup = null;
@@ -4872,9 +4872,9 @@ function selectSubReviewGroup(ti, si, val){
   document.querySelectorAll(`.revWordCheck[data-top="${ti}"][data-sub="${si}"]`).forEach(cb=>cb.checked=val);
 }
 let reviewSessionStart = null;
-function startReview(){
+async function startReview(){
   lastReviewSummary = null;
-  preloadAnswerSounds();
+  await preloadAnswerSounds();
   if(reviewMode==='activities'){
     const groups = reviewGroups();
     const ids = new Set();
@@ -5413,8 +5413,8 @@ function setAlphaReviewStyle(v){ alphaReviewStyle = v; renderAlphabetReviewSetup
 function setAlphaGridMode(v){ alphaGridMode = v; }
 function selectAllAlphaChars(v){ document.querySelectorAll('.alphaCheck').forEach(cb=>cb.checked=v); }
 
-function startAlphaReview(){
-  preloadAnswerSounds();
+async function startAlphaReview(){
+  await preloadAnswerSounds();
   const checked = [...document.querySelectorAll('.alphaCheck:checked')].map(cb=>cb.value);
   alphaReviewSelected = new Set(checked);
   if(alphaReviewStyle==='grid'){ startAlphaGridReview(); return; }
