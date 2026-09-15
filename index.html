@@ -1009,6 +1009,11 @@ async function loadData(){
       else if(w.level===1) w.iceberg = 5;
       else w.iceberg = 9;
     }
+    // Solo Practice words created before entryType was wired up correctly were tagged 'picture'
+    // instead of 'word' — that value never matched any category option, so the dropdown looked
+    // right (browsers default to the first <option> when nothing matches) while the underlying
+    // data, and the dashboard count reading it, stayed wrong until someone manually touched it.
+    if(w.entryType==='picture') w.entryType = 'word';
   });
   state.activityNurturerAudio = state.activityNurturerAudio || {};
   state.activityQuestions = state.activityQuestions || {};
@@ -1074,14 +1079,19 @@ function setTab(id){
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 function entryTypeTag(w){
-  const t = w.entryType || 'word';
+  const t = effectiveEntryType(w);
   if(t==='word') return '';
-  const labels = {phrase:'phrase', description:'description', story:'story'};
+  const labels = {phrase:'phrase', description:'description', story:'story', combination:'combination'};
   return `<span class="tag">${labels[t]||t}</span>`;
+}
+function effectiveEntryType(w){
+  const t = w.entryType || 'word';
+  const known = ['word','phrase','description','story','combination'];
+  return known.includes(t) ? t : 'word';
 }
 function entryTypeBreakdown(){
   const counts = {word:0, phrase:0, description:0, story:0};
-  state.words.forEach(w=>{ const t = w.entryType || 'word'; if(counts[t]!==undefined) counts[t]++; });
+  state.words.forEach(w=>{ const t = effectiveEntryType(w); if(counts[t]!==undefined) counts[t]++; });
   return `Words: ${counts.word} · Phrases: ${counts.phrase} · Descriptions: ${counts.description} · Stories: ${counts.story}`;
 }
 function totalRecordingsLogged(){
@@ -5048,11 +5058,11 @@ function renderWords(c){
       <div class="meta">
         <label class="tm">Category:
           <select onchange="setWordCategory('${w.id}', this.value)" style="font-size:.75rem;padding:1px 4px;">
-            <option value="word" ${(w.entryType||'word')==='word'?'selected':''}>word</option>
-            <option value="phrase" ${w.entryType==='phrase'?'selected':''}>phrase</option>
-            <option value="description" ${w.entryType==='description'?'selected':''}>description</option>
-            <option value="story" ${w.entryType==='story'?'selected':''}>story</option>
-            <option value="combination" ${w.entryType==='combination'?'selected':''}>combination (activity)</option>
+            <option value="word" ${effectiveEntryType(w)==='word'?'selected':''}>word</option>
+            <option value="phrase" ${effectiveEntryType(w)==='phrase'?'selected':''}>phrase</option>
+            <option value="description" ${effectiveEntryType(w)==='description'?'selected':''}>description</option>
+            <option value="story" ${effectiveEntryType(w)==='story'?'selected':''}>story</option>
+            <option value="combination" ${effectiveEntryType(w)==='combination'?'selected':''}>combination (activity)</option>
           </select>
         </label>
         ${w.isPower?`<span class="tag ochre">power phrase</span>`:''}
