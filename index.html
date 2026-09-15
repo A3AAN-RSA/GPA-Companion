@@ -1014,6 +1014,9 @@ async function loadData(){
     // right (browsers default to the first <option> when nothing matches) while the underlying
     // data, and the dashboard count reading it, stayed wrong until someone manually touched it.
     if(w.entryType==='picture') w.entryType = 'word';
+    // Solo Practice recordings made before articles were split into definite/indefinite are kept
+    // as the definite form, so nothing already recorded becomes invisible or needs re-recording.
+    if(w.wordSlot==='article') w.wordSlot = 'article_definite';
   });
   state.activityNurturerAudio = state.activityNurturerAudio || {};
   state.activityQuestions = state.activityQuestions || {};
@@ -2048,7 +2051,7 @@ function wordsForGame(key){
     return ai-bi;
   });
 }
-const SOLO_WORD_SLOTS = ['sentence','article','bare'];
+const SOLO_WORD_SLOTS = ['sentence','article_definite','article_indefinite','bare'];
 function picturesForGame(key){
   // Always derived fresh from the current attachments — this is what makes Assign Pictures,
   // the meeting-plan reference area, and Solo Setup/Practice all stay in sync automatically,
@@ -2060,7 +2063,7 @@ function picturesForGame(key){
     ((state.activityMaterials && state.activityMaterials[k]) || []).forEach(a=>{
       if(!a.libId || seen.has(a.libId)) return;
       seen.add(a.libId);
-      pics.push({libId:a.libId, source:a.source, code:a.code, gender:a.gender||null, src:resolveAttachedSrc(a)});
+      pics.push({libId:a.libId, source:a.source, code:a.code, gender:a.gender||null, noArticle:!!a.noArticle, src:resolveAttachedSrc(a)});
     });
   });
   return pics;
@@ -2224,8 +2227,10 @@ function soloReadiness(key){
   const soloKeyStr = soloKeyFor(key);
   const questions = state.activityQuestions[soloKeyStr] || [];
   const picsReady = pics.length>0 && pics.every(p=>{
-    const words = wordsForPicture(p.libId);
-    return words.every(w=>w && w.hasAudio);
+    const [sentW, artDefW, artIndefW, bareW] = wordsForPicture(p.libId);
+    const coreReady = sentW && sentW.hasAudio && bareW && bareW.hasAudio;
+    const articlesReady = p.noArticle || (artDefW && artDefW.hasAudio && artIndefW && artIndefW.hasAudio);
+    return coreReady && articlesReady;
   });
   const questionsReady = pics.length>0 && pics.every(p=>questions.some(q=>q.libId===p.libId));
   return {pics, questions, picsReady, questionsReady, ready: picsReady && questionsReady};
@@ -2253,15 +2258,20 @@ function renderSoloSetup(c){
     <div class="empty" style="margin-bottom:10px;">This always reflects whatever's currently attached to this activity — from Assign Pictures, or right here in the meeting plan. Since there's no live nurturer this time, the app needs a few things recorded first for each picture: the bare word, the word with its article, and an introduction sentence ("This is a man") — each becomes its own entry in Word Log, so all three are independently reviewable later. It also needs at least one spoken question per picture. Recording these counts as logging them, so there's no separate wrap-up needed afterward.</div>
     <h4>Pictures</h4>
     ${pics.length===0 ? `<div class="empty">No pictures attached to this activity yet — add some in Assign Pictures, or right here using "+ Attach a picture."</div>` : pics.map(p=>{
-      const [sentW, artW, bareW] = wordsForPicture(p.libId);
+      const [sentW, artDefW, artIndefW, bareW] = wordsForPicture(p.libId);
       return `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-line);flex-wrap:wrap;">
         ${p.src?`<img src="${p.src}" style="width:36px;height:36px;object-fit:contain;border-radius:3px;">`:''}
         <span style="flex:1;min-width:60px;">${escapeHtml(p.code||'')}${p.gender?` (${p.gender==='M'?'Male':'Female'})`:''}</span>
+        <label class="tm" style="display:flex;align-items:center;gap:3px;"><input type="checkbox" ${p.noArticle?'checked':''} onchange="toggleSoloNoArticle('${key}','${p.libId}')">No article (e.g. "I")</label>
         <span class="tm">Word:</span>
         <div id="soloSlotStatus-${p.libId}-bare">${bareW && bareW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','bare')">Record</button>`}</div>
-        <span class="tm">With article:</span>
-        <div id="soloSlotStatus-${p.libId}-article">${artW && artW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','article')">Record</button>`}</div>
+        ${p.noArticle ? '' : `
+        <span class="tm">Indefinite article ("a ${escapeHtml(p.code||'')}"):</span>
+        <div id="soloSlotStatus-${p.libId}-article_indefinite">${artIndefW && artIndefW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','article_indefinite')">Record</button>`}</div>
+        <span class="tm">Definite article ("the ${escapeHtml(p.code||'')}"):</span>
+        <div id="soloSlotStatus-${p.libId}-article_definite">${artDefW && artDefW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','article_definite')">Record</button>`}</div>
+        `}
         <span class="tm">"This is a ${escapeHtml(p.code||'')}":</span>
         <div id="soloSlotStatus-${p.libId}-sentence">${sentW && sentW.hasAudio ? '<span class="tag">recorded</span>' : `<button class="ghost" style="font-size:.7rem;" onclick="recordActivitySlot('${key}','${p.libId}','sentence')">Record</button>`}</div>
       </div>
@@ -2296,6 +2306,18 @@ function renderSoloSetup(c){
     </div>
   `;
   questions.forEach(q=>loadPlayerInto('soloQAudio-'+q.id, 'word', q.id));
+}
+async function toggleSoloNoArticle(key, libId){
+  const gameKeys = gameKeysFor(key);
+  for(const k of gameKeys){
+    const found = ((state.activityMaterials&&state.activityMaterials[k])||[]).find(a=>a.libId===libId);
+    if(found){
+      found.noArticle = !found.noArticle;
+      break;
+    }
+  }
+  await saveData();
+  renderSoloSetup(document.getElementById('content'));
 }
 function recordActivitySlot(key, libId, slot){
   if(activeRecorder && activeRecorder.state==='recording') return;
@@ -2370,7 +2392,17 @@ async function startSoloPractice(key){
   render();
   introduceSoloPicture();
 }
-const SOLO_INTRO_SLOTS = ['sentence','article','bare'];
+const SOLO_INTRO_SLOTS = ['sentence','article_definite','article_indefinite','bare'];
+function nextIntroSlot(currentSlot, noArticle){
+  let idx = SOLO_INTRO_SLOTS.indexOf(currentSlot);
+  while(idx < SOLO_INTRO_SLOTS.length-1){
+    idx++;
+    const candidate = SOLO_INTRO_SLOTS[idx];
+    if(noArticle && (candidate==='article_definite' || candidate==='article_indefinite')) continue;
+    return candidate;
+  }
+  return null;
+}
 function introduceSoloPicture(){
   const sp = soloPractice;
   if(!sp || sp.remaining.length===0) return;
@@ -2378,23 +2410,25 @@ function introduceSoloPicture(){
   sp.introduced.push(libId);
   sp.phase = 'intro';
   sp.introducingLibId = libId;
-  sp.introSlot = SOLO_INTRO_SLOTS[0];
+  const pic = sp.pics.find(p=>p.libId===libId);
+  sp.introSlot = (pic && pic.noArticle) ? 'sentence' : SOLO_INTRO_SLOTS[0];
   sp.introRepeatsLeft = 2;
   runSoloIntroStep();
 }
 async function runSoloIntroStep(){
   const sp = soloPractice;
   if(!sp || sp.phase!=='intro') return;
-  const [sentW, artW, bareW] = wordsForPicture(sp.introducingLibId);
-  const slotWord = sp.introSlot==='sentence' ? sentW : sp.introSlot==='article' ? artW : bareW;
+  const words = wordsForPicture(sp.introducingLibId);
+  const slotWord = words[SOLO_WORD_SLOTS.indexOf(sp.introSlot)];
   render();
   if(slotWord) await playStoredAudio('wordaudio:'+slotWord.id);
   if(!soloPractice || soloPractice.phase!=='intro') return;
   sp.introRepeatsLeft--;
   if(sp.introRepeatsLeft<=0){
-    const slotIdx = SOLO_INTRO_SLOTS.indexOf(sp.introSlot);
-    if(slotIdx < SOLO_INTRO_SLOTS.length-1){
-      sp.introSlot = SOLO_INTRO_SLOTS[slotIdx+1];
+    const pic = sp.pics.find(p=>p.libId===sp.introducingLibId);
+    const next = nextIntroSlot(sp.introSlot, pic && pic.noArticle);
+    if(next){
+      sp.introSlot = next;
       sp.introRepeatsLeft = 2;
       runSoloIntroStep();
       return;
@@ -2486,7 +2520,7 @@ function renderSoloPractice(c){
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         ${pic ? `
           ${pic.src?`<img class="thumb" src="${pic.src}" style="max-width:180px;">`:''}
-          <div class="tm" style="margin-top:10px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article' ? 'saying it with its article' : 'saying it in a sentence'}</div>
+          <div class="tm" style="margin-top:10px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article_definite' ? 'saying it with the definite article' : sp.introSlot==='article_indefinite' ? 'saying it with the indefinite article' : 'saying it in a sentence'}</div>
         ` : `<div class="empty">Finishing up…</div>`}
       </div>
       <button class="ghost danger" style="margin-top:14px;" onclick="endSoloPractice()">End practice</button>
@@ -2879,10 +2913,15 @@ function comboThumb(data, combo, size){
   const zone = data.zones.find(z=>z.id===combo.zoneId);
   const obj = data.objects.find(o=>o.libId===combo.objLibId);
   if(!zone || !obj) return '';
+  const action = combo.actionLibId ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
   const s = size||70;
-  return `<div style="position:relative;width:${s}px;height:${s}px;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
-    ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;height:100%;object-fit:contain;">`:''}
-    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;height:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
+  const labelParts = [action?action.code:null, obj.code, zone.label].filter(Boolean);
+  return `<div>
+    <div style="position:relative;width:${s}px;height:${s}px;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
+      ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;height:100%;object-fit:contain;">`:''}
+      <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;height:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
+    </div>
+    <div class="tm" style="font-size:.6rem;max-width:${s}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(labelParts.join(' '))}</div>
   </div>`;
 }
 function renderPositionSetup(c){
@@ -2925,6 +2964,7 @@ function renderPositionSetup(c){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       ${data.objects.map(o=>`<div style="position:relative;text-align:center;width:56px;">
         <img src="${o.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <div class="tm" style="font-size:.62rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(o.code||'')}</div>
         <button onclick="posRemoveObject('${o.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
       </div>`).join('')}
     </div>
@@ -2935,6 +2975,7 @@ function renderPositionSetup(c){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       ${data.actions.map(a=>`<div style="position:relative;text-align:center;width:56px;">
         <img src="${a.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <div class="tm" style="font-size:.62rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.code||'')}</div>
         <button onclick="posRemoveAction('${a.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
       </div>`).join('')}
     </div>
@@ -2952,8 +2993,8 @@ function renderPositionSetup(c){
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
       <div>
         <div class="tm">Object</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
-          ${data.objects.map(o=>`<img src="${o.src}" onclick="posSelectComboObj('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:240px;">
+          ${data.objects.map(o=>`<div style="text-align:center;width:44px;"><img src="${o.src}" onclick="posSelectComboObj('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;"><div class="tm" style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(o.code||'')}</div></div>`).join('')}
         </div>
       </div>
       <div>
@@ -2965,9 +3006,9 @@ function renderPositionSetup(c){
       ${data.actions.length ? `
       <div>
         <div class="tm">Action (optional)</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:240px;">
           <button type="button" class="ghost" style="${!posComboActionLibId?'font-weight:600;':''}" onclick="posSelectComboAction(null)">None</button>
-          ${data.actions.map(a=>`<img src="${a.src}" onclick="posSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+          ${data.actions.map(a=>`<div style="text-align:center;width:44px;"><img src="${a.src}" onclick="posSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;"><div class="tm" style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.code||'')}</div></div>`).join('')}
         </div>
       </div>
       ` : ''}
@@ -3237,6 +3278,7 @@ function renderPositionPractice(c){
     const combo = data.combinations.find(c=>c.id===pp.introducingComboId);
     const zone = combo ? data.zones.find(z=>z.id===combo.zoneId) : null;
     const obj = combo ? data.objects.find(o=>o.libId===combo.objLibId) : null;
+    const action = combo && combo.actionLibId ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
     c.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
@@ -3245,9 +3287,12 @@ function renderPositionPractice(c){
       <h3>Solo Practice</h3>
       <div class="empty" style="margin-bottom:10px;">Introducing a new combination — listening only for now.</div>
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-        <div style="position:relative;display:inline-block;max-width:260px;">
-          ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:4px;">`:''}
-          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+        <div style="display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;">
+          ${action ? `<img src="${action.src}" style="max-width:80px;max-height:80px;object-fit:contain;">` : ''}
+          <div style="position:relative;display:inline-block;max-width:260px;">
+            ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:4px;">`:''}
+            ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+          </div>
         </div>
       </div>
       <button class="ghost danger" style="margin-top:14px;" onclick="endPositionPractice()">End practice</button>
@@ -3336,7 +3381,15 @@ function renderACPickerGallery(mode){
   const source = acPickerSource;
   const filter = acPickerFilter;
   let galleryHtml = '';
-  if(source==='graphics'){
+  if(source==='described'){
+    galleryHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${state.describedObjects.length ? state.describedObjects.map(d=>`<div onclick="acPickDescribedObject('${mode}','${d.id}')" style="cursor:pointer;text-align:center;">
+          ${describedObjectPreviewHTML(d)}
+          <div class="tm" style="font-size:.6rem;">${escapeHtml(d.compositeLabel||d.baseCode)}</div>
+        </div>`).join('') : `<div class="empty">No described objects yet — build some in Picture Library &rarr; Described Objects.</div>`}
+      </div>`;
+  } else if(source==='graphics'){
     if(!acPickerGraphicsPage) acPickerGraphicsPage = GRAPHICS_MANIFEST[0].page;
     const pages = graphicsPages();
     const items = GRAPHICS_MANIFEST.filter(g=>g.page===acPickerGraphicsPage);
@@ -3372,6 +3425,7 @@ function renderACPickerGallery(mode){
       <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="acPickerSetSource('library')">My Photo Library</button>
       <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="acPickerSetSource('busy')">Busy Pictures</button>
       <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="acPickerSetSource('lexicarry')">Lexicarry</button>
+      <button class="ghost" style="${source==='described'?'font-weight:600;':''}" onclick="acPickerSetSource('described')">Described Objects</button>
     </div>
     ${galleryHtml}
   `;
@@ -3382,6 +3436,19 @@ function acPickerPageNav(delta){
   const pages = graphicsPages();
   const idx = pages.indexOf(acPickerGraphicsPage);
   acPickerGraphicsPage = pages[Math.min(Math.max(idx+delta,0), pages.length-1)];
+  renderActionComboSetup(document.getElementById('content'));
+}
+async function acPickDescribedObject(mode, describedObjId){
+  const data = acData();
+  if(!data) return;
+  const d = state.describedObjects.find(x=>x.id===describedObjId);
+  if(!d) return;
+  const src = await compositeDescribedObjectImage(describedObjId);
+  const pool = mode==='action' ? data.actions : data.objects;
+  if(!pool.some(o=>o.libId===describedObjId && o.source==='described')){
+    pool.push({source:'described', libId:describedObjId, src, code:d.compositeLabel||d.baseCode});
+  }
+  saveData();
   renderActionComboSetup(document.getElementById('content'));
 }
 function acPickItem(mode, source, fileOrId, label){
@@ -3536,9 +3603,12 @@ function acComboThumb(data, combo, size){
   const obj = data.objects.find(o=>o.libId===combo.objLibId);
   if(!action || !obj) return '';
   const s = size||60;
-  return `<div style="display:flex;gap:2px;">
-    <img src="${action.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
-    <img src="${obj.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
+  return `<div>
+    <div style="display:flex;gap:2px;">
+      <img src="${action.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
+      <img src="${obj.src}" style="width:${s}px;height:${s}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">
+    </div>
+    <div class="tm" style="font-size:.6rem;max-width:${s*2+2}px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(action.code||'')} ${escapeHtml(obj.code||'')}</div>
   </div>`;
 }
 function renderActionComboSetup(c){
@@ -3554,6 +3624,7 @@ function renderActionComboSetup(c){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       ${data.actions.map(a=>`<div style="position:relative;text-align:center;width:56px;">
         <img src="${a.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <div class="tm" style="font-size:.62rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.code||'')}</div>
         <button onclick="acRemoveAction('${a.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
       </div>`).join('')}
     </div>
@@ -3563,6 +3634,7 @@ function renderActionComboSetup(c){
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       ${data.objects.map(o=>`<div style="position:relative;text-align:center;width:56px;">
         <img src="${o.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <div class="tm" style="font-size:.62rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(o.code||'')}</div>
         <button onclick="acRemoveObject('${o.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
       </div>`).join('')}
     </div>
@@ -3579,14 +3651,14 @@ function renderActionComboSetup(c){
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
       <div>
         <div class="tm">Action</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
-          ${data.actions.map(a=>`<img src="${a.src}" onclick="acSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:240px;">
+          ${data.actions.map(a=>`<div style="text-align:center;width:44px;"><img src="${a.src}" onclick="acSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;"><div class="tm" style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(a.code||'')}</div></div>`).join('')}
         </div>
       </div>
       <div>
         <div class="tm">Object</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
-          ${data.objects.map(o=>`<img src="${o.src}" onclick="acSelectComboObject('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:240px;">
+          ${data.objects.map(o=>`<div style="text-align:center;width:44px;"><img src="${o.src}" onclick="acSelectComboObject('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${acComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;"><div class="tm" style="font-size:.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(o.code||'')}</div></div>`).join('')}
         </div>
       </div>
     </div>
