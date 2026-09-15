@@ -4960,6 +4960,7 @@ function renderLibraryTabLessons(el){
 }
 
 // ---------- Word Log ----------
+let wordLogSelectedGroupIndex = -1;
 function renderWords(c){
   c.innerHTML = `
     <h3>Add a word or phrase</h3>
@@ -4975,7 +4976,18 @@ function renderWords(c){
   const wordCardHTML = (w) => `
     <div class="entry" id="word-${w.id}">
       <div class="entry-top"><span class="title">${w.text?escapeHtml(w.text):'<em>(untitled)</em>'}</span><span class="date">${w.dateAdded}</span></div>
-      <div class="meta">${entryTypeTag(w)}${w.isPower?`<span class="tag ochre">power phrase</span>`:''}</div>
+      <div class="meta">
+        <label class="tm">Category:
+          <select onchange="setWordCategory('${w.id}', this.value)" style="font-size:.75rem;padding:1px 4px;">
+            <option value="word" ${(w.entryType||'word')==='word'?'selected':''}>word</option>
+            <option value="phrase" ${w.entryType==='phrase'?'selected':''}>phrase</option>
+            <option value="description" ${w.entryType==='description'?'selected':''}>description</option>
+            <option value="story" ${w.entryType==='story'?'selected':''}>story</option>
+            <option value="combination" ${w.entryType==='combination'?'selected':''}>combination (activity)</option>
+          </select>
+        </label>
+        ${w.isPower?`<span class="tag ochre">power phrase</span>`:''}
+      </div>
       <div class="iceberg-status meta" style="margin:4px 0;">Iceberg: Level ${w.iceberg} — ${ICEBERG_PERCENT[w.iceberg]} <span class="tm">(set only by Review, not editable here)</span></div>
       ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
       ${w.spelling && w.spelling.length ? `<div class="meta" style="font-size:1.3rem;font-family:'Lora',serif;margin:4px 0;">${w.spelling.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('')}</div>` : ''}
@@ -4996,20 +5008,39 @@ function renderWords(c){
     list.innerHTML = '<div class="empty">No words yet.</div>';
   } else {
     const groups = groupWordsForDisplay(state.words);
-    nav.innerHTML = groups.map((g,gi)=>`<button class="ghost" style="font-size:.72rem;margin:2px 4px 2px 0;padding:3px 9px;" onclick="document.getElementById('wordgroup-${gi}').scrollIntoView({behavior:'smooth',block:'start'})">${escapeHtml(g.topLabel)} (${g.subs.reduce((a,s)=>a+s.words.length,0)})</button>`).join('');
-    list.innerHTML = groups.map((g,gi) => `
+    if(wordLogSelectedGroupIndex >= groups.length) wordLogSelectedGroupIndex = -1;
+    nav.innerHTML = `<div class="field"><label>Jump to</label>
+      <select onchange="setWordLogGroup(this.value)">
+        <option value="-1" ${wordLogSelectedGroupIndex===-1?'selected':''}>All (${state.words.length})</option>
+        ${groups.map((g,gi)=>`<option value="${gi}" ${gi===wordLogSelectedGroupIndex?'selected':''}>${escapeHtml(g.topLabel)} (${g.subs.reduce((a,s)=>a+s.words.length,0)})</option>`).join('')}
+      </select>
+    </div>`;
+    const visibleGroups = wordLogSelectedGroupIndex===-1 ? groups : (groups[wordLogSelectedGroupIndex] ? [groups[wordLogSelectedGroupIndex]] : []);
+    list.innerHTML = visibleGroups.map((g,gi) => `
       <div class="wordGroupBlock" style="margin-bottom:18px;">
-        <div class="phase-divider" id="wordgroup-${gi}" style="margin-top:4px;">${escapeHtml(g.topLabel)}</div>
+        <div class="phase-divider" style="margin-top:4px;">${escapeHtml(g.topLabel)}</div>
         ${g.subs.map(s => `
           <div style="margin:8px 0 0 4px;">
             <div style="font-weight:600;font-size:.82rem;color:var(--ink-soft);margin-bottom:4px;">${escapeHtml(s.subLabel)}</div>
-            ${s.words.slice().sort((a,b)=>b.dateAdded.localeCompare(a.dateAdded)).map(w=>`<div class="wordCardWrap" data-search="${escapeHtml((w.text||'').toLowerCase())}">${wordCardHTML(w)}</div>`).join('')}
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+              ${s.words.slice().sort((a,b)=>b.dateAdded.localeCompare(a.dateAdded)).map(w=>`<div class="wordCardWrap" data-search="${escapeHtml((w.text||'').toLowerCase())}">${wordCardHTML(w)}</div>`).join('')}
+            </div>
           </div>
         `).join('')}
       </div>
     `).join('');
   }
   state.words.forEach(w=>{ if(w.hasAudio) loadWordAudio(w.id); });
+}
+function setWordLogGroup(val){
+  wordLogSelectedGroupIndex = Number(val);
+  renderWords(document.getElementById('content'));
+}
+async function setWordCategory(wordId, category){
+  const w = state.words.find(w=>w.id===wordId);
+  if(!w) return;
+  w.entryType = category;
+  await saveData();
 }
 function filterWordList(){
   const q = document.getElementById('wSearch').value.trim().toLowerCase();
@@ -5273,7 +5304,9 @@ function groupWordsForDisplay(wordsList){
     if(w.meetingPlan){
       const mp = MEETING_PLANS.find(m=>m.n===Number(w.meetingPlan));
       topLabel = mp ? `Meeting Plan ${mp.n}: ${mp.title}` : `Meeting Plan ${w.meetingPlan}`;
-      subLabel = w.stepName || 'General';
+      const detail = MEETING_DETAILS[Number(w.meetingPlan)];
+      const step = (detail && w.stepIndex!=null) ? detail.steps[Number(w.stepIndex)] : null;
+      subLabel = (step && step.game) || w.stepName || 'General';
     } else {
       topLabel = 'Other / Extra';
       subLabel = w.category || 'Uncategorized';
@@ -5426,12 +5459,24 @@ function renderReviewCustomChecklist(){
     ? groups.map((g,gi)=>({g,gi}))
     : (groups[reviewCustomMPIndex] ? [{g:groups[reviewCustomMPIndex], gi:reviewCustomMPIndex}] : []);
   el.innerHTML = visible.map(({g,gi})=>`
-    <div class="reviewCustomGroup" style="margin-bottom:14px;">
+    <div class="reviewCustomGroup" style="margin-bottom:18px;">
       <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},false)">none</button></div>
       ${g.subs.map((s,si)=>`
-        <div style="margin:5px 0 0 12px;">
-          <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},false)">none</button></div>
-          ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:flex;align-items:center;gap:6px;font-size:.83rem;margin:3px 0 3px 10px;"><input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked>${w.photo?`<img src="${w.photo}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">`:''}<span>${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</span></label>`).join('')}
+        <div style="margin:8px 0 0 6px;">
+          <div class="tm" style="margin-bottom:6px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},false)">none</button></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;">
+            ${s.words.map(w=>`
+              <label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="cursor:pointer;text-align:center;display:block;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:4px;font-size:.72rem;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  <input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked style="flex-shrink:0;">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</span>
+                </div>
+                <div style="aspect-ratio:1;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
+                  ${w.photo?`<img src="${w.photo}" style="width:100%;height:100%;object-fit:contain;">`:''}
+                </div>
+              </label>
+            `).join('')}
+          </div>
         </div>
       `).join('')}
     </div>
