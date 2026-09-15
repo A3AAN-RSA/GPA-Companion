@@ -2711,7 +2711,7 @@ function comboThumb(data, combo, size){
   const s = size||70;
   return `<div style="position:relative;width:${s}px;height:${s}px;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
     ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;height:100%;object-fit:contain;">`:''}
-    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;height:22%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
+    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;height:22%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
   </div>`;
 }
 function renderPositionSetup(c){
@@ -2921,6 +2921,36 @@ function endPositionPractice(){
   positionPractice = null;
   render();
 }
+function computeFannedPositions(items){
+  // items: [{key, x, y}]. When multiple objects land close enough together to visually collide,
+  // nudge them apart into a small fanned-out cluster (like an overlapping hand of cards) rather
+  // than letting them stack exactly on top of each other.
+  const THRESHOLD = 11;
+  const result = items.map(it=>({...it}));
+  const assigned = new Array(result.length).fill(-1);
+  const clusters = [];
+  for(let i=0;i<result.length;i++){
+    if(assigned[i]!==-1) continue;
+    const cluster = [i];
+    assigned[i] = clusters.length;
+    for(let j=i+1;j<result.length;j++){
+      if(assigned[j]!==-1) continue;
+      const dx = result[i].x-result[j].x, dy = result[i].y-result[j].y;
+      if(Math.sqrt(dx*dx+dy*dy) < THRESHOLD){ cluster.push(j); assigned[j]=clusters.length; }
+    }
+    clusters.push(cluster);
+  }
+  const FAN_OFFSETS = [[0,0],[8,-5],[-8,5],[5,8],[-5,-8],[10,3],[-10,-3],[3,10]];
+  clusters.forEach(cluster=>{
+    if(cluster.length<=1) return;
+    cluster.forEach((idx,ci)=>{
+      const off = FAN_OFFSETS[ci % FAN_OFFSETS.length];
+      result[idx].x = Math.max(6, Math.min(94, result[idx].x + off[0]));
+      result[idx].y = Math.max(6, Math.min(94, result[idx].y + off[1]));
+    });
+  });
+  return result;
+}
 function renderPositionPractice(c){
   const pp = positionPractice;
   if(!pp){ renderMeetings(c); return; }
@@ -2942,7 +2972,7 @@ function renderPositionPractice(c){
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         <div style="position:relative;display:inline-block;max-width:260px;">
           ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:4px;">`:''}
-          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
         </div>
       </div>
       <button class="ghost danger" style="margin-top:14px;" onclick="endPositionPractice()">End practice</button>
@@ -2960,14 +2990,18 @@ function renderPositionPractice(c){
     ${pp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;">
       ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);">`:''}
-      ${pp.introduced.map(comboId=>{
-        const combo = data.combinations.find(c=>c.id===comboId);
-        if(!combo) return '';
-        const zone = data.zones.find(z=>z.id===combo.zoneId);
-        const obj = data.objects.find(o=>o.libId===combo.objLibId);
-        if(!zone||!obj) return '';
-        return `<img src="${obj.src}" onclick="handlePosPick('${comboId}')" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:20%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;">`;
-      }).join('')}
+      ${(()=>{
+        const items = pp.introduced.map(comboId=>{
+          const combo = data.combinations.find(c=>c.id===comboId);
+          if(!combo) return null;
+          const zone = data.zones.find(z=>z.id===combo.zoneId);
+          const obj = data.objects.find(o=>o.libId===combo.objLibId);
+          if(!zone||!obj) return null;
+          return {comboId, obj, x:zone.x, y:zone.y};
+        }).filter(Boolean);
+        const fanned = computeFannedPositions(items);
+        return fanned.map((it,idx)=>`<img src="${it.obj.src}" onclick="handlePosPick('${it.comboId}')" style="position:absolute;left:${it.x}%;top:${it.y}%;width:20%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;z-index:${idx};box-shadow:1px 2px 4px rgba(0,0,0,.15);">`).join('');
+      })()}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce Next</button>` : ''}
@@ -4810,7 +4844,7 @@ function renderReviewCustomChecklist(){
       ${g.subs.map((s,si)=>`
         <div style="margin:5px 0 0 12px;">
           <div class="tm" style="margin-bottom:2px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},false)">none</button></div>
-          ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:block;font-size:.83rem;margin:2px 0 2px 10px;"><input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked> ${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</label>`).join('')}
+          ${s.words.map(w=>`<label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="display:flex;align-items:center;gap:6px;font-size:.83rem;margin:3px 0 3px 10px;"><input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked>${w.photo?`<img src="${w.photo}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;">`:''}<span>${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</span></label>`).join('')}
         </div>
       `).join('')}
     </div>
