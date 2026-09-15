@@ -1084,6 +1084,16 @@ function entryTypeBreakdown(){
   state.words.forEach(w=>{ const t = w.entryType || 'word'; if(counts[t]!==undefined) counts[t]++; });
   return `Words: ${counts.word} · Phrases: ${counts.phrase} · Descriptions: ${counts.description} · Stories: ${counts.story}`;
 }
+function totalRecordingsLogged(){
+  // Every recording that exists anywhere in the app: words/phrases/descriptions/stories,
+  // combination recordings from Solo Practice activities, and every recorded question/command
+  // — the full picture of how much has actually been spoken into the app, not just Word Log.
+  let total = state.words.filter(w=>w.hasAudio).length;
+  Object.values(state.activityQuestions||{}).forEach(list=>{ total += (list||[]).length; });
+  Object.values(state.positionActivities||{}).forEach(pa=>{ total += (pa.questions||[]).length; });
+  Object.values(state.actionCombos||{}).forEach(ac=>{ total += (ac.questions||[]).length; });
+  return total;
+}
 
 // ---------- Dashboard ----------
 function renderDashboard(c){
@@ -1178,8 +1188,9 @@ function renderDashboard(c){
       ${(!p.why && !p.remember) ? `<div class="empty">Add "why" and "what to remember" in Profile to see them here.</div>` : ''}
     </div>
     <div class="stat-row">
+      <div class="stat"><div class="num">${h.toFixed(1)}${endH?'/'+endH:''}</div><div class="label">hours logged</div></div>
       <div class="stat"><div class="num">${meetingsTouched}/40</div><div class="label">meeting plans completed</div></div>
-      <div class="stat"><div class="num">${state.words.length}</div><div class="label">recordings logged</div></div>
+      <div class="stat"><div class="num">${totalRecordingsLogged()}</div><div class="label">recordings logged</div></div>
       <div class="stat"><div class="num">${state.words.filter(w=>w.iceberg===1).length}</div><div class="label">top of your iceberg</div></div>
       <div class="stat"><div class="num">${((state.revisionMinutes||0)/60).toFixed(1)}/${(MEETING_PLANS.length*1.5).toFixed(0)}</div><div class="label">revision hours</div></div>
     </div>
@@ -2295,7 +2306,7 @@ function recordActivitySlot(key, libId, slot){
         id: wordId, text: (attachment&&attachment.code) || (libEntry&&libEntry.label) || '',
         meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
         photo: libEntry ? libEntry.dataUrl : '', gender: (attachment&&attachment.gender)||null,
-        entryType:'picture', sourceLibId: libId, wordSlot: slot,
+        entryType:'word', sourceLibId: libId, wordSlot: slot,
         hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
       };
       state.words.push(w);
@@ -2638,6 +2649,48 @@ async function posRemoveObject(libId){
 }
 function posSelectComboObj(libId){ posComboObjLibId = libId; renderPositionSetup(document.getElementById('content')); }
 function posSelectComboZone(zoneId){ posComboZoneId = zoneId; renderPositionSetup(document.getElementById('content')); }
+function posRandomizeCombinations(key){
+  const data = posData(key);
+  if(!data || data.zones.length===0 || data.objects.length===0) return;
+  const countEl = document.getElementById('posRandomCount');
+  const count = Math.max(1, Math.min(data.objects.length, Number(countEl ? countEl.value : 1) || 1));
+  data.zones.forEach(zone=>{
+    const shuffled = shuffleArray(data.objects.slice());
+    const chosen = shuffled.slice(0, count);
+    chosen.forEach(obj=>{
+      const exists = data.combinations.some(c=>c.zoneId===zone.id && c.objLibId===obj.libId);
+      if(!exists){
+        data.combinations.push({id:uid(), zoneId:zone.id, objLibId:obj.libId, wordId:uid()});
+      }
+    });
+  });
+  saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posRecordExistingCombination(key, comboId){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const data = posData(key);
+  const combo = data.combinations.find(c=>c.id===comboId);
+  if(!combo) return;
+  startWordRecording(combo.wordId, 'posComboRecordStatus-'+comboId, ()=>{
+    let w = state.words.find(x=>x.id===combo.wordId);
+    const obj = data.objects.find(o=>o.libId===combo.objLibId);
+    const zone = data.zones.find(z=>z.id===combo.zoneId);
+    if(!w){
+      const parts = key.split('-');
+      w = {
+        id: combo.wordId, text: `${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
+        meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
+        photo: data.baseImage ? data.baseImage.src : '', entryType:'combination',
+        hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+      };
+      state.words.push(w);
+    }
+    w.hasAudio = true;
+    saveData();
+    renderPositionSetup(document.getElementById('content'));
+  });
+}
 function posRecordCombination(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
   const data = posData(key);
@@ -2768,8 +2821,13 @@ function renderPositionSetup(c){
     ` : ''}
 
     ${data.zones.length && data.objects.length ? `
-    <h4 style="margin-top:16px;">4. Record combinations</h4>
-    <div class="empty" style="margin-bottom:6px;">Pick an object and a position, then record the full sentence — need at least 2 to begin practice.</div>
+    <h4 style="margin-top:16px;">4. Combinations</h4>
+    <div class="empty" style="margin-bottom:6px;">Let the app randomly assign objects to positions to save time, or pick a specific object + position yourself below — either way, you still make the actual recording. Need at least 2 combinations to begin practice.</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
+      <label class="tm">Objects per position: <input type="number" id="posRandomCount" min="1" max="${data.objects.length}" value="1" style="width:50px;"></label>
+      <button class="ghost" onclick="posRandomizeCombinations('${key}')">Randomize</button>
+    </div>
+    <div class="tm" style="margin-bottom:4px;">Or pick manually:</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
       <div>
         <div class="tm">Object</div>
@@ -2789,9 +2847,12 @@ function renderPositionSetup(c){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
       ${data.combinations.map(combo=>{
         const w = state.words.find(x=>x.id===combo.wordId);
+        const needsRecording = !w || !w.hasAudio;
         return `<div style="text-align:center;">
           ${comboThumb(data, combo)}
-          <div id="posComboAudio-${combo.id}"></div>
+          ${needsRecording
+            ? `<button class="ghost" style="font-size:.6rem;padding:1px 4px;width:100%;margin-top:2px;" onclick="posRecordExistingCombination('${key}','${combo.id}')">Record</button><div id="posComboRecordStatus-${combo.id}" class="meta" style="font-size:.6rem;"></div>`
+            : `<div id="posComboAudio-${combo.id}"></div>`}
           <button class="ghost danger" style="font-size:.6rem;padding:1px 4px;" onclick="posDeleteCombination('${combo.id}')">Remove</button>
         </div>`;
       }).join('')}
@@ -2930,9 +2991,10 @@ function endPositionPractice(){
 }
 function computeFannedPositions(items){
   // items: [{key, x, y}]. When multiple objects land close enough together to visually collide,
-  // nudge them apart into a small fanned-out cluster (like an overlapping hand of cards) rather
-  // than letting them stack exactly on top of each other.
+  // arrange them evenly around a small circle centered on the true position, rather than letting
+  // them stack exactly on top of each other or scatter unpredictably far from where they belong.
   const THRESHOLD = 11;
+  const RADIUS = 7;
   const result = items.map(it=>({...it}));
   const assigned = new Array(result.length).fill(-1);
   const clusters = [];
@@ -2947,13 +3009,15 @@ function computeFannedPositions(items){
     }
     clusters.push(cluster);
   }
-  const FAN_OFFSETS = [[0,0],[13,-8],[-13,8],[8,13],[-8,-13],[16,4],[-16,-4],[4,16]];
   clusters.forEach(cluster=>{
     if(cluster.length<=1) return;
+    const n = cluster.length;
+    const cx = cluster.reduce((s,idx)=>s+result[idx].x,0)/n;
+    const cy = cluster.reduce((s,idx)=>s+result[idx].y,0)/n;
     cluster.forEach((idx,ci)=>{
-      const off = FAN_OFFSETS[ci % FAN_OFFSETS.length];
-      result[idx].x = Math.max(6, Math.min(94, result[idx].x + off[0]));
-      result[idx].y = Math.max(6, Math.min(94, result[idx].y + off[1]));
+      const angle = (2*Math.PI*ci)/n;
+      result[idx].x = Math.max(6, Math.min(94, cx + RADIUS*Math.cos(angle)));
+      result[idx].y = Math.max(6, Math.min(94, cy + RADIUS*Math.sin(angle)));
     });
   });
   return result;
@@ -3127,6 +3191,48 @@ async function acRemoveObject(libId){
 }
 function acSelectComboAction(libId){ acComboActionLibId = libId; renderActionComboSetup(document.getElementById('content')); }
 function acSelectComboObject(libId){ acComboObjLibId = libId; renderActionComboSetup(document.getElementById('content')); }
+function acRandomizeCombinations(key){
+  const data = acData(key);
+  if(!data || data.actions.length===0 || data.objects.length===0) return;
+  const countEl = document.getElementById('acRandomCount');
+  const count = Math.max(1, Math.min(data.objects.length, Number(countEl ? countEl.value : 1) || 1));
+  data.actions.forEach(action=>{
+    const shuffled = shuffleArray(data.objects.slice());
+    const chosen = shuffled.slice(0, count);
+    chosen.forEach(obj=>{
+      const exists = data.combinations.some(c=>c.actionLibId===action.libId && c.objLibId===obj.libId);
+      if(!exists){
+        data.combinations.push({id:uid(), actionLibId:action.libId, objLibId:obj.libId, wordId:uid()});
+      }
+    });
+  });
+  saveData();
+  renderActionComboSetup(document.getElementById('content'));
+}
+function acRecordExistingCombination(key, comboId){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const data = acData(key);
+  const combo = data.combinations.find(c=>c.id===comboId);
+  if(!combo) return;
+  startWordRecording(combo.wordId, 'acComboRecordStatus-'+comboId, ()=>{
+    let w = state.words.find(x=>x.id===combo.wordId);
+    const action = data.actions.find(a=>a.libId===combo.actionLibId);
+    const obj = data.objects.find(o=>o.libId===combo.objLibId);
+    if(!w){
+      const parts = key.split('-');
+      w = {
+        id: combo.wordId, text: `${action?action.code:''} ${obj?obj.code:''}`.trim(),
+        meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
+        photo: obj ? obj.src : (action?action.src:''), entryType:'combination',
+        hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+      };
+      state.words.push(w);
+    }
+    w.hasAudio = true;
+    saveData();
+    renderActionComboSetup(document.getElementById('content'));
+  });
+}
 function acRecordCombination(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
   const data = acData(key);
@@ -3237,8 +3343,13 @@ function renderActionComboSetup(c){
     ${renderACPickerGallery('object')}
 
     ${data.actions.length && data.objects.length ? `
-    <h4 style="margin-top:16px;">3. Record combinations</h4>
-    <div class="empty" style="margin-bottom:6px;">Pick an action and an object, then record the full command — need at least 2 to begin practice.</div>
+    <h4 style="margin-top:16px;">3. Combinations</h4>
+    <div class="empty" style="margin-bottom:6px;">Let the app randomly assign objects to actions to save time, or pick a specific action + object yourself below — either way, you still make the actual recording. Need at least 2 combinations to begin practice.</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
+      <label class="tm">Objects per action: <input type="number" id="acRandomCount" min="1" max="${data.objects.length}" value="1" style="width:50px;"></label>
+      <button class="ghost" onclick="acRandomizeCombinations('${key}')">Randomize</button>
+    </div>
+    <div class="tm" style="margin-bottom:4px;">Or pick manually:</div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
       <div>
         <div class="tm">Action</div>
@@ -3257,9 +3368,13 @@ function renderActionComboSetup(c){
     <div id="acComboRecordStatus" class="meta" style="margin:6px 0;"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
       ${data.combinations.map(combo=>{
+        const w = state.words.find(x=>x.id===combo.wordId);
+        const needsRecording = !w || !w.hasAudio;
         return `<div style="text-align:center;">
           ${acComboThumb(data, combo)}
-          <div id="acComboAudio-${combo.id}"></div>
+          ${needsRecording
+            ? `<button class="ghost" style="font-size:.6rem;padding:1px 4px;width:100%;margin-top:2px;" onclick="acRecordExistingCombination('${key}','${combo.id}')">Record</button><div id="acComboRecordStatus-${combo.id}" class="meta" style="font-size:.6rem;"></div>`
+            : `<div id="acComboAudio-${combo.id}"></div>`}
           <button class="ghost danger" style="font-size:.6rem;padding:1px 4px;" onclick="acDeleteCombination('${combo.id}')">Remove</button>
         </div>`;
       }).join('')}
@@ -3355,6 +3470,11 @@ function pickACQuestion(){
   acp.selectedObjLibId = null;
   acp.wrongAttempt = false;
   acp.feedback = null;
+  // Reshuffle the grid order on every new question, so the correct answer is never predictable
+  // by position alone — the person has to actually recognize the picture and sound each time.
+  const introducedCombos = acp.introduced.map(id=>acp.data.combinations.find(c=>c.id===id)).filter(Boolean);
+  acp.actionOrder = shuffleArray([...new Set(introducedCombos.map(c=>c.actionLibId))]);
+  acp.objOrder = shuffleArray([...new Set(introducedCombos.map(c=>c.objLibId))]);
   render();
   playStoredAudio('wordaudio:'+acp.currentQuestion.id);
 }
@@ -3443,9 +3563,8 @@ function renderActionComboPractice(c){
     `;
     return;
   }
-  const introducedCombos = acp.introduced.map(id=>data.combinations.find(c=>c.id===id)).filter(Boolean);
-  const actionIds = [...new Set(introducedCombos.map(c=>c.actionLibId))];
-  const objIds = [...new Set(introducedCombos.map(c=>c.objLibId))];
+  const actionIds = acp.actionOrder || [];
+  const objIds = acp.objOrder || [];
   c.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
