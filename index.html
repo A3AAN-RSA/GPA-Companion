@@ -1019,6 +1019,7 @@ async function loadData(){
   state.activityQuestions = state.activityQuestions || {};
   state.positionActivities = state.positionActivities || {};
   state.actionCombos = state.actionCombos || {};
+  state.describedObjects = state.describedObjects || [];
   loaded = true;
   render();
 }
@@ -2520,16 +2521,19 @@ let posPickerGraphicsPage = null;
 let posPendingZone = null;
 let posComboObjLibId = null;
 let posComboZoneId = null;
+let posComboActionLibId = null;
 let posQuestionComboId = null;
 let posQuestionMode = 'identify';
 function openPositionSetup(key){
-  state.positionActivities[key] = state.positionActivities[key] || {baseImage:null, zones:[], objects:[], combinations:[], questions:[]};
+  state.positionActivities[key] = state.positionActivities[key] || {baseImage:null, zones:[], objects:[], actions:[], combinations:[], questions:[]};
+  if(!state.positionActivities[key].actions) state.positionActivities[key].actions = [];
   positionSetup = key;
   posPickerSource = 'graphics';
   posPickerFilter = null;
   posPendingZone = null;
   posComboObjLibId = null;
   posComboZoneId = null;
+  posComboActionLibId = null;
   posQuestionComboId = null;
   posQuestionMode = 'identify';
   render();
@@ -2552,12 +2556,61 @@ function resolvePosPickSrc(source, fileOrId){
   if(source==='lexicarry') return (state.lexicarryPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
   return '';
 }
+function compositeDescribedObjectImage(describedObjId){
+  // Draws the base object plus each picture-descriptor as a small badge onto one canvas, so the
+  // whole "big red broom" reads as a single combined image during practice — text descriptors are
+  // deliberately not drawn here, since the app avoids showing text during practice; a described
+  // object that's meant to be visually distinguishable should use picture descriptors instead.
+  return new Promise((resolve)=>{
+    const d = state.describedObjects.find(x=>x.id===describedObjId);
+    if(!d){ resolve(''); return; }
+    const pictureDescs = (d.descriptors||[]).filter(desc=>desc.isPicture && desc.src);
+    if(pictureDescs.length===0){ resolve(d.baseObjSrc); return; }
+    const baseImg = new Image();
+    baseImg.onerror = ()=> resolve(d.baseObjSrc);
+    baseImg.onload = ()=>{
+      const size = Math.max(baseImg.width, baseImg.height, 200);
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const bw = size*0.8, bh = size*0.8;
+      ctx.drawImage(baseImg, (size-bw)/2, (size-bh)/2, bw, bh);
+      Promise.all(pictureDescs.map(desc=>new Promise((res)=>{
+        const im = new Image();
+        im.onerror = ()=>res(null);
+        im.onload = ()=>res(im);
+        im.src = desc.src;
+      }))).then(loaded=>{
+        const badge = size*0.28;
+        loaded.filter(Boolean).forEach((im,i)=>{
+          const bx = size - badge - (i*(badge*0.55));
+          const by = size - badge;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(bx-2, by-2, badge+4, badge+4);
+          ctx.strokeStyle = '#ccc';
+          ctx.strokeRect(bx-2, by-2, badge+4, badge+4);
+          ctx.drawImage(im, bx, by, badge, badge);
+        });
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      });
+    };
+    baseImg.src = d.baseObjSrc;
+  });
+}
 function renderPosPickerGallery(mode){
   // mode: 'base' (pick one, replaces) or 'object' (pick many, adds to pool)
   const source = posPickerSource;
   const filter = posPickerFilter;
   let galleryHtml = '';
-  if(source==='graphics'){
+  if(source==='described'){
+    galleryHtml = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${state.describedObjects.length ? state.describedObjects.map(d=>`<div onclick="posPickDescribedObject('${mode}','${d.id}')" style="cursor:pointer;text-align:center;">
+          ${describedObjectPreviewHTML(d)}
+          <div class="tm" style="font-size:.6rem;">${escapeHtml(d.compositeLabel||d.baseCode)}</div>
+        </div>`).join('') : `<div class="empty">No described objects yet — build some in Picture Library &rarr; Described Objects.</div>`}
+      </div>`;
+  } else if(source==='graphics'){
     if(!posPickerGraphicsPage) posPickerGraphicsPage = GRAPHICS_MANIFEST[0].page;
     const pages = graphicsPages();
     const items = GRAPHICS_MANIFEST.filter(g=>g.page===posPickerGraphicsPage);
@@ -2593,9 +2646,30 @@ function renderPosPickerGallery(mode){
       <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="posPickerSetSource('library','${mode}')">My Photo Library</button>
       <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="posPickerSetSource('busy','${mode}')">Busy Pictures</button>
       <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="posPickerSetSource('lexicarry','${mode}')">Lexicarry</button>
+      <button class="ghost" style="${source==='described'?'font-weight:600;':''}" onclick="posPickerSetSource('described','${mode}')">Described Objects</button>
     </div>
     ${galleryHtml}
   `;
+}
+async function posPickDescribedObject(mode, describedObjId){
+  const data = posData();
+  if(!data) return;
+  const d = state.describedObjects.find(x=>x.id===describedObjId);
+  if(!d) return;
+  const src = await compositeDescribedObjectImage(describedObjId);
+  if(mode==='base'){
+    data.baseImage = {source:'described', libId:describedObjId, src, code:d.compositeLabel||d.baseCode};
+  } else if(mode==='action'){
+    if(!data.actions.some(o=>o.libId===describedObjId && o.source==='described')){
+      data.actions.push({source:'described', libId:describedObjId, src, code:d.compositeLabel||d.baseCode});
+    }
+  } else {
+    if(!data.objects.some(o=>o.libId===describedObjId && o.source==='described')){
+      data.objects.push({source:'described', libId:describedObjId, src, code:d.compositeLabel||d.baseCode});
+    }
+  }
+  saveData();
+  renderPositionSetup(document.getElementById('content'));
 }
 function posPickerSetSource(src, mode){ posPickerSource=src; posPickerFilter=null; renderPositionSetup(document.getElementById('content')); }
 function posPickerSetFilter(cat){ posPickerFilter=cat; renderPositionSetup(document.getElementById('content')); }
@@ -2610,6 +2684,10 @@ function posPickItem(mode, source, fileOrId, label){
   if(!data) return;
   if(mode==='base'){
     data.baseImage = {source, libId:fileOrId, src: resolvePosPickSrc(source,fileOrId), code:label};
+  } else if(mode==='action'){
+    if(!data.actions.some(o=>o.libId===fileOrId && o.source===source)){
+      data.actions.push({source, libId:fileOrId, src: resolvePosPickSrc(source,fileOrId), code:label});
+    }
   } else {
     if(!data.objects.some(o=>o.libId===fileOrId && o.source===source)){
       data.objects.push({source, libId:fileOrId, src: resolvePosPickSrc(source,fileOrId), code:label});
@@ -2663,8 +2741,21 @@ async function posRemoveObject(libId){
   await saveData();
   renderPositionSetup(document.getElementById('content'));
 }
+async function posRemoveAction(libId){
+  const data = posData();
+  if(!data) return;
+  data.actions = data.actions.filter(a=>a.libId!==libId);
+  const removedCombos = data.combinations.filter(c=>c.actionLibId===libId).map(c=>c.id);
+  data.combinations = data.combinations.filter(c=>c.actionLibId!==libId);
+  removedCombos.forEach(cid=>{
+    data.questions = data.questions.filter(q=>q.comboId!==cid);
+  });
+  await saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
 function posSelectComboObj(libId){ posComboObjLibId = libId; renderPositionSetup(document.getElementById('content')); }
 function posSelectComboZone(zoneId){ posComboZoneId = zoneId; renderPositionSetup(document.getElementById('content')); }
+function posSelectComboAction(libId){ posComboActionLibId = libId; renderPositionSetup(document.getElementById('content')); }
 function posRandomizeCombinations(key){
   const data = posData(key);
   if(!data || data.zones.length===0 || data.objects.length===0) return;
@@ -2674,9 +2765,9 @@ function posRandomizeCombinations(key){
     const shuffled = shuffleArray(data.objects.slice());
     const chosen = shuffled.slice(0, count);
     chosen.forEach(obj=>{
-      const exists = data.combinations.some(c=>c.zoneId===zone.id && c.objLibId===obj.libId);
+      const exists = data.combinations.some(c=>c.zoneId===zone.id && c.objLibId===obj.libId && !c.actionLibId);
       if(!exists){
-        data.combinations.push({id:uid(), zoneId:zone.id, objLibId:obj.libId, wordId:uid()});
+        data.combinations.push({id:uid(), zoneId:zone.id, objLibId:obj.libId, actionLibId:null, wordId:uid()});
       }
     });
   });
@@ -2692,10 +2783,11 @@ function posRecordExistingCombination(key, comboId){
     let w = state.words.find(x=>x.id===combo.wordId);
     const obj = data.objects.find(o=>o.libId===combo.objLibId);
     const zone = data.zones.find(z=>z.id===combo.zoneId);
+    const action = combo.actionLibId ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
     if(!w){
       const parts = key.split('-');
       w = {
-        id: combo.wordId, text: `${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
+        id: combo.wordId, text: `${action?action.code+' ':''}${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
         meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
         photo: data.baseImage ? data.baseImage.src : '', entryType:'combination',
         hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
@@ -2711,16 +2803,18 @@ function posRecordCombination(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
   const data = posData(key);
   if(!data || !posComboObjLibId || !posComboZoneId) return;
-  const existing = data.combinations.find(c=>c.objLibId===posComboObjLibId && c.zoneId===posComboZoneId);
+  const actionLibId = posComboActionLibId || null;
+  const existing = data.combinations.find(c=>c.objLibId===posComboObjLibId && c.zoneId===posComboZoneId && (c.actionLibId||null)===actionLibId);
   const wordId = existing ? existing.wordId : uid();
   startWordRecording(wordId, 'posComboRecordStatus', ()=>{
     let w = state.words.find(x=>x.id===wordId);
     const obj = data.objects.find(o=>o.libId===posComboObjLibId);
     const zone = data.zones.find(z=>z.id===posComboZoneId);
+    const action = actionLibId ? data.actions.find(a=>a.libId===actionLibId) : null;
     if(!w){
       const parts = key.split('-');
       w = {
-        id: wordId, text: `${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
+        id: wordId, text: `${action?action.code+' ':''}${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
         meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
         photo: data.baseImage ? data.baseImage.src : '', entryType:'combination',
         hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
@@ -2729,9 +2823,9 @@ function posRecordCombination(key){
     }
     w.hasAudio = true;
     if(!existing){
-      data.combinations.push({id:uid(), zoneId:posComboZoneId, objLibId:posComboObjLibId, wordId});
+      data.combinations.push({id:uid(), zoneId:posComboZoneId, objLibId:posComboObjLibId, actionLibId, wordId});
     }
-    posComboObjLibId = null; posComboZoneId = null;
+    posComboObjLibId = null; posComboZoneId = null; posComboActionLibId = null;
     saveData();
     renderPositionSetup(document.getElementById('content'));
   });
@@ -2835,11 +2929,21 @@ function renderPositionSetup(c){
       </div>`).join('')}
     </div>
     ${renderPosPickerGallery('object')}
+
+    <h4 style="margin-top:16px;">3b. Actions (optional)</h4>
+    <div class="empty" style="margin-bottom:6px;">Add actions like "take" or "look" if you want this activity to also practice a verb — e.g. "Take the big red broom and put it on the roof." Leave this empty for a simple object+position activity.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      ${data.actions.map(a=>`<div style="position:relative;text-align:center;width:56px;">
+        <img src="${a.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <button onclick="posRemoveAction('${a.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+      </div>`).join('')}
+    </div>
+    ${renderPosPickerGallery('action')}
     ` : ''}
 
     ${data.zones.length && data.objects.length ? `
     <h4 style="margin-top:16px;">4. Combinations</h4>
-    <div class="empty" style="margin-bottom:6px;">Let the app randomly assign objects to positions to save time, or pick a specific object + position yourself below — either way, you still make the actual recording. Need at least 2 combinations to begin practice.</div>
+    <div class="empty" style="margin-bottom:6px;">Let the app randomly assign objects to positions to save time, or pick a specific object + position (and action, if you added any) yourself below — either way, you still make the actual recording. Need at least 2 combinations to begin practice.</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
       <label class="tm">Objects per position: <input type="number" id="posRandomCount" min="1" max="${data.objects.length}" value="1" style="width:50px;"></label>
       <button class="ghost" onclick="posRandomizeCombinations('${key}')">Randomize</button>
@@ -2858,6 +2962,15 @@ function renderPositionSetup(c){
           ${data.zones.map(z=>`<span class="tag" onclick="posSelectComboZone('${z.id}')" style="cursor:pointer;border:2px solid ${posComboZoneId===z.id?'var(--teal)':'transparent'};">${escapeHtml(z.label)}</span>`).join('')}
         </div>
       </div>
+      ${data.actions.length ? `
+      <div>
+        <div class="tm">Action (optional)</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+          <button type="button" class="ghost" style="${!posComboActionLibId?'font-weight:600;':''}" onclick="posSelectComboAction(null)">None</button>
+          ${data.actions.map(a=>`<img src="${a.src}" onclick="posSelectComboAction('${a.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboActionLibId===a.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        </div>
+      </div>
+      ` : ''}
     </div>
     <button class="record" onclick="posRecordCombination('${key}')" ${posComboObjLibId&&posComboZoneId?'':'disabled'}>Record this combination</button>
     <div id="posComboRecordStatus" class="meta" style="margin:6px 0;"></div>
@@ -2921,6 +3034,8 @@ async function startPositionPractice(key){
     phase:'intro',
     introducingComboId:null,
     currentQuestion:null,
+    selectedObjLibId:null,
+    selectedActionLibId:null,
     stats:{seen:0, known:0},
     wrongAttempt:false,
     feedback:null
@@ -2967,6 +3082,7 @@ function pickPosQuestion(){
   pp.wrongAttempt = false;
   pp.feedback = null;
   pp.selectedObjLibId = null;
+  pp.selectedActionLibId = null;
   render();
   playStoredAudio('wordaudio:'+pp.currentQuestion.id);
 }
@@ -2974,6 +3090,16 @@ function posIntroduceNext(){
   const pp = positionPractice;
   if(!pp || pp.remaining.length===0) return;
   posIntroduceCombo();
+}
+function posSelectQuizAction(libId){
+  const pp = positionPractice;
+  if(!pp || pp.phase!=='quiz' || !pp.currentQuestion) return;
+  pp.selectedActionLibId = libId;
+  render();
+}
+function comboNeedsAction(pp){
+  const combo = pp.data.combinations.find(c=>c.id===pp.currentQuestion.comboId);
+  return combo && !!combo.actionLibId;
 }
 function posSelectPlaceObject(libId){
   const pp = positionPractice;
@@ -2985,6 +3111,7 @@ function posAttemptPlace(ev){
   const pp = positionPractice;
   if(!pp || pp.phase!=='quiz' || !pp.currentQuestion || pp.currentQuestion.mode!=='place') return;
   if(!pp.selectedObjLibId) return;
+  if(comboNeedsAction(pp) && !pp.selectedActionLibId) return;
   const rect = ev.target.getBoundingClientRect();
   const x = ((ev.clientX-rect.left)/rect.width)*100;
   const y = ((ev.clientY-rect.top)/rect.height)*100;
@@ -2996,7 +3123,8 @@ function posAttemptPlace(ev){
   });
   if(!nearest) return;
   const combo = data.combinations.find(c=>c.id===pp.currentQuestion.comboId);
-  const correct = combo && combo.objLibId===pp.selectedObjLibId && combo.zoneId===nearest.id;
+  const actionOk = combo && ((combo.actionLibId||null) === (pp.selectedActionLibId||null));
+  const correct = combo && combo.objLibId===pp.selectedObjLibId && combo.zoneId===nearest.id && actionOk;
   if(correct){
     pp.stats.seen++;
     const knewIt = !pp.wrongAttempt;
@@ -3010,11 +3138,13 @@ function posAttemptPlace(ev){
     saveData();
     pp.feedback = 'correct';
     pp.selectedObjLibId = null;
+    pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('yes').then(()=>{ if(positionPractice) pickPosQuestion(); });
   } else {
     pp.wrongAttempt = true;
     pp.selectedObjLibId = null;
+    pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('no').then(()=>{
       if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
@@ -3024,8 +3154,11 @@ function posAttemptPlace(ev){
 function handlePosPick(comboId){
   const pp = positionPractice;
   if(!pp || pp.phase!=='quiz' || !pp.currentQuestion) return;
-  const correct = pp.currentQuestion.comboId;
-  if(comboId===correct){
+  if(comboNeedsAction(pp) && !pp.selectedActionLibId) return;
+  const correctCombo = pp.data.combinations.find(c=>c.id===pp.currentQuestion.comboId);
+  const actionOk = correctCombo && ((correctCombo.actionLibId||null) === (pp.selectedActionLibId||null));
+  const correct = comboId===pp.currentQuestion.comboId && actionOk;
+  if(correct){
     pp.stats.seen++;
     const knewIt = !pp.wrongAttempt;
     if(knewIt) pp.stats.known++;
@@ -3040,10 +3173,12 @@ function handlePosPick(comboId){
     }
     saveData();
     pp.feedback = 'correct';
+    pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('yes').then(()=>{ if(positionPractice) pickPosQuestion(); });
   } else {
     pp.wrongAttempt = true;
+    pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('no').then(()=>{
       if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
@@ -3120,16 +3255,28 @@ function renderPositionPractice(c){
     return;
   }
   const isPlaceMode = pp.currentQuestion && pp.currentQuestion.mode==='place';
+  const needsAction = pp.currentQuestion && comboNeedsAction(pp);
   const introducedCombos = pp.introduced.map(id=>data.combinations.find(c=>c.id===id)).filter(Boolean);
+  const actionTrayHtml = needsAction ? `
+    <div class="tm" style="margin-bottom:4px;">Tap the action:</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      ${[...new Set(introducedCombos.filter(c=>c.actionLibId).map(c=>c.actionLibId))].map(libId=>{
+        const action = data.actions.find(a=>a.libId===libId);
+        if(!action) return '';
+        return `<img src="${action.src}" onclick="posSelectQuizAction('${libId}')" style="width:50px;height:50px;object-fit:contain;border-radius:6px;border:2px solid ${pp.selectedActionLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+      }).join('')}
+    </div>
+  ` : '';
   c.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
       ${estHtml}
     </div>
     <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced${isPlaceMode?' · tap an object below, then tap where it goes':''}</div>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced${isPlaceMode?' · tap an object below, then tap where it goes':''}${needsAction?' · also tap the matching action':''}</div>
     ${pp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${pp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
+    ${actionTrayHtml}
     <div style="position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;">
       ${data.baseImage?`<img src="${data.baseImage.src}" ${isPlaceMode?`onclick="posAttemptPlace(event)"`:''} style="width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);${isPlaceMode?'cursor:crosshair;':''}">`:''}
       ${isPlaceMode ? '' : (()=>{
@@ -4576,6 +4723,7 @@ function renderLibrary(c){
         <option value="mine" ${libraryTabSource==='mine'?'selected':''}>My Photo Library</option>
         <option value="busy" ${libraryTabSource==='busy'?'selected':''}>Busy Pictures</option>
         <option value="lexicarry" ${libraryTabSource==='lexicarry'?'selected':''}>Lexicarry</option>
+        <option value="described" ${libraryTabSource==='described'?'selected':''}>Described Objects</option>
         <option value="lessons" ${libraryTabSource==='lessons'?'selected':''}>Added from Lessons</option>
       </select>
     </div>
@@ -4594,6 +4742,7 @@ function renderLibraryTabBody(){
   else if(libraryTabSource==='mine') renderLibraryTabMine(el);
   else if(libraryTabSource==='busy') renderLibraryTabBusy(el);
   else if(libraryTabSource==='lexicarry') renderLibraryTabLexicarry(el);
+  else if(libraryTabSource==='described') renderLibraryTabDescribed(el);
   else renderLibraryTabLessons(el);
 }
 let editingCustomGraphicId = null;
@@ -4705,13 +4854,23 @@ function renderLibraryTabMine(el){
   el.innerHTML = `
     <div class="empty" style="margin-bottom:6px;">Your own photos — add, edit, and remove freely.</div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
-      <h4 style="margin-top:0;">Add a new photo</h4>
-      <div class="field"><input type="file" id="libTabUpload" accept="image/*"></div>
-      <div class="row">
-        <div class="field"><label>Label</label><input id="libTabLabel" placeholder="e.g. our kitchen table"></div>
-        <div class="field"><label>Category</label>${categorySelectHtml('libTabCategory', cats, '')}</div>
-      </div>
-      <button class="ghost" onclick="addToPhotoLibraryTab()">Add to library</button>
+      <h4 style="margin-top:0;">Add new photos</h4>
+      <div class="empty" style="margin-bottom:6px;">Select one or several at once — you'll label and categorize each one individually below before saving.</div>
+      <div class="field"><input type="file" id="libTabUpload" accept="image/*" multiple onchange="handleBatchFileSelect()"></div>
+      ${libBatchStaged.length ? `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:10px 0;">
+          ${libBatchStaged.map(item=>`
+            <div style="text-align:center;padding:6px;background:var(--paper);border:1px solid var(--paper-line);border-radius:3px;">
+              <img src="${item.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);margin-bottom:4px;">
+              <input id="batchLabel-${item.tempId}" placeholder="Label" value="${escapeHtml(item.label)}" oninput="setBatchLabel('${item.tempId}', this.value)" style="font-size:.75rem;padding:3px;margin-bottom:3px;width:100%;">
+              ${categorySelectHtml('batchCategory-'+item.tempId, cats, item.category)}
+              <button class="ghost danger" style="font-size:.6rem;margin-top:3px;" onclick="removeBatchStaged('${item.tempId}')">Remove</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="primary" onclick="saveBatchStaged()">Save all (${libBatchStaged.length})</button>
+        <button class="ghost" onclick="clearBatchStaged()">Discard all</button>
+      ` : ''}
     </div>
     <div class="field"><label>Filter by category</label>
       <select onchange="libTabLibraryFilterByIndex(this.value)">
@@ -4787,6 +4946,58 @@ async function movePictureBetweenCollections(id, fromCollection, toCollection){
 }
 async function deleteLibraryPhotoTab(id){
   state.photoLibrary = state.photoLibrary.filter(p=>p.id!==id);
+  await saveData();
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+let libBatchStaged = [];
+function handleBatchFileSelect(){
+  const fileInput = document.getElementById('libTabUpload');
+  if(!fileInput || !fileInput.files || fileInput.files.length===0) return;
+  const files = Array.from(fileInput.files);
+  Promise.all(files.map(file => new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=> resolve(null);
+      img.onload = ()=>{
+        const canvas = document.createElement('canvas');
+        const maxW = 500;
+        const scale = Math.min(1, maxW/img.width);
+        canvas.width = img.width*scale; canvas.height = img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        resolve({tempId: uid(), dataUrl: canvas.toDataURL('image/jpeg', 0.85), label:'', category:''});
+      };
+      img.src = reader.result;
+    };
+    reader.onerror = ()=>resolve(null);
+    reader.readAsDataURL(file);
+  }))).then(results=>{
+    libBatchStaged = libBatchStaged.concat(results.filter(Boolean));
+    renderLibraryTabMine(document.getElementById('libraryTabBody'));
+  });
+}
+function setBatchLabel(tempId, val){
+  const item = libBatchStaged.find(i=>i.tempId===tempId);
+  if(item) item.label = val;
+}
+function removeBatchStaged(tempId){
+  libBatchStaged = libBatchStaged.filter(i=>i.tempId!==tempId);
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+function clearBatchStaged(){
+  libBatchStaged = [];
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
+async function saveBatchStaged(){
+  libBatchStaged.forEach(item=>{
+    const labelEl = document.getElementById('batchLabel-'+item.tempId);
+    if(labelEl) item.label = labelEl.value.trim();
+    item.category = readCategorySelectValue('batchCategory-'+item.tempId);
+  });
+  libBatchStaged.forEach(item=>{
+    state.photoLibrary.push({id: uid(), label: item.label, category: item.category||null, dataUrl: item.dataUrl});
+  });
+  libBatchStaged = [];
   await saveData();
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
 }
@@ -4920,6 +5131,204 @@ function addToBusyPicturesTab(){
 }
 let libTabLexicarryFilter = null;
 let editingLexicarryPhotoId = null;
+// ---------- Described Objects: a reusable pool combining a base object with descriptors ----------
+let doBuilderBaseObj = null;
+let doBuilderDescriptors = [];
+let doEditingDescribedId = null;
+let doPickerTarget = null;
+let doPickerSource = 'graphics';
+let doPickerFilter = null;
+let doPickerGraphicsPage = null;
+function resetDOBuilder(){
+  doBuilderBaseObj = null;
+  doBuilderDescriptors = [];
+  doEditingDescribedId = null;
+  doPickerTarget = null;
+}
+function describedObjectPreviewHTML(d){
+  const size = 56;
+  return `<div style="position:relative;display:inline-flex;gap:2px;align-items:flex-end;padding:4px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
+    <img src="${d.baseObjSrc}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:3px;">
+    ${(d.descriptors||[]).map(desc=>{
+      if(desc.isPicture && desc.src) return `<img src="${desc.src}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;" title="${escapeHtml(desc.category||'')}">`;
+      if(!desc.isPicture && desc.label) return `<span class="tag" style="font-size:.6rem;">${escapeHtml(desc.label)}</span>`;
+      return '';
+    }).join('')}
+  </div>`;
+}
+function renderDOPickerGallery(target){
+  const source = doPickerSource;
+  const filter = doPickerFilter;
+  let galleryHtml = '';
+  if(source==='graphics'){
+    if(!doPickerGraphicsPage) doPickerGraphicsPage = GRAPHICS_MANIFEST[0].page;
+    const pages = graphicsPages();
+    const items = GRAPHICS_MANIFEST.filter(g=>g.page===doPickerGraphicsPage);
+    galleryHtml = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="doPickerPageNav(-1)">&laquo; Prev</button>
+        <span class="meta">Page ${doPickerGraphicsPage} of ${pages[pages.length-1]}</span>
+        <button class="ghost" onclick="doPickerPageNav(1)">Next &raquo;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px;max-height:160px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.map(g=>`<div onclick="doPickItem('${target}','graphics','${g.file}','${escapeHtml(g.code).replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="graphics/${g.file}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('')}
+      </div>`;
+  } else {
+    const list = source==='library' ? state.photoLibrary.filter(p=>!p.isCustomGraphic) : source==='busy' ? state.busyPictures : state.lexicarryPictures;
+    const cats = source==='library' ? libraryCategories() : source==='busy' ? busyCategories() : lexicarryCategories();
+    const items = filter ? list.filter(p=>p.category===filter) : list;
+    galleryHtml = `
+      <div style="margin-bottom:6px;">
+        <button class="ghost" style="${!filter?'font-weight:600;':''}" onclick="doPickerSetFilter(null)">All</button>
+        ${cats.map(c=>`<button class="ghost" style="margin-left:4px;${filter===c?'font-weight:600;':''}" onclick="doPickerSetFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px;max-height:160px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.length ? items.map(p=>`<div onclick="doPickItem('${target}','${source}','${p.id}','${escapeHtml(p.label||p.category||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('') : `<div class="empty">Nothing here yet.</div>`}
+      </div>`;
+  }
+  return `
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="ghost" style="${source==='graphics'?'font-weight:600;':''}" onclick="doPickerSetSource('graphics')">Graphics Pack</button>
+      <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="doPickerSetSource('library')">My Photo Library</button>
+      <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="doPickerSetSource('busy')">Busy Pictures</button>
+      <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="doPickerSetSource('lexicarry')">Lexicarry</button>
+    </div>
+    ${galleryHtml}
+  `;
+}
+function doPickerSetSource(src){ doPickerSource=src; doPickerFilter=null; renderLibraryTabDescribed(document.getElementById('libraryTabBody')); }
+function doPickerSetFilter(cat){ doPickerFilter=cat; renderLibraryTabDescribed(document.getElementById('libraryTabBody')); }
+function doPickerPageNav(delta){
+  const pages = graphicsPages();
+  const idx = pages.indexOf(doPickerGraphicsPage);
+  doPickerGraphicsPage = pages[Math.min(Math.max(idx+delta,0), pages.length-1)];
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+function doPickItem(target, source, fileOrId, label){
+  const src = resolvePosPickSrc(source, fileOrId);
+  if(target==='base'){
+    doBuilderBaseObj = {source, libId:fileOrId, src, code:label};
+  } else {
+    const idx = Number(target);
+    if(doBuilderDescriptors[idx]){
+      doBuilderDescriptors[idx].src = src;
+      doBuilderDescriptors[idx].source = source;
+      doBuilderDescriptors[idx].libId = fileOrId;
+      if(!doBuilderDescriptors[idx].label) doBuilderDescriptors[idx].label = label;
+    }
+  }
+  doPickerTarget = null;
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+function doAddDescriptor(){
+  doBuilderDescriptors.push({id:uid(), category:'', isPicture:false, label:'', src:null, source:null, libId:null});
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+function doSetDescriptorCategory(idx, val){ if(doBuilderDescriptors[idx]) doBuilderDescriptors[idx].category = val; }
+function doSetDescriptorText(idx, val){ if(doBuilderDescriptors[idx]) doBuilderDescriptors[idx].label = val; }
+function doSetDescriptorMode(idx, isPicture){
+  if(doBuilderDescriptors[idx]){
+    doBuilderDescriptors[idx].isPicture = isPicture;
+    renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+  }
+}
+function doRemoveDescriptor(idx){
+  doBuilderDescriptors.splice(idx,1);
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+async function doSaveDescribedObject(){
+  if(!doBuilderBaseObj) return;
+  const compositeLabel = [doBuilderBaseObj.code, ...doBuilderDescriptors.map(d=>d.isPicture?'':d.label).filter(Boolean)].filter(Boolean).join(' ');
+  const entry = {
+    id: doEditingDescribedId || uid(),
+    baseObjSource: doBuilderBaseObj.source, baseObjLibId: doBuilderBaseObj.libId, baseObjSrc: doBuilderBaseObj.src, baseCode: doBuilderBaseObj.code,
+    descriptors: doBuilderDescriptors.map(d=>({id:d.id, category:d.category, isPicture:d.isPicture, label:d.label, src:d.src, source:d.source, libId:d.libId})),
+    compositeLabel
+  };
+  if(doEditingDescribedId){
+    const idx = state.describedObjects.findIndex(x=>x.id===doEditingDescribedId);
+    if(idx>=0) state.describedObjects[idx] = entry; else state.describedObjects.push(entry);
+  } else {
+    state.describedObjects.push(entry);
+  }
+  await saveData();
+  resetDOBuilder();
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+function startEditDescribedObject(id){
+  const d = state.describedObjects.find(x=>x.id===id);
+  if(!d) return;
+  doEditingDescribedId = id;
+  doBuilderBaseObj = {source:d.baseObjSource, libId:d.baseObjLibId, src:d.baseObjSrc, code:d.baseCode};
+  doBuilderDescriptors = d.descriptors.map(desc=>({...desc}));
+  doPickerTarget = null;
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+async function deleteDescribedObject(id){
+  state.describedObjects = state.describedObjects.filter(x=>x.id!==id);
+  await saveData();
+  renderLibraryTabDescribed(document.getElementById('libraryTabBody'));
+}
+function renderLibraryTabDescribed(el){
+  const list = state.describedObjects;
+  el.innerHTML = `
+    <div class="empty" style="margin-bottom:6px;">Build a described object by combining a base picture with descriptors like size or color — each descriptor can be text or its own picture. The result becomes one combined, single-tap object anywhere you pick objects in Solo Practice activities.</div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
+      <h4 style="margin-top:0;">${doEditingDescribedId ? 'Edit described object' : 'Build a new described object'}</h4>
+      <div class="tm" style="margin-bottom:4px;">Base object</div>
+      ${doBuilderBaseObj ? `
+        <div style="text-align:center;margin-bottom:8px;">
+          <img src="${doBuilderBaseObj.src}" style="max-width:70px;border-radius:4px;border:1px solid var(--paper-line);">
+          <div><button class="ghost" style="font-size:.7rem;" onclick="doBuilderBaseObj=null;renderLibraryTabDescribed(document.getElementById('libraryTabBody'))">Change</button></div>
+        </div>
+      ` : (doPickerTarget==='base' ? renderDOPickerGallery('base') : `<button class="ghost" onclick="doPickerTarget='base';renderLibraryTabDescribed(document.getElementById('libraryTabBody'))">Choose base object</button>`)}
+
+      ${doBuilderBaseObj ? `
+      <div class="tm" style="margin:10px 0 4px;">Descriptors</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        ${doBuilderDescriptors.map((d,di)=>`
+          <div style="text-align:center;padding:6px;background:var(--paper);border:1px solid var(--paper-line);border-radius:4px;min-width:84px;">
+            <input placeholder="category e.g. color" value="${escapeHtml(d.category)}" oninput="doSetDescriptorCategory(${di}, this.value)" style="font-size:.68rem;padding:2px;margin-bottom:4px;width:88px;">
+            <div style="display:flex;gap:3px;justify-content:center;margin-bottom:4px;">
+              <button type="button" class="ghost" style="font-size:.6rem;padding:1px 4px;${!d.isPicture?'font-weight:600;':''}" onclick="doSetDescriptorMode(${di},false)">Text</button>
+              <button type="button" class="ghost" style="font-size:.6rem;padding:1px 4px;${d.isPicture?'font-weight:600;':''}" onclick="doSetDescriptorMode(${di},true)">Picture</button>
+            </div>
+            ${d.isPicture ? (d.src ? `<img src="${d.src}" style="width:38px;height:38px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);">` : (doPickerTarget===di ? '' : `<button class="ghost" style="font-size:.6rem;" onclick="doPickerTarget=${di};renderLibraryTabDescribed(document.getElementById('libraryTabBody'))">Pick picture</button>`))
+              : `<input placeholder="e.g. red" value="${escapeHtml(d.label)}" oninput="doSetDescriptorText(${di}, this.value)" style="font-size:.68rem;padding:2px;width:70px;">`}
+            <div><button class="ghost danger" style="font-size:.6rem;margin-top:3px;" onclick="doRemoveDescriptor(${di})">Remove</button></div>
+          </div>
+        `).join('')}
+      </div>
+      ${typeof doPickerTarget==='number' ? renderDOPickerGallery(doPickerTarget) : ''}
+      <button class="ghost" onclick="doAddDescriptor()">+ Add descriptor</button>
+      <div style="margin-top:10px;">
+        <div class="tm">Preview:</div>
+        ${describedObjectPreviewHTML({baseObjSrc:doBuilderBaseObj.src, descriptors:doBuilderDescriptors})}
+      </div>
+      <div style="margin-top:8px;">
+        <button class="primary" onclick="doSaveDescribedObject()">Save described object</button>
+        ${doEditingDescribedId ? `<button class="ghost" onclick="resetDOBuilder();renderLibraryTabDescribed(document.getElementById('libraryTabBody'))">Cancel edit</button>` : ''}
+      </div>
+      ` : ''}
+    </div>
+
+    <h4>Your described objects</h4>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      ${list.length ? list.map(d=>`
+        <div style="text-align:center;">
+          ${describedObjectPreviewHTML(d)}
+          <div class="tm" style="max-width:90px;">${escapeHtml(d.compositeLabel||d.baseCode)}</div>
+          <button class="ghost" style="font-size:.6rem;" onclick="startEditDescribedObject('${d.id}')">Edit</button>
+          <button class="ghost danger" style="font-size:.6rem;" onclick="deleteDescribedObject('${d.id}')">Delete</button>
+        </div>
+      `).join('') : `<div class="empty">None yet.</div>`}
+    </div>
+  `;
+}
 function renderLibraryTabLexicarry(el){
   const cats = lexicarryCategories();
   const items = libTabLexicarryFilter ? state.lexicarryPictures.filter(p=>p.category===libTabLexicarryFilter) : state.lexicarryPictures;
