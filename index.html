@@ -5451,6 +5451,23 @@ function setReviewCustomMPIndex(val){
   reviewCustomMPIndex = Number(val);
   renderReviewCustomChecklist();
 }
+let reviewExpandedMPs = new Set();
+let reviewExpandedActivities = new Set();
+function toggleReviewMP(gi){
+  const bodyEl = document.getElementById('reviewMPBody-'+gi);
+  const arrowEl = document.getElementById('reviewMPArrow-'+gi);
+  if(!bodyEl) return;
+  if(reviewExpandedMPs.has(gi)){ reviewExpandedMPs.delete(gi); bodyEl.style.display='none'; if(arrowEl) arrowEl.textContent='▸'; }
+  else { reviewExpandedMPs.add(gi); bodyEl.style.display=''; if(arrowEl) arrowEl.textContent='▾'; }
+}
+function toggleReviewActivity(gi, si){
+  const key = gi+'-'+si;
+  const bodyEl = document.getElementById('reviewActBody-'+key);
+  const arrowEl = document.getElementById('reviewActArrow-'+key);
+  if(!bodyEl) return;
+  if(reviewExpandedActivities.has(key)){ reviewExpandedActivities.delete(key); bodyEl.style.display='none'; if(arrowEl) arrowEl.textContent='▸'; }
+  else { reviewExpandedActivities.add(key); bodyEl.style.display=''; if(arrowEl) arrowEl.textContent='▾'; }
+}
 function renderReviewCustomChecklist(){
   const el = document.getElementById('reviewChecks');
   if(!el) return;
@@ -5458,29 +5475,49 @@ function renderReviewCustomChecklist(){
   const visible = reviewCustomMPIndex===-1
     ? groups.map((g,gi)=>({g,gi}))
     : (groups[reviewCustomMPIndex] ? [{g:groups[reviewCustomMPIndex], gi:reviewCustomMPIndex}] : []);
-  el.innerHTML = visible.map(({g,gi})=>`
-    <div class="reviewCustomGroup" style="margin-bottom:18px;">
-      <div style="font-weight:600;font-size:.85rem;">${escapeHtml(g.topLabel)} <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},true)">all</button> <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="selectTopReviewGroup(${gi},false)">none</button></div>
-      ${g.subs.map((s,si)=>`
-        <div style="margin:8px 0 0 6px;">
-          <div class="tm" style="margin-bottom:6px;">${escapeHtml(s.subLabel)} <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},true)">all</button> <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="selectSubReviewGroup(${gi},${si},false)">none</button></div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;">
-            ${s.words.map(w=>`
-              <label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="cursor:pointer;text-align:center;display:block;">
-                <div style="display:flex;align-items:center;justify-content:center;gap:4px;font-size:.72rem;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                  <input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked style="flex-shrink:0;">
-                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</span>
-                </div>
-                <div style="aspect-ratio:1;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
-                  ${w.photo?`<img src="${w.photo}" style="width:100%;height:100%;object-fit:contain;">`:''}
-                </div>
-              </label>
-            `).join('')}
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
+  el.innerHTML = visible.map(({g,gi})=>{
+    const mpOpen = reviewExpandedMPs.has(gi);
+    const totalWords = g.subs.reduce((a,s)=>a+s.words.length,0);
+    return `
+    <div class="reviewCustomGroup" style="margin-bottom:10px;border:1px solid var(--paper-line);border-radius:4px;">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;" onclick="toggleReviewMP(${gi})">
+        <span id="reviewMPArrow-${gi}">${mpOpen?'▾':'▸'}</span>
+        <span style="font-weight:600;font-size:.85rem;flex:1;">${escapeHtml(g.topLabel)} <span class="tm">(${totalWords})</span></span>
+        <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="event.stopPropagation();selectTopReviewGroup(${gi},true)">all</button>
+        <button class="ghost" style="font-size:.68rem;padding:1px 6px;" onclick="event.stopPropagation();selectTopReviewGroup(${gi},false)">none</button>
+      </div>
+      <div id="reviewMPBody-${gi}" style="display:${mpOpen?'':'none'};padding:0 8px 8px 8px;">
+        ${g.subs.map((s,si)=>{
+          const actKey = gi+'-'+si;
+          const actOpen = reviewExpandedActivities.has(actKey);
+          return `
+          <div style="margin:6px 0 0 6px;border:1px solid var(--paper-line);border-radius:4px;">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;" onclick="toggleReviewActivity(${gi},${si})">
+              <span id="reviewActArrow-${actKey}">${actOpen?'▾':'▸'}</span>
+              <span class="tm" style="flex:1;">${escapeHtml(s.subLabel)} <span class="tm">(${s.words.length})</span></span>
+              <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="event.stopPropagation();selectSubReviewGroup(${gi},${si},true)">all</button>
+              <button class="ghost" style="font-size:.65rem;padding:0 5px;" onclick="event.stopPropagation();selectSubReviewGroup(${gi},${si},false)">none</button>
+            </div>
+            <div id="reviewActBody-${actKey}" style="display:${actOpen?'':'none'};padding:8px;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;">
+                ${s.words.map(w=>`
+                  <label class="reviewWordRow" data-search="${escapeHtml((w.text||'').toLowerCase())}" style="cursor:pointer;text-align:center;display:block;">
+                    <div style="display:flex;align-items:center;justify-content:center;gap:4px;font-size:.72rem;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                      <input type="checkbox" class="revWordCheck" data-top="${gi}" data-sub="${si}" value="${w.id}" checked style="flex-shrink:0;">
+                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${w.text?escapeHtml(w.text):'(untitled)'}${w.entryType&&w.entryType!=='word'?` <span class="tm">(${w.entryType})</span>`:''}</span>
+                    </div>
+                    <div style="aspect-ratio:1;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
+                      ${w.photo?`<img src="${w.photo}" style="width:100%;height:100%;object-fit:contain;">`:''}
+                    </div>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
   filterReviewChecklist();
 }
 function filterReviewChecklist(){
