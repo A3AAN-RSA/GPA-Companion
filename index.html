@@ -2511,6 +2511,7 @@ let posPendingZone = null;
 let posComboObjLibId = null;
 let posComboZoneId = null;
 let posQuestionComboId = null;
+let posQuestionMode = 'identify';
 function openPositionSetup(key){
   state.positionActivities[key] = state.positionActivities[key] || {baseImage:null, zones:[], objects:[], combinations:[], questions:[]};
   positionSetup = key;
@@ -2520,7 +2521,12 @@ function openPositionSetup(key){
   posComboObjLibId = null;
   posComboZoneId = null;
   posQuestionComboId = null;
+  posQuestionMode = 'identify';
   render();
+}
+function setPosQuestionMode(mode){
+  posQuestionMode = mode;
+  renderPositionSetup(document.getElementById('content'));
 }
 function closePositionSetup(){
   positionSetup = null;
@@ -2737,8 +2743,9 @@ function posRecordQuestion(key){
   const data = posData(key);
   const id = uid();
   const comboId = posQuestionComboId;
+  const mode = posQuestionMode;
   startWordRecording(id, 'posQuestionRecordStatus', ()=>{
-    data.questions.push({id, comboId});
+    data.questions.push({id, comboId, mode});
     posQuestionComboId = null;
     saveData();
     const statusEl = document.getElementById('posQuestionRecordStatus');
@@ -2861,17 +2868,22 @@ function renderPositionSetup(c){
 
     ${r.combosReady ? `
     <h4 style="margin-top:16px;">5. Questions</h4>
-    <div class="empty" style="margin-bottom:6px;">Record the question/command for a combination — e.g. "Which camera is on top of the chair?" — tap a recorded combination below, then record.</div>
+    <div class="empty" style="margin-bottom:6px;">Record the question/command for a combination — tap a recorded combination below, choose whether it's an "Identify" question ("Which camera is on top of the chair?" — tap the right one) or a "Place" command ("Put the camera on top of the chair" — actually place it there), then record.</div>
     <div id="posQuestionList">${data.questions.map(q=>{
       const combo = data.combinations.find(c=>c.id===q.comboId);
       return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${combo?comboThumb(data,combo,40):'(removed)'}</span>
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${combo?comboThumb(data,combo,40):'(removed)'} <span class="tag">${q.mode==='place'?'Place':'Identify'}</span></span>
         <div id="posQAudio-${q.id}"></div>
         <button class="ghost danger" style="font-size:.7rem;" onclick="posDeleteQuestion('${q.id}')">Remove</button>
       </div>`;
     }).join('') || '<div class="empty">No questions recorded yet.</div>'}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
       ${r.recordedCombos.map(combo=>`<div onclick="posSelectQuestionCombo('${combo.id}')" style="cursor:pointer;border:2px solid ${posQuestionComboId===combo.id?'var(--teal)':'transparent'};border-radius:4px;">${comboThumb(data,combo,50)}</div>`).join('')}
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <span class="tm">Type:</span>
+      <button type="button" class="ghost" style="${posQuestionMode==='identify'?'font-weight:600;':''}" onclick="setPosQuestionMode('identify')">Identify (tap the right one)</button>
+      <button type="button" class="ghost" style="${posQuestionMode==='place'?'font-weight:600;':''}" onclick="setPosQuestionMode('place')">Place (put it there yourself)</button>
     </div>
     <button class="record" onclick="posRecordQuestion('${key}')" ${posQuestionComboId?'':'disabled'}>Record new question/command</button>
     <div id="posQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
@@ -2944,6 +2956,7 @@ function pickPosQuestion(){
   pp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
   pp.wrongAttempt = false;
   pp.feedback = null;
+  pp.selectedObjLibId = null;
   render();
   playStoredAudio('wordaudio:'+pp.currentQuestion.id);
 }
@@ -2951,6 +2964,52 @@ function posIntroduceNext(){
   const pp = positionPractice;
   if(!pp || pp.remaining.length===0) return;
   posIntroduceCombo();
+}
+function posSelectPlaceObject(libId){
+  const pp = positionPractice;
+  if(!pp || pp.phase!=='quiz' || !pp.currentQuestion || pp.currentQuestion.mode!=='place') return;
+  pp.selectedObjLibId = libId;
+  render();
+}
+function posAttemptPlace(ev){
+  const pp = positionPractice;
+  if(!pp || pp.phase!=='quiz' || !pp.currentQuestion || pp.currentQuestion.mode!=='place') return;
+  if(!pp.selectedObjLibId) return;
+  const rect = ev.target.getBoundingClientRect();
+  const x = ((ev.clientX-rect.left)/rect.width)*100;
+  const y = ((ev.clientY-rect.top)/rect.height)*100;
+  const data = pp.data;
+  let nearest = null, nearestDist = Infinity;
+  data.zones.forEach(z=>{
+    const d = Math.hypot(z.x-x, z.y-y);
+    if(d<nearestDist){ nearestDist=d; nearest=z; }
+  });
+  if(!nearest) return;
+  const combo = data.combinations.find(c=>c.id===pp.currentQuestion.comboId);
+  const correct = combo && combo.objLibId===pp.selectedObjLibId && combo.zoneId===nearest.id;
+  if(correct){
+    pp.stats.seen++;
+    const knewIt = !pp.wrongAttempt;
+    if(knewIt) pp.stats.known++;
+    const w = state.words.find(x=>x.id===combo.wordId);
+    if(w){
+      w.iceberg = knewIt ? Math.max(w.iceberg-1,1) : Math.min(w.iceberg+1,9);
+      w.lastReview = new Date().toISOString().slice(0,10);
+      w.reviewCount = (w.reviewCount||0)+1;
+    }
+    saveData();
+    pp.feedback = 'correct';
+    pp.selectedObjLibId = null;
+    render();
+    playRandomAnswerSound('yes').then(()=>{ if(positionPractice) pickPosQuestion(); });
+  } else {
+    pp.wrongAttempt = true;
+    pp.selectedObjLibId = null;
+    render();
+    playRandomAnswerSound('no').then(()=>{
+      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
+    });
+  }
 }
 function handlePosPick(comboId){
   const pp = positionPractice;
@@ -3050,30 +3109,40 @@ function renderPositionPractice(c){
     `;
     return;
   }
+  const isPlaceMode = pp.currentQuestion && pp.currentQuestion.mode==='place';
+  const introducedCombos = pp.introduced.map(id=>data.combinations.find(c=>c.id===id)).filter(Boolean);
   c.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
       ${estHtml}
     </div>
     <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced</div>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced${isPlaceMode?' · tap an object below, then tap where it goes':''}</div>
     ${pp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
     ${pp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;">
-      ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);">`:''}
-      ${(()=>{
-        const items = pp.introduced.map(comboId=>{
-          const combo = data.combinations.find(c=>c.id===comboId);
-          if(!combo) return null;
+      ${data.baseImage?`<img src="${data.baseImage.src}" ${isPlaceMode?`onclick="posAttemptPlace(event)"`:''} style="width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);${isPlaceMode?'cursor:crosshair;':''}">`:''}
+      ${isPlaceMode ? '' : (()=>{
+        const items = introducedCombos.map(combo=>{
           const zone = data.zones.find(z=>z.id===combo.zoneId);
           const obj = data.objects.find(o=>o.libId===combo.objLibId);
           if(!zone||!obj) return null;
-          return {comboId, obj, x:zone.x, y:zone.y};
+          return {comboId:combo.id, obj, x:zone.x, y:zone.y};
         }).filter(Boolean);
         const fanned = computeFannedPositions(items);
         return fanned.map((it,idx)=>`<img src="${it.obj.src}" onclick="handlePosPick('${it.comboId}')" style="position:absolute;left:${it.x}%;top:${it.y}%;width:10%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;z-index:${idx};box-shadow:1px 2px 4px rgba(0,0,0,.15);">`).join('');
       })()}
     </div>
+    ${isPlaceMode ? `
+    <div class="tm" style="margin-bottom:4px;">Tap the object to place:</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      ${[...new Set(introducedCombos.map(c=>c.objLibId))].map(libId=>{
+        const obj = data.objects.find(o=>o.libId===libId);
+        if(!obj) return '';
+        return `<img src="${obj.src}" onclick="posSelectPlaceObject('${libId}')" style="width:56px;height:56px;object-fit:contain;border-radius:6px;border:2px solid ${pp.selectedObjLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+      }).join('')}
+    </div>
+    ` : ''}
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce Next</button>` : ''}
       <button class="ghost danger" onclick="endPositionPractice()">End practice</button>
