@@ -1012,6 +1012,7 @@ async function loadData(){
   });
   state.activityNurturerAudio = state.activityNurturerAudio || {};
   state.activityQuestions = state.activityQuestions || {};
+  state.positionActivities = state.positionActivities || {};
   loaded = true;
   render();
 }
@@ -1038,7 +1039,7 @@ function render(){
   if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
   if(activeTab==='dashboard') renderDashboard(c);
   else if(activeTab==='orientation') renderOrientation(c);
-  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else if(soloPractice) renderSoloPractice(c); else if(soloSetup) renderSoloSetup(c); else renderMeetings(c); }
+  else if(activeTab==='meetings') { if(liveActivity) renderLiveActivity(c); else if(soloPractice) renderSoloPractice(c); else if(soloSetup) renderSoloSetup(c); else if(positionPractice) renderPositionPractice(c); else if(positionSetup) renderPositionSetup(c); else renderMeetings(c); }
   else if(activeTab==='words') renderWords(c);
   else if(activeTab==='review') renderReview(c);
   else if(activeTab==='suggestions') renderSuggestions(c);
@@ -1050,6 +1051,7 @@ function render(){
 function activeSessionBlockReason(){
   if(liveActivity) return "the activity you're doing";
   if(soloPractice) return 'your solo practice session';
+  if(positionPractice) return 'your solo practice session';
   if(reviewActive) return 'your review session';
   if(gridReviewActive) return 'your grid review session';
   if(alphaReviewActive) return 'your alphabet review session';
@@ -1304,6 +1306,14 @@ function renderMeetings(c){
                   <span class="tm">How are you doing this activity?</span>
                   <button class="primary" onclick="chooseWithNurturer('${key}')">With Nurturer</button>
                   <button class="ghost" onclick="chooseInApp('${key}')">In App (no nurturer)</button>
+                  <button class="ghost" onclick="cancelActivityModeChoice()">Cancel</button>
+                </div>`;
+              }
+              if(pendingInAppChoiceKey===key){
+                return `<div style="margin:10px 0 0 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <span class="tm">What kind of activity is this?</span>
+                  <button class="primary" onclick="chooseWordIntroMode('${key}')">Word Introduction</button>
+                  <button class="ghost" onclick="chooseCombinationMode('${key}')">Position Combinations</button>
                   <button class="ghost" onclick="cancelActivityModeChoice()">Cancel</button>
                 </div>`;
               }
@@ -2145,6 +2155,7 @@ function promptActivityMode(key){
 }
 function cancelActivityModeChoice(){
   pendingActivityKey = null;
+  pendingInAppChoiceKey = null;
   renderMeetings(document.getElementById('content'));
 }
 function chooseWithNurturer(key){
@@ -2153,8 +2164,18 @@ function chooseWithNurturer(key){
 }
 function chooseInApp(key){
   pendingActivityKey = null;
+  pendingInAppChoiceKey = key;
+  renderMeetings(document.getElementById('content'));
+}
+function chooseWordIntroMode(key){
+  pendingInAppChoiceKey = null;
   openSoloSetup(key);
 }
+function chooseCombinationMode(key){
+  pendingInAppChoiceKey = null;
+  openPositionSetup(key);
+}
+let pendingInAppChoiceKey = null;
 function openSoloSetup(key){
   soloSetup = key;
   soloQuestionSelectedWordId = null;
@@ -2459,6 +2480,498 @@ function renderSoloPractice(c){
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce Next</button>` : ''}
       <button class="ghost danger" onclick="endSoloPractice()">End practice</button>
+    </div>
+  `;
+}
+
+// ---------- Type 2 solo practice: position combinations ----------
+let positionSetup = null;
+let posPickerSource = 'graphics';
+let posPickerFilter = null;
+let posPickerGraphicsPage = null;
+let posPendingZone = null;
+let posComboObjLibId = null;
+let posComboZoneId = null;
+let posQuestionComboId = null;
+function openPositionSetup(key){
+  state.positionActivities[key] = state.positionActivities[key] || {baseImage:null, zones:[], objects:[], combinations:[], questions:[]};
+  positionSetup = key;
+  posPickerSource = 'graphics';
+  posPickerFilter = null;
+  posPendingZone = null;
+  posComboObjLibId = null;
+  posComboZoneId = null;
+  posQuestionComboId = null;
+  render();
+}
+function closePositionSetup(){
+  positionSetup = null;
+  render();
+}
+function posData(key){
+  return state.positionActivities[key || positionSetup];
+}
+function resolvePosPickSrc(source, fileOrId){
+  if(source==='graphics') return `graphics/${fileOrId}`;
+  if(source==='library') return (state.photoLibrary.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  if(source==='busy') return (state.busyPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  if(source==='lexicarry') return (state.lexicarryPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
+  return '';
+}
+function renderPosPickerGallery(mode){
+  // mode: 'base' (pick one, replaces) or 'object' (pick many, adds to pool)
+  const source = posPickerSource;
+  const filter = posPickerFilter;
+  let galleryHtml = '';
+  if(source==='graphics'){
+    if(!posPickerGraphicsPage) posPickerGraphicsPage = GRAPHICS_MANIFEST[0].page;
+    const pages = graphicsPages();
+    const items = GRAPHICS_MANIFEST.filter(g=>g.page===posPickerGraphicsPage);
+    galleryHtml = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <button class="ghost" onclick="posPickerPageNav(-1,'${mode}')">&laquo; Prev</button>
+        <span class="meta">Page ${posPickerGraphicsPage} of ${pages[pages.length-1]}</span>
+        <button class="ghost" onclick="posPickerPageNav(1,'${mode}')">Next &raquo;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px;max-height:180px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.map(g=>`<div onclick="posPickItem('${mode}','graphics','${g.file}','${escapeHtml(g.code).replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="graphics/${g.file}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('')}
+      </div>`;
+  } else {
+    const list = source==='library' ? state.photoLibrary.filter(p=>!p.isCustomGraphic) : source==='busy' ? state.busyPictures : state.lexicarryPictures;
+    const cats = source==='library' ? libraryCategories() : source==='busy' ? busyCategories() : lexicarryCategories();
+    const items = filter ? list.filter(p=>p.category===filter) : list;
+    galleryHtml = `
+      <div style="margin-bottom:6px;">
+        <button class="ghost" style="${!filter?'font-weight:600;':''}" onclick="posPickerSetFilter(null)">All</button>
+        ${cats.map(c=>`<button class="ghost" style="margin-left:4px;${filter===c?'font-weight:600;':''}" onclick="posPickerSetFilter('${escapeHtml(c).replace(/'/g,"\\'")}')">${escapeHtml(c)}</button>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px;max-height:180px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+        ${items.length ? items.map(p=>`<div onclick="posPickItem('${mode}','${source}','${p.id}','${escapeHtml(p.label||p.category||'').replace(/'/g,"\\'")}')" style="cursor:pointer;text-align:center;">
+          <img src="${p.dataUrl}" style="width:100%;display:block;border-radius:2px;" loading="lazy">
+        </div>`).join('') : `<div class="empty">Nothing here yet.</div>`}
+      </div>`;
+  }
+  return `
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="ghost" style="${source==='graphics'?'font-weight:600;':''}" onclick="posPickerSetSource('graphics','${mode}')">Graphics Pack</button>
+      <button class="ghost" style="${source==='library'?'font-weight:600;':''}" onclick="posPickerSetSource('library','${mode}')">My Photo Library</button>
+      <button class="ghost" style="${source==='busy'?'font-weight:600;':''}" onclick="posPickerSetSource('busy','${mode}')">Busy Pictures</button>
+      <button class="ghost" style="${source==='lexicarry'?'font-weight:600;':''}" onclick="posPickerSetSource('lexicarry','${mode}')">Lexicarry</button>
+    </div>
+    ${galleryHtml}
+  `;
+}
+function posPickerSetSource(src, mode){ posPickerSource=src; posPickerFilter=null; renderPositionSetup(document.getElementById('content')); }
+function posPickerSetFilter(cat){ posPickerFilter=cat; renderPositionSetup(document.getElementById('content')); }
+function posPickerPageNav(delta, mode){
+  const pages = graphicsPages();
+  const idx = pages.indexOf(posPickerGraphicsPage);
+  posPickerGraphicsPage = pages[Math.min(Math.max(idx+delta,0), pages.length-1)];
+  renderPositionSetup(document.getElementById('content'));
+}
+function posPickItem(mode, source, fileOrId, label){
+  const data = posData();
+  if(!data) return;
+  if(mode==='base'){
+    data.baseImage = {source, libId:fileOrId, src: resolvePosPickSrc(source,fileOrId), code:label};
+  } else {
+    if(!data.objects.some(o=>o.libId===fileOrId && o.source===source)){
+      data.objects.push({source, libId:fileOrId, src: resolvePosPickSrc(source,fileOrId), code:label});
+    }
+  }
+  saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posImageClick(ev){
+  const data = posData();
+  if(!data || !data.baseImage) return;
+  const rect = ev.target.getBoundingClientRect();
+  const x = ((ev.clientX-rect.left)/rect.width)*100;
+  const y = ((ev.clientY-rect.top)/rect.height)*100;
+  posPendingZone = {x, y};
+  renderPositionSetup(document.getElementById('content'));
+}
+function posSaveZone(){
+  const data = posData();
+  if(!data || !posPendingZone) return;
+  const labelEl = document.getElementById('posZoneLabel');
+  const label = labelEl ? labelEl.value.trim() : '';
+  if(!label) return;
+  data.zones.push({id:uid(), label, x:posPendingZone.x, y:posPendingZone.y});
+  posPendingZone = null;
+  saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posCancelZone(){ posPendingZone=null; renderPositionSetup(document.getElementById('content')); }
+async function posDeleteZone(zoneId){
+  const data = posData();
+  if(!data) return;
+  data.zones = data.zones.filter(z=>z.id!==zoneId);
+  const removedCombos = data.combinations.filter(c=>c.zoneId===zoneId).map(c=>c.id);
+  data.combinations = data.combinations.filter(c=>c.zoneId!==zoneId);
+  removedCombos.forEach(cid=>{
+    data.questions = data.questions.filter(q=>q.comboId!==cid);
+  });
+  await saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+async function posRemoveObject(libId){
+  const data = posData();
+  if(!data) return;
+  data.objects = data.objects.filter(o=>o.libId!==libId);
+  const removedCombos = data.combinations.filter(c=>c.objLibId===libId).map(c=>c.id);
+  data.combinations = data.combinations.filter(c=>c.objLibId!==libId);
+  removedCombos.forEach(cid=>{
+    data.questions = data.questions.filter(q=>q.comboId!==cid);
+  });
+  await saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posSelectComboObj(libId){ posComboObjLibId = libId; renderPositionSetup(document.getElementById('content')); }
+function posSelectComboZone(zoneId){ posComboZoneId = zoneId; renderPositionSetup(document.getElementById('content')); }
+function posRecordCombination(key){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  const data = posData(key);
+  if(!data || !posComboObjLibId || !posComboZoneId) return;
+  const existing = data.combinations.find(c=>c.objLibId===posComboObjLibId && c.zoneId===posComboZoneId);
+  const wordId = existing ? existing.wordId : uid();
+  startWordRecording(wordId, 'posComboRecordStatus', ()=>{
+    let w = state.words.find(x=>x.id===wordId);
+    const obj = data.objects.find(o=>o.libId===posComboObjLibId);
+    const zone = data.zones.find(z=>z.id===posComboZoneId);
+    if(!w){
+      const parts = key.split('-');
+      w = {
+        id: wordId, text: `${obj?obj.code:''} ${zone?zone.label:''}`.trim(),
+        meetingPlan: Number(parts[0]), stepIndex: Number(parts[1]),
+        photo: data.baseImage ? data.baseImage.src : '', entryType:'combination',
+        hasAudio:false, iceberg:9, dateAdded: new Date().toISOString().slice(0,10), reviewCount:0
+      };
+      state.words.push(w);
+    }
+    w.hasAudio = true;
+    if(!existing){
+      data.combinations.push({id:uid(), zoneId:posComboZoneId, objLibId:posComboObjLibId, wordId});
+    }
+    posComboObjLibId = null; posComboZoneId = null;
+    saveData();
+    renderPositionSetup(document.getElementById('content'));
+  });
+}
+async function posDeleteCombination(comboId){
+  const data = posData();
+  if(!data) return;
+  const combo = data.combinations.find(c=>c.id===comboId);
+  if(combo) state.words = state.words.filter(w=>w.id!==combo.wordId);
+  data.combinations = data.combinations.filter(c=>c.id!==comboId);
+  data.questions = data.questions.filter(q=>q.comboId!==comboId);
+  await saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posSelectQuestionCombo(comboId){ posQuestionComboId = comboId; renderPositionSetup(document.getElementById('content')); }
+function posRecordQuestion(key){
+  if(activeRecorder && activeRecorder.state==='recording') return;
+  if(!posQuestionComboId) return;
+  const data = posData(key);
+  const id = uid();
+  const comboId = posQuestionComboId;
+  startWordRecording(id, 'posQuestionRecordStatus', ()=>{
+    data.questions.push({id, comboId});
+    posQuestionComboId = null;
+    saveData();
+    const statusEl = document.getElementById('posQuestionRecordStatus');
+    if(statusEl) statusEl.innerHTML = '';
+    renderPositionSetup(document.getElementById('content'));
+  }, 'wordaudio:'+id);
+}
+async function posDeleteQuestion(qId){
+  const data = posData();
+  if(!data) return;
+  data.questions = data.questions.filter(q=>q.id!==qId);
+  await saveData();
+  renderPositionSetup(document.getElementById('content'));
+}
+function posReadiness(key){
+  const data = posData(key);
+  if(!data) return {ready:false};
+  const hasBase = !!data.baseImage;
+  const hasZones = data.zones.length>=2;
+  const hasObjects = data.objects.length>=1;
+  const recordedCombos = data.combinations.filter(c=>{ const w=state.words.find(x=>x.id===c.wordId); return w && w.hasAudio; });
+  const combosReady = recordedCombos.length>=2;
+  const questionsReady = data.questions.length>=1 && data.questions.every(q=>recordedCombos.some(c=>c.id===q.comboId));
+  return {hasBase, hasZones, hasObjects, combosReady, questionsReady, recordedCombos, ready: hasBase && hasZones && hasObjects && combosReady && questionsReady};
+}
+function comboThumb(data, combo, size){
+  const zone = data.zones.find(z=>z.id===combo.zoneId);
+  const obj = data.objects.find(o=>o.libId===combo.objLibId);
+  if(!zone || !obj) return '';
+  const s = size||70;
+  return `<div style="position:relative;width:${s}px;height:${s}px;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
+    ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;height:100%;object-fit:contain;">`:''}
+    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;height:22%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
+  </div>`;
+}
+function renderPositionSetup(c){
+  const key = positionSetup;
+  if(!key){ renderMeetings(c); return; }
+  const data = posData(key);
+  const r = posReadiness(key);
+  c.innerHTML = `
+    <h3>Set Up: Position Combinations</h3>
+    <div class="empty" style="margin-bottom:10px;">Pick a base image, mark a few positions on it, choose some objects, then record the full natural sentence for each object+position combination you want to use — "the camera is on top of the chair." Recording these counts as logging them.</div>
+
+    <h4>1. Base image</h4>
+    ${data.baseImage ? `
+      <div style="text-align:center;margin-bottom:10px;">
+        <img src="${data.baseImage.src}" style="max-width:200px;border-radius:4px;border:1px solid var(--paper-line);">
+        <div><button class="ghost" style="font-size:.7rem;margin-top:4px;" onclick="posData().baseImage=null; renderPositionSetup(document.getElementById('content'))">Change base image</button></div>
+      </div>
+    ` : renderPosPickerGallery('base')}
+
+    ${data.baseImage ? `
+    <h4 style="margin-top:16px;">2. Mark positions — tap the image</h4>
+    <div class="empty" style="margin-bottom:6px;">Tap anywhere on the image to drop a marker, then name that position (e.g. "on top of the chair").</div>
+    <div style="position:relative;display:inline-block;max-width:280px;">
+      <img src="${data.baseImage.src}" onclick="posImageClick(event)" style="width:100%;display:block;border-radius:4px;border:1px solid var(--paper-line);cursor:crosshair;">
+      ${data.zones.map(z=>`<div style="position:absolute;left:${z.x}%;top:${z.y}%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--teal);border:2px solid #fff;" title="${escapeHtml(z.label)}"></div>`).join('')}
+      ${posPendingZone ? `<div style="position:absolute;left:${posPendingZone.x}%;top:${posPendingZone.y}%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--ochre);border:2px solid #fff;"></div>` : ''}
+    </div>
+    ${posPendingZone ? `
+      <div style="margin-top:6px;">
+        <input id="posZoneLabel" placeholder="e.g. on top of the chair" style="margin-right:6px;">
+        <button class="ghost" onclick="posSaveZone()">Save position</button>
+        <button class="ghost" onclick="posCancelZone()">Cancel</button>
+      </div>
+    ` : ''}
+    <div style="margin-top:6px;">
+      ${data.zones.map(z=>`<span class="tag" style="margin-right:4px;">${escapeHtml(z.label)} <a href="#" onclick="event.preventDefault();posDeleteZone('${z.id}')" style="color:var(--red);">&times;</a></span>`).join('') || '<span class="empty">No positions marked yet.</span>'}
+    </div>
+
+    <h4 style="margin-top:16px;">3. Objects</h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      ${data.objects.map(o=>`<div style="position:relative;text-align:center;width:56px;">
+        <img src="${o.src}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);">
+        <button onclick="posRemoveObject('${o.libId}')" style="position:absolute;top:-4px;right:-4px;background:#fff;border:1px solid var(--paper-line);border-radius:50%;width:16px;height:16px;font-size:.6rem;cursor:pointer;color:var(--red);padding:0;">&times;</button>
+      </div>`).join('')}
+    </div>
+    ${renderPosPickerGallery('object')}
+    ` : ''}
+
+    ${data.zones.length && data.objects.length ? `
+    <h4 style="margin-top:16px;">4. Record combinations</h4>
+    <div class="empty" style="margin-bottom:6px;">Pick an object and a position, then record the full sentence — need at least 2 to begin practice.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px;">
+      <div>
+        <div class="tm">Object</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+          ${data.objects.map(o=>`<img src="${o.src}" onclick="posSelectComboObj('${o.libId}')" style="width:40px;height:40px;object-fit:contain;border-radius:3px;border:2px solid ${posComboObjLibId===o.libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="tm">Position</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;max-width:200px;">
+          ${data.zones.map(z=>`<span class="tag" onclick="posSelectComboZone('${z.id}')" style="cursor:pointer;border:2px solid ${posComboZoneId===z.id?'var(--teal)':'transparent'};">${escapeHtml(z.label)}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    <button class="record" onclick="posRecordCombination('${key}')" ${posComboObjLibId&&posComboZoneId?'':'disabled'}>Record this combination</button>
+    <div id="posComboRecordStatus" class="meta" style="margin:6px 0;"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      ${data.combinations.map(combo=>{
+        const w = state.words.find(x=>x.id===combo.wordId);
+        return `<div style="text-align:center;">
+          ${comboThumb(data, combo)}
+          <div id="posComboAudio-${combo.id}"></div>
+          <button class="ghost danger" style="font-size:.6rem;padding:1px 4px;" onclick="posDeleteCombination('${combo.id}')">Remove</button>
+        </div>`;
+      }).join('')}
+    </div>
+    ` : ''}
+
+    ${r.combosReady ? `
+    <h4 style="margin-top:16px;">5. Questions</h4>
+    <div class="empty" style="margin-bottom:6px;">Record the question/command for a combination — e.g. "Which camera is on top of the chair?" — tap a recorded combination below, then record.</div>
+    <div id="posQuestionList">${data.questions.map(q=>{
+      const combo = data.combinations.find(c=>c.id===q.comboId);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
+        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${combo?comboThumb(data,combo,40):'(removed)'}</span>
+        <div id="posQAudio-${q.id}"></div>
+        <button class="ghost danger" style="font-size:.7rem;" onclick="posDeleteQuestion('${q.id}')">Remove</button>
+      </div>`;
+    }).join('') || '<div class="empty">No questions recorded yet.</div>'}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;">
+      ${r.recordedCombos.map(combo=>`<div onclick="posSelectQuestionCombo('${combo.id}')" style="cursor:pointer;border:2px solid ${posQuestionComboId===combo.id?'var(--teal)':'transparent'};border-radius:4px;">${comboThumb(data,combo,50)}</div>`).join('')}
+    </div>
+    <button class="record" onclick="posRecordQuestion('${key}')" ${posQuestionComboId?'':'disabled'}>Record new question/command</button>
+    <div id="posQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
+    ` : ''}
+
+    <div style="margin-top:16px;">
+      ${r.ready ? `<button class="primary" onclick="startPositionPractice('${key}')">Begin Solo Practice</button>` : `<div class="empty">Complete the steps above (base image, at least 2 positions, at least 1 object, at least 2 recorded combinations, and at least 1 question) to begin.</div>`}
+      <button class="ghost" onclick="closePositionSetup()">Back</button>
+    </div>
+  `;
+  data.combinations.forEach(combo=>loadPlayerInto('posComboAudio-'+combo.id, 'word', combo.wordId));
+  data.questions.forEach(q=>loadPlayerInto('posQAudio-'+q.id, 'word', q.id));
+}
+
+let positionPractice = null;
+function startPositionPractice(key){
+  preloadAnswerSounds();
+  const data = posData(key);
+  const r = posReadiness(key);
+  positionSetup = null;
+  positionPractice = {
+    key, data,
+    introduced: [],
+    remaining: r.recordedCombos.map(c=>c.id),
+    phase:'intro',
+    introducingComboId:null,
+    currentQuestion:null,
+    stats:{seen:0, known:0},
+    wrongAttempt:false,
+    feedback:null
+  };
+  const parts = key.split('-');
+  startStepTimer(Number(parts[0]), Number(parts[1]));
+  render();
+  posIntroduceCombo();
+}
+function posIntroduceCombo(){
+  const pp = positionPractice;
+  if(!pp || pp.remaining.length===0) return;
+  const comboId = pp.remaining.shift();
+  pp.introduced.push(comboId);
+  pp.phase = 'intro';
+  pp.introducingComboId = comboId;
+  runPosIntroStep();
+}
+async function runPosIntroStep(){
+  const pp = positionPractice;
+  if(!pp || pp.phase!=='intro') return;
+  const combo = pp.data.combinations.find(c=>c.id===pp.introducingComboId);
+  render();
+  if(combo) await playStoredAudio('wordaudio:'+combo.wordId);
+  if(!positionPractice || positionPractice.phase!=='intro') return;
+  if(pp.introduced.length < 2 && pp.remaining.length > 0){
+    posIntroduceCombo();
+    return;
+  }
+  startPosQuizPhase();
+}
+function startPosQuizPhase(){
+  const pp = positionPractice;
+  if(!pp) return;
+  pp.phase = 'quiz';
+  pickPosQuestion();
+}
+function pickPosQuestion(){
+  const pp = positionPractice;
+  if(!pp) return;
+  const eligible = pp.data.questions.filter(q=>pp.introduced.includes(q.comboId));
+  if(eligible.length===0) return;
+  pp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  pp.wrongAttempt = false;
+  pp.feedback = null;
+  render();
+  playStoredAudio('wordaudio:'+pp.currentQuestion.id);
+}
+function posIntroduceNext(){
+  const pp = positionPractice;
+  if(!pp || pp.remaining.length===0) return;
+  posIntroduceCombo();
+}
+function handlePosPick(comboId){
+  const pp = positionPractice;
+  if(!pp || pp.phase!=='quiz' || !pp.currentQuestion) return;
+  const correct = pp.currentQuestion.comboId;
+  if(comboId===correct){
+    pp.stats.seen++;
+    const knewIt = !pp.wrongAttempt;
+    if(knewIt) pp.stats.known++;
+    const combo = pp.data.combinations.find(c=>c.id===comboId);
+    if(combo){
+      const w = state.words.find(x=>x.id===combo.wordId);
+      if(w){
+        w.iceberg = knewIt ? Math.max(w.iceberg-1,1) : Math.min(w.iceberg+1,9);
+        w.lastReview = new Date().toISOString().slice(0,10);
+        w.reviewCount = (w.reviewCount||0)+1;
+      }
+    }
+    saveData();
+    pp.feedback = 'correct';
+    render();
+    playRandomAnswerSound('yes').then(()=>{ if(positionPractice) pickPosQuestion(); });
+  } else {
+    pp.wrongAttempt = true;
+    render();
+    playRandomAnswerSound('no').then(()=>{
+      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
+    });
+  }
+}
+function endPositionPractice(){
+  if(positionPractice && positionPractice.key){
+    const parts = positionPractice.key.split('-');
+    stopStepTimer(Number(parts[0]), Number(parts[1]));
+  }
+  positionPractice = null;
+  render();
+}
+function renderPositionPractice(c){
+  const pp = positionPractice;
+  if(!pp){ renderMeetings(c); return; }
+  const timerId = 'stepTimerDisp-'+pp.key;
+  const est = estimateForKey(pp.key);
+  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
+  const data = pp.data;
+  if(pp.phase==='intro'){
+    const combo = data.combinations.find(c=>c.id===pp.introducingComboId);
+    const zone = combo ? data.zones.find(z=>z.id===combo.zoneId) : null;
+    const obj = combo ? data.objects.find(o=>o.libId===combo.objLibId) : null;
+    c.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+        ${estHtml}
+      </div>
+      <h3>Solo Practice</h3>
+      <div class="empty" style="margin-bottom:10px;">Introducing a new combination — listening only for now.</div>
+      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
+        <div style="position:relative;display:inline-block;max-width:260px;">
+          ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:4px;">`:''}
+          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+        </div>
+      </div>
+      <button class="ghost danger" style="margin-top:14px;" onclick="endPositionPractice()">End practice</button>
+    `;
+    return;
+  }
+  c.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
+      ${estHtml}
+    </div>
+    <h3>Solo Practice — Quiz</h3>
+    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced</div>
+    ${pp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
+    ${pp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
+    <div style="position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;">
+      ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);">`:''}
+      ${pp.introduced.map(comboId=>{
+        const combo = data.combinations.find(c=>c.id===comboId);
+        if(!combo) return '';
+        const zone = data.zones.find(z=>z.id===combo.zoneId);
+        const obj = data.objects.find(o=>o.libId===combo.objLibId);
+        if(!zone||!obj) return '';
+        return `<img src="${obj.src}" onclick="handlePosPick('${comboId}')" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:20%;object-fit:contain;transform:translate(-50%,-50%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;">`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce Next</button>` : ''}
+      <button class="ghost danger" onclick="endPositionPractice()">End practice</button>
     </div>
   `;
 }
