@@ -2711,7 +2711,7 @@ function comboThumb(data, combo, size){
   const s = size||70;
   return `<div style="position:relative;width:${s}px;height:${s}px;border-radius:4px;overflow:hidden;border:1px solid var(--paper-line);background:#fff;">
     ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;height:100%;object-fit:contain;">`:''}
-    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;height:22%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
+    <img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;height:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">
   </div>`;
 }
 function renderPositionSetup(c){
@@ -2940,7 +2940,7 @@ function computeFannedPositions(items){
     }
     clusters.push(cluster);
   }
-  const FAN_OFFSETS = [[0,0],[8,-5],[-8,5],[5,8],[-5,-8],[10,3],[-10,-3],[3,10]];
+  const FAN_OFFSETS = [[0,0],[13,-8],[-13,8],[8,13],[-8,-13],[16,4],[-16,-4],[4,16]];
   clusters.forEach(cluster=>{
     if(cluster.length<=1) return;
     cluster.forEach((idx,ci)=>{
@@ -2972,7 +2972,7 @@ function renderPositionPractice(c){
       <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
         <div style="position:relative;display:inline-block;max-width:260px;">
           ${data.baseImage?`<img src="${data.baseImage.src}" style="width:100%;display:block;border-radius:4px;">`:''}
-          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:22%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+          ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
         </div>
       </div>
       <button class="ghost danger" style="margin-top:14px;" onclick="endPositionPractice()">End practice</button>
@@ -3000,7 +3000,7 @@ function renderPositionPractice(c){
           return {comboId, obj, x:zone.x, y:zone.y};
         }).filter(Boolean);
         const fanned = computeFannedPositions(items);
-        return fanned.map((it,idx)=>`<img src="${it.obj.src}" onclick="handlePosPick('${it.comboId}')" style="position:absolute;left:${it.x}%;top:${it.y}%;width:20%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;z-index:${idx};box-shadow:1px 2px 4px rgba(0,0,0,.15);">`).join('');
+        return fanned.map((it,idx)=>`<img src="${it.obj.src}" onclick="handlePosPick('${it.comboId}')" style="position:absolute;left:${it.x}%;top:${it.y}%;width:10%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;z-index:${idx};box-shadow:1px 2px 4px rgba(0,0,0,.15);">`).join('');
       })()}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
