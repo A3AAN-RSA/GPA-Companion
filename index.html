@@ -1023,6 +1023,13 @@ async function loadData(){
   state.positionActivities = state.positionActivities || {};
   state.actionCombos = state.actionCombos || {};
   state.describedObjects = state.describedObjects || [];
+  // Recompute composite labels using the fallback rule (a text descriptor's category is used
+  // when its value was left empty) — this fixes existing described objects whose descriptors
+  // silently displayed nothing because only the category field had been filled in.
+  state.describedObjects.forEach(d=>{
+    const recomputed = [d.baseCode, ...(d.descriptors||[]).map(desc=>desc.isPicture?'':descriptorDisplayText(desc)).filter(Boolean)].filter(Boolean).join(' ');
+    if(recomputed) d.compositeLabel = recomputed;
+  });
   loaded = true;
   render();
 }
@@ -2591,10 +2598,16 @@ function resolvePosPickSrc(source, fileOrId){
   return '';
 }
 function compositeDescribedObjectImage(describedObjId){
-  // Draws the base object plus each picture-descriptor as a small badge onto one canvas, so the
-  // whole "big red broom" reads as a single combined image during practice — text descriptors are
-  // deliberately not drawn here, since the app avoids showing text during practice; a described
-  // object that's meant to be visually distinguishable should use picture descriptors instead.
+  // Draws the base object plus each picture-descriptor onto one canvas, stacked with one badge
+  // above and one below the object (rather than cascaded in a corner), so the whole "big red
+  // broom" reads as a single combined image during practice. The canvas is taller than it is
+  // wide to make room for this without shrinking the object itself — object-fit:contain wherever
+  // this gets displayed scales the result correctly regardless of that taller aspect ratio.
+  // Badges are sized large relative to the object on purpose: objects get displayed quite small
+  // once placed on a scene, so a badge that reads clearly at full size would otherwise shrink to
+  // the point of being unreadable. Text descriptors are deliberately not drawn here, since the
+  // app avoids showing text during practice; a described object meant to be visually
+  // distinguishable should use picture descriptors instead.
   return new Promise((resolve)=>{
     const d = state.describedObjects.find(x=>x.id===describedObjId);
     if(!d){ resolve(''); return; }
@@ -2603,27 +2616,43 @@ function compositeDescribedObjectImage(describedObjId){
     const baseImg = new Image();
     baseImg.onerror = ()=> resolve(d.baseObjSrc);
     baseImg.onload = ()=>{
-      const size = Math.max(baseImg.width, baseImg.height, 200);
+      const baseSize = Math.max(baseImg.width, baseImg.height, 200);
+      const badgeSize = baseSize * 0.55;
+      const topDesc = pictureDescs[0] || null;
+      const bottomDesc = pictureDescs[1] || null;
+      const extraDescs = pictureDescs.slice(2);
+      const bandGap = baseSize * 0.06;
+      const topBand = topDesc ? badgeSize + bandGap : 0;
+      const bottomBand = bottomDesc ? badgeSize + bandGap : 0;
+      const canvasW = baseSize;
+      const canvasH = topBand + baseSize + bottomBand;
       const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
+      canvas.width = canvasW; canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
-      const bw = size*0.8, bh = size*0.8;
-      ctx.drawImage(baseImg, (size-bw)/2, (size-bh)/2, bw, bh);
-      Promise.all(pictureDescs.map(desc=>new Promise((res)=>{
+      const drawBadge = (im, y) => {
+        if(!im) return;
+        const bx = (canvasW-badgeSize)/2;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(bx-2, y-2, badgeSize+4, badgeSize+4);
+        ctx.strokeStyle = '#ccc';
+        ctx.strokeRect(bx-2, y-2, badgeSize+4, badgeSize+4);
+        ctx.drawImage(im, bx, y, badgeSize, badgeSize);
+      };
+      Promise.all([topDesc, bottomDesc, ...extraDescs].map(desc=>desc ? new Promise((res)=>{
         const im = new Image();
         im.onerror = ()=>res(null);
         im.onload = ()=>res(im);
         im.src = desc.src;
-      }))).then(loaded=>{
-        const badge = size*0.28;
-        loaded.filter(Boolean).forEach((im,i)=>{
-          const bx = size - badge - (i*(badge*0.55));
-          const by = size - badge;
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(bx-2, by-2, badge+4, badge+4);
-          ctx.strokeStyle = '#ccc';
-          ctx.strokeRect(bx-2, by-2, badge+4, badge+4);
-          ctx.drawImage(im, bx, by, badge, badge);
+      }) : Promise.resolve(null))).then(loaded=>{
+        const [topImg, bottomImg, ...extraImgs] = loaded;
+        drawBadge(topImg, 0);
+        const bw = baseSize*0.8, bh = baseSize*0.8;
+        ctx.drawImage(baseImg, (canvasW-bw)/2, topBand+(baseSize-bh)/2, bw, bh);
+        drawBadge(bottomImg, topBand+baseSize+bandGap);
+        // Any extra picture-descriptors beyond the top/bottom pair get a small row along the side
+        extraImgs.filter(Boolean).forEach((im,i)=>{
+          const s = badgeSize*0.5;
+          ctx.drawImage(im, canvasW-s-4, topBand+4+(i*(s+4)), s, s);
         });
         resolve(canvas.toDataURL('image/jpeg', 0.85));
       });
@@ -2638,7 +2667,7 @@ function renderPosPickerGallery(mode){
   let galleryHtml = '';
   if(source==='described'){
     galleryHtml = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;max-height:280px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
         ${state.describedObjects.length ? state.describedObjects.map(d=>`<div onclick="posPickDescribedObject('${mode}','${d.id}')" style="cursor:pointer;text-align:center;">
           ${describedObjectPreviewHTML(d)}
           <div class="tm" style="font-size:.6rem;">${escapeHtml(d.compositeLabel||d.baseCode)}</div>
@@ -3383,7 +3412,7 @@ function renderACPickerGallery(mode){
   let galleryHtml = '';
   if(source==='described'){
     galleryHtml = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;max-height:200px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;max-height:280px;overflow-y:auto;padding:4px;border:1px solid var(--paper-line);border-radius:3px;">
         ${state.describedObjects.length ? state.describedObjects.map(d=>`<div onclick="acPickDescribedObject('${mode}','${d.id}')" style="cursor:pointer;text-align:center;">
           ${describedObjectPreviewHTML(d)}
           <div class="tm" style="font-size:.6rem;">${escapeHtml(d.compositeLabel||d.baseCode)}</div>
@@ -4010,6 +4039,31 @@ function renderAttachmentEditForm(attKey, idx){
 function setAttachmentEditGender(attKey, idx, gender){
   editingAttachmentGender = gender;
   renderAttachmentEditForm(attKey, idx);
+}
+async function resetAllLoggedTime(){
+  if(!confirm("This will reset all logged hours, revision time, per-step timers, checked-off steps, and meeting plan completion status back to zero — for every meeting plan. Your pictures, recordings, and words are never touched. This can't be undone. Continue?")) return;
+  state.sessions = [];
+  state.revisionMinutes = 0;
+  state.stepDurations = {};
+  state.stepProgress = {};
+  state.meetingComplete = {};
+  state.originalFinishDate = null;
+  await saveData();
+  render();
+}
+async function resetMeetingPlanTime(){
+  const el = document.getElementById('resetMPNumber');
+  const n = Number(el ? el.value : 0);
+  if(!n || n<1 || n>40) return;
+  if(!confirm(`This will reset logged hours, revision-related step timers, checked-off steps, and completion status for Meeting Plan ${n} only — every other meeting plan is untouched. Pictures, recordings, and words for Meeting Plan ${n} are never touched either. This can't be undone. Continue?`)) return;
+  state.sessions = state.sessions.filter(s=>s.meetingPlan!==n);
+  if(state.stepDurations) delete state.stepDurations[n];
+  if(state.stepProgress) delete state.stepProgress[n];
+  if(state.meetingComplete) delete state.meetingComplete[n];
+  await saveData();
+  const statusEl = document.getElementById('resetMPStatus');
+  if(statusEl) statusEl.textContent = `Meeting Plan ${n}'s logged time has been reset.`;
+  render();
 }
 async function repairOldAttachments(){
   const statusEl = document.getElementById('repairStatus');
@@ -5217,15 +5271,32 @@ function resetDOBuilder(){
   doEditingDescribedId = null;
   doPickerTarget = null;
 }
+function descriptorDisplayText(desc){
+  // A descriptor's "value" (e.g. "red") is what should display, but if someone only filled in
+  // the category field and left the value empty, fall back to the category rather than showing
+  // nothing at all — this also means older described objects saved before the two fields were
+  // clearly labeled start displaying correctly immediately, with no need to rebuild them.
+  return (desc.label && desc.label.trim()) || (desc.category && desc.category.trim()) || '';
+}
 function describedObjectPreviewHTML(d){
   const size = 56;
-  return `<div style="position:relative;display:inline-flex;gap:2px;align-items:flex-end;padding:4px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
+  const badgeSize = 32;
+  const descs = d.descriptors || [];
+  const renderBadge = (desc) => {
+    if(!desc) return '';
+    if(desc.isPicture && desc.src) return `<img src="${desc.src}" style="width:${badgeSize}px;height:${badgeSize}px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;" title="${escapeHtml(desc.category||'')}">`;
+    const text = descriptorDisplayText(desc);
+    if(!desc.isPicture && text) return `<span class="tag" style="font-size:.62rem;">${escapeHtml(text)}</span>`;
+    return '';
+  };
+  const top = descs[0];
+  const bottom = descs[1];
+  const extra = descs.slice(2);
+  return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:5px;background:#fff;border:1px solid var(--paper-line);border-radius:4px;">
+    ${top ? renderBadge(top) : ''}
     <img src="${d.baseObjSrc}" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:3px;">
-    ${(d.descriptors||[]).map(desc=>{
-      if(desc.isPicture && desc.src) return `<img src="${desc.src}" style="width:26px;height:26px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);background:#fff;" title="${escapeHtml(desc.category||'')}">`;
-      if(!desc.isPicture && desc.label) return `<span class="tag" style="font-size:.6rem;">${escapeHtml(desc.label)}</span>`;
-      return '';
-    }).join('')}
+    ${bottom ? renderBadge(bottom) : ''}
+    ${extra.length ? `<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;">${extra.map(renderBadge).join('')}</div>` : ''}
   </div>`;
 }
 function renderDOPickerGallery(target){
@@ -5314,7 +5385,7 @@ function doRemoveDescriptor(idx){
 }
 async function doSaveDescribedObject(){
   if(!doBuilderBaseObj) return;
-  const compositeLabel = [doBuilderBaseObj.code, ...doBuilderDescriptors.map(d=>d.isPicture?'':d.label).filter(Boolean)].filter(Boolean).join(' ');
+  const compositeLabel = [doBuilderBaseObj.code, ...doBuilderDescriptors.map(d=>d.isPicture?'':descriptorDisplayText(d)).filter(Boolean)].filter(Boolean).join(' ');
   const entry = {
     id: doEditingDescribedId || uid(),
     baseObjSource: doBuilderBaseObj.source, baseObjLibId: doBuilderBaseObj.libId, baseObjSrc: doBuilderBaseObj.src, baseCode: doBuilderBaseObj.code,
@@ -5364,13 +5435,14 @@ function renderLibraryTabDescribed(el){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
         ${doBuilderDescriptors.map((d,di)=>`
           <div style="text-align:center;padding:6px;background:var(--paper);border:1px solid var(--paper-line);border-radius:4px;min-width:84px;">
-            <input placeholder="category e.g. color" value="${escapeHtml(d.category)}" oninput="doSetDescriptorCategory(${di}, this.value)" style="font-size:.68rem;padding:2px;margin-bottom:4px;width:88px;">
+            <div class="tm" style="font-size:.6rem;">Category (e.g. "color")</div>
+            <input placeholder="color" value="${escapeHtml(d.category)}" oninput="doSetDescriptorCategory(${di}, this.value)" style="font-size:.68rem;padding:2px;margin-bottom:4px;width:88px;">
             <div style="display:flex;gap:3px;justify-content:center;margin-bottom:4px;">
               <button type="button" class="ghost" style="font-size:.6rem;padding:1px 4px;${!d.isPicture?'font-weight:600;':''}" onclick="doSetDescriptorMode(${di},false)">Text</button>
               <button type="button" class="ghost" style="font-size:.6rem;padding:1px 4px;${d.isPicture?'font-weight:600;':''}" onclick="doSetDescriptorMode(${di},true)">Picture</button>
             </div>
             ${d.isPicture ? (d.src ? `<img src="${d.src}" style="width:38px;height:38px;object-fit:contain;border-radius:3px;border:1px solid var(--paper-line);">` : (doPickerTarget===di ? '' : `<button class="ghost" style="font-size:.6rem;" onclick="doPickerTarget=${di};renderLibraryTabDescribed(document.getElementById('libraryTabBody'))">Pick picture</button>`))
-              : `<input placeholder="e.g. red" value="${escapeHtml(d.label)}" oninput="doSetDescriptorText(${di}, this.value)" style="font-size:.68rem;padding:2px;width:70px;">`}
+              : `<div class="tm" style="font-size:.6rem;">Value — the actual word (e.g. "red")</div><input placeholder="red" value="${escapeHtml(d.label)}" oninput="doSetDescriptorText(${di}, this.value)" style="font-size:.68rem;padding:2px;width:70px;">`}
             <div><button class="ghost danger" style="font-size:.6rem;margin-top:3px;" onclick="doRemoveDescriptor(${di})">Remove</button></div>
           </div>
         `).join('')}
@@ -6982,6 +7054,18 @@ function renderProfile(c){
     <div class="empty" style="margin-bottom:8px;">Pictures attached to activities before the current picker existed are invisible to Solo Practice, even though they still show up correctly everywhere else. This converts every old-format attachment into the current format, in one pass, across every activity — nothing is removed, and this is safe to run more than once.</div>
     <button class="ghost" onclick="repairOldAttachments()">Repair old reference pictures</button>
     <div id="repairStatus" class="meta" style="margin-top:6px;"></div>
+    <h3 style="margin-top:26px;">Reset logged time</h3>
+    <div class="empty" style="margin-bottom:8px;">Useful while you're still testing and setting things up before actually starting — this clears hours, revision time, checked-off steps, and meeting completion status, but never touches your pictures, recordings, or words.</div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:10px;">
+      <div class="tm" style="margin-bottom:4px;">Everything, across all 40 meeting plans</div>
+      <button class="ghost danger" onclick="resetAllLoggedTime()">Reset all logged time</button>
+    </div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
+      <div class="tm" style="margin-bottom:4px;">Just one meeting plan — handy if you're actively doing some meeting plans for real while still testing others</div>
+      <label>Meeting plan number: <input type="number" id="resetMPNumber" min="1" max="40" style="width:60px;"></label>
+      <button class="ghost danger" onclick="resetMeetingPlanTime()">Reset this meeting plan's logged time</button>
+      <div id="resetMPStatus" class="meta" style="margin-top:6px;"></div>
+    </div>
     <h3 style="margin-top:26px;">Dropbox backup (includes audio)</h3>
     ${dropboxTokens ? `
       <div class="empty" style="margin-bottom:8px;">Connected to Dropbox. Backup includes everything — words, meeting progress, photos, and every recording.</div>
