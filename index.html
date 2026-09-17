@@ -7062,7 +7062,9 @@ function renderProfile(c){
     </div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
       <div class="tm" style="margin-bottom:4px;">Just one meeting plan — handy if you're actively doing some meeting plans for real while still testing others</div>
-      <label>Meeting plan number: <input type="number" id="resetMPNumber" min="1" max="40" style="width:60px;"></label>
+      <label>Meeting plan: <select id="resetMPNumber">
+        ${MEETING_PLANS.map(mp=>`<option value="${mp.n}">Meeting Plan ${mp.n}: ${escapeHtml(mp.title)}</option>`).join('')}
+      </select></label>
       <button class="ghost danger" onclick="resetMeetingPlanTime()">Reset this meeting plan's logged time</button>
       <div id="resetMPStatus" class="meta" style="margin-top:6px;"></div>
     </div>
