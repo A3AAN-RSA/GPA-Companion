@@ -4040,6 +4040,12 @@ function setAttachmentEditGender(attKey, idx, gender){
   editingAttachmentGender = gender;
   renderAttachmentEditForm(attKey, idx);
 }
+async function resetRevisionTime(){
+  if(!confirm("This will reset your revision time back to zero. Nothing else — sessions, step timers, meeting completion, pictures, recordings, and words are all untouched. This can't be undone. Continue?")) return;
+  state.revisionMinutes = 0;
+  await saveData();
+  render();
+}
 async function resetAllLoggedTime(){
   if(!confirm("This will reset all logged hours, revision time, per-step timers, checked-off steps, and meeting plan completion status back to zero — for every meeting plan. Your pictures, recordings, and words are never touched. This can't be undone. Continue?")) return;
   state.sessions = [];
@@ -7059,6 +7065,10 @@ function renderProfile(c){
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:10px;">
       <div class="tm" style="margin-bottom:4px;">Everything, across all 40 meeting plans</div>
       <button class="ghost danger" onclick="resetAllLoggedTime()">Reset all logged time</button>
+    </div>
+    <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:10px;">
+      <div class="tm" style="margin-bottom:4px;">Just your revision time — not tied to any single meeting plan, so it isn't covered by the per-meeting-plan reset below</div>
+      <button class="ghost danger" onclick="resetRevisionTime()">Reset revision time</button>
     </div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
       <div class="tm" style="margin-bottom:4px;">Just one meeting plan — handy if you're actively doing some meeting plans for real while still testing others</div>
