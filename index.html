@@ -38,6 +38,7 @@ button.ghost{background:none;border:1px solid var(--paper-line);color:var(--ink-
 button.danger{color:var(--red);border-color:var(--red);}
 button.record{background:var(--red);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;cursor:pointer;}
 button.record.recording{background:var(--ink);}
+button:disabled{background:#cbd5e1 !important;color:#64748b !important;cursor:not-allowed !important;opacity:.7;}
 .entry{border-top:1px solid var(--paper-line);padding:12px 0;}
 .entry:first-child{border-top:none;}
 .entry-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
@@ -3043,6 +3044,7 @@ function renderPositionSetup(c){
       ` : ''}
     </div>
     <button class="record" onclick="posRecordCombination('${key}')" ${posComboObjLibId&&posComboZoneId?'':'disabled'}>Record this combination</button>
+    ${!posComboObjLibId||!posComboZoneId ? `<div class="meta" style="color:var(--red);margin-top:4px;">${!posComboObjLibId&&!posComboZoneId?'Select an object and a position above first.':!posComboObjLibId?'Select an object above first.':'Select a position above first.'}</div>` : ''}
     <div id="posComboRecordStatus" class="meta" style="margin:6px 0;"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
       ${data.combinations.map(combo=>{
@@ -3692,6 +3694,7 @@ function renderActionComboSetup(c){
       </div>
     </div>
     <button class="record" onclick="acRecordCombination('${key}')" ${acComboActionLibId&&acComboObjLibId?'':'disabled'}>Record this combination</button>
+    ${!acComboActionLibId||!acComboObjLibId ? `<div class="meta" style="color:var(--red);margin-top:4px;">${!acComboActionLibId&&!acComboObjLibId?'Select an action and an object above first.':!acComboActionLibId?'Select an action above first.':'Select an object above first.'}</div>` : ''}
     <div id="acComboRecordStatus" class="meta" style="margin:6px 0;"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
       ${data.combinations.map(combo=>{
