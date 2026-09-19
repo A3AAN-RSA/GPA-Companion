@@ -4658,13 +4658,21 @@ let assignLexicarryFilter = null;
 let assignSelectedKey = null;
 let dragItem = null;
 function allActivityTargets(){
+  // One target per distinct "game" within a meeting plan, not one per step — several steps can
+  // share the same game (and thus the same reference pictures), and picking a target here needs
+  // to match exactly how the meeting-plan view groups attachments, or the two screens disagree
+  // about what's attached whenever a game spans more than one step.
   const targets = [];
   MEETING_PLANS.forEach(mp=>{
     if(mp.detailed){
       const detail = MEETING_DETAILS[mp.n];
+      const seenGames = new Set();
       detail.steps.forEach((s,i)=>{
         if(s.needsRecording) return;
-        targets.push({key: mp.n+'-'+i, mpLabel: `Meeting Plan ${mp.n}: ${mp.title}`, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: s.name});
+        const gameName = s.game || s.name;
+        if(seenGames.has(gameName)) return;
+        seenGames.add(gameName);
+        targets.push({key: mp.n+'-'+i, mpLabel: `Meeting Plan ${mp.n}: ${mp.title}`, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: gameName});
       });
     } else {
       targets.push({key: mp.n+'-whole', mpLabel: `Meeting Plan ${mp.n}: ${mp.title}`, label: `Meeting Plan ${mp.n}: ${mp.title}`, sub: null});
@@ -4767,18 +4775,28 @@ function renderAssignZone(){
   const el = document.getElementById('assignZone');
   if(!el) return;
   const key = assignSelectedKey;
-  const attached = key ? ((state.activityMaterials && state.activityMaterials[key]) || []) : [];
+  // Aggregated the same way renderMaterialsBlock aggregates for the meeting-plan view — every
+  // step that shares this game's attachments, not just the one exact key the dropdown points at
+  // — so a picture attached from either screen is genuinely the same picture on both screens,
+  // not just a similarly-named one living in a different bucket.
+  const gameKeys = key ? gameKeysFor(key) : [];
+  const attached = [];
+  gameKeys.forEach(k=>{
+    ((state.activityMaterials && state.activityMaterials[k]) || []).forEach((a,idx)=>{
+      attached.push(Object.assign({}, a, {_key:k, _idx:idx}));
+    });
+  });
   el.innerHTML = !key ? '' : `
     <div class="entry" ondragover="event.preventDefault()" ondrop="handleDropOnActivity(event,'${key}')" style="border:2px dashed var(--paper-line);border-radius:3px;padding:12px;min-height:100px;">
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${attached.length ? attached.map((a,idx)=>{
+        ${attached.length ? attached.map(a=>{
           const src = resolveAttachedSrc(a);
-          const attId = key+'|'+idx;
+          const attId = a._key+'|'+a._idx;
           return `<div style="text-align:center;width:70px;">
             <img src="${src}" style="width:100%;border-radius:2px;border:1px solid var(--paper-line);">
             <div class="tm">${escapeHtml(a.code||'')}${a.gender?` (${a.gender==='M'?'Male':'Female'})`:''}</div>
-            <button class="ghost" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="toggleAttachmentEdit('${key}',${idx})">Edit</button>
-            <button class="ghost danger" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${key}',${idx})">Remove</button>
+            <button class="ghost" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="toggleAttachmentEdit('${a._key}',${a._idx})">Edit</button>
+            <button class="ghost danger" style="font-size:.65rem;padding:1px 3px;width:100%;margin-top:2px;" onclick="removeAttachedAt('${a._key}',${a._idx})">Remove</button>
             <div id="matEdit-${attId}" style="margin-top:4px;"></div>
           </div>`;
         }).join('') : `<div class="empty">Drop a picture here</div>`}
@@ -5046,21 +5064,8 @@ function renderLibraryTabMine(el){
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
       <h4 style="margin-top:0;">Add new photos</h4>
       <div class="empty" style="margin-bottom:6px;">Select one or several at once — you'll label and categorize each one individually below before saving.</div>
-      <div class="field"><input type="file" id="libTabUpload" accept="image/*" multiple onchange="handleBatchFileSelect()"></div>
-      ${libBatchStaged.length ? `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:10px 0;">
-          ${libBatchStaged.map(item=>`
-            <div style="text-align:center;padding:6px;background:var(--paper);border:1px solid var(--paper-line);border-radius:3px;">
-              <img src="${item.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);margin-bottom:4px;">
-              <input id="batchLabel-${item.tempId}" placeholder="Label" value="${escapeHtml(item.label)}" oninput="setBatchLabel('${item.tempId}', this.value)" style="font-size:.75rem;padding:3px;margin-bottom:3px;width:100%;">
-              ${categorySelectHtml('batchCategory-'+item.tempId, cats, item.category)}
-              <button class="ghost danger" style="font-size:.6rem;margin-top:3px;" onclick="removeBatchStaged('${item.tempId}')">Remove</button>
-            </div>
-          `).join('')}
-        </div>
-        <button class="primary" onclick="saveBatchStaged()">Save all (${libBatchStaged.length})</button>
-        <button class="ghost" onclick="clearBatchStaged()">Discard all</button>
-      ` : ''}
+      <div class="field"><input type="file" id="libTabUpload" accept="image/*" multiple onchange="handleBatchFileSelect('library')"></div>
+      ${batchStagingHTML('library', cats)}
     </div>
     <div class="field"><label>Filter by category</label>
       <select onchange="libTabLibraryFilterByIndex(this.value)">
@@ -5139,9 +5144,15 @@ async function deleteLibraryPhotoTab(id){
   await saveData();
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
 }
-let libBatchStaged = [];
-function handleBatchFileSelect(){
-  const fileInput = document.getElementById('libTabUpload');
+let libBatchStaged = {library: [], busy: [], lexicarry: []};
+const BATCH_COLLECTION_CONFIG = {
+  library: {stateArray: 'photoLibrary', maxW: 500, quality: 0.85, renderFn: 'renderLibraryTabMine', uploadInputId: 'libTabUpload'},
+  busy: {stateArray: 'busyPictures', maxW: 600, quality: 0.82, renderFn: 'renderLibraryTabBusy', uploadInputId: 'libTabBusyUpload'},
+  lexicarry: {stateArray: 'lexicarryPictures', maxW: 600, quality: 0.82, renderFn: 'renderLibraryTabLexicarry', uploadInputId: 'libTabLexicarryUpload'}
+};
+function handleBatchFileSelect(collection){
+  const cfg = BATCH_COLLECTION_CONFIG[collection];
+  const fileInput = document.getElementById(cfg.uploadInputId);
   if(!fileInput || !fileInput.files || fileInput.files.length===0) return;
   const files = Array.from(fileInput.files);
   Promise.all(files.map(file => new Promise((resolve)=>{
@@ -5151,45 +5162,63 @@ function handleBatchFileSelect(){
       img.onerror = ()=> resolve(null);
       img.onload = ()=>{
         const canvas = document.createElement('canvas');
-        const maxW = 500;
-        const scale = Math.min(1, maxW/img.width);
+        const scale = Math.min(1, cfg.maxW/img.width);
         canvas.width = img.width*scale; canvas.height = img.height*scale;
         canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-        resolve({tempId: uid(), dataUrl: canvas.toDataURL('image/jpeg', 0.85), label:'', category:''});
+        resolve({tempId: uid(), dataUrl: canvas.toDataURL('image/jpeg', cfg.quality), label:'', category:''});
       };
       img.src = reader.result;
     };
     reader.onerror = ()=>resolve(null);
     reader.readAsDataURL(file);
   }))).then(results=>{
-    libBatchStaged = libBatchStaged.concat(results.filter(Boolean));
-    renderLibraryTabMine(document.getElementById('libraryTabBody'));
+    libBatchStaged[collection] = libBatchStaged[collection].concat(results.filter(Boolean));
+    window[cfg.renderFn](document.getElementById('libraryTabBody'));
   });
 }
-function setBatchLabel(tempId, val){
-  const item = libBatchStaged.find(i=>i.tempId===tempId);
+function setBatchLabel(collection, tempId, val){
+  const item = libBatchStaged[collection].find(i=>i.tempId===tempId);
   if(item) item.label = val;
 }
-function removeBatchStaged(tempId){
-  libBatchStaged = libBatchStaged.filter(i=>i.tempId!==tempId);
-  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+function removeBatchStaged(collection, tempId){
+  libBatchStaged[collection] = libBatchStaged[collection].filter(i=>i.tempId!==tempId);
+  window[BATCH_COLLECTION_CONFIG[collection].renderFn](document.getElementById('libraryTabBody'));
 }
-function clearBatchStaged(){
-  libBatchStaged = [];
-  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+function clearBatchStaged(collection){
+  libBatchStaged[collection] = [];
+  window[BATCH_COLLECTION_CONFIG[collection].renderFn](document.getElementById('libraryTabBody'));
 }
-async function saveBatchStaged(){
-  libBatchStaged.forEach(item=>{
-    const labelEl = document.getElementById('batchLabel-'+item.tempId);
+async function saveBatchStaged(collection){
+  const cfg = BATCH_COLLECTION_CONFIG[collection];
+  libBatchStaged[collection].forEach(item=>{
+    const labelEl = document.getElementById('batchLabel-'+collection+'-'+item.tempId);
     if(labelEl) item.label = labelEl.value.trim();
-    item.category = readCategorySelectValue('batchCategory-'+item.tempId);
+    item.category = readCategorySelectValue('batchCategory-'+collection+'-'+item.tempId);
   });
-  libBatchStaged.forEach(item=>{
-    state.photoLibrary.push({id: uid(), label: item.label, category: item.category||null, dataUrl: item.dataUrl});
+  libBatchStaged[collection].forEach(item=>{
+    state[cfg.stateArray].push({id: uid(), label: item.label, category: item.category||null, dataUrl: item.dataUrl});
   });
-  libBatchStaged = [];
+  libBatchStaged[collection] = [];
   await saveData();
-  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+  window[cfg.renderFn](document.getElementById('libraryTabBody'));
+}
+function batchStagingHTML(collection, cats){
+  const items = libBatchStaged[collection];
+  if(!items.length) return '';
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:10px 0;">
+      ${items.map(item=>`
+        <div style="text-align:center;padding:6px;background:var(--paper);border:1px solid var(--paper-line);border-radius:3px;">
+          <img src="${item.dataUrl}" style="width:100%;border-radius:3px;border:1px solid var(--paper-line);margin-bottom:4px;">
+          <input id="batchLabel-${collection}-${item.tempId}" placeholder="Label" value="${escapeHtml(item.label)}" oninput="setBatchLabel('${collection}','${item.tempId}', this.value)" style="font-size:.75rem;padding:3px;margin-bottom:3px;width:100%;">
+          ${categorySelectHtml('batchCategory-'+collection+'-'+item.tempId, cats, item.category)}
+          <button class="ghost danger" style="font-size:.6rem;margin-top:3px;" onclick="removeBatchStaged('${collection}','${item.tempId}')">Remove</button>
+        </div>
+      `).join('')}
+    </div>
+    <button class="primary" onclick="saveBatchStaged('${collection}')">Save all (${items.length})</button>
+    <button class="ghost" onclick="clearBatchStaged('${collection}')">Discard all</button>
+  `;
 }
 function addToPhotoLibraryTab(){
   const fileInput = document.getElementById('libTabUpload');
@@ -5226,13 +5255,10 @@ function renderLibraryTabBusy(el){
   el.innerHTML = `
     <div class="empty" style="margin-bottom:6px;">Full scenes for describing and storytelling (Phase 2+) — separate from My Photo Library, which is for illustrating single words. Pre-loaded with the categories you already use.</div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
-      <h4 style="margin-top:0;">Add a new busy picture</h4>
-      <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*"></div>
-      <div class="row">
-        <div class="field"><label>Label</label><input id="libTabBusyLabel" placeholder="e.g. market stall scene"></div>
-        <div class="field"><label>Category</label>${categorySelectHtml('libTabBusyCategory', cats, '')}</div>
-      </div>
-      <button class="ghost" onclick="addToBusyPicturesTab()">Add busy picture</button>
+      <h4 style="margin-top:0;">Add new busy pictures</h4>
+      <div class="empty" style="margin-bottom:6px;">Select one or several at once — you'll label and categorize each one individually below before saving.</div>
+      <div class="field"><input type="file" id="libTabBusyUpload" accept="image/*" multiple onchange="handleBatchFileSelect('busy')"></div>
+      ${batchStagingHTML('busy', cats)}
     </div>
     <div class="field"><label>Filter by category</label>
       <select onchange="libTabBusyFilterByIndex(this.value)">
@@ -5292,32 +5318,6 @@ async function deleteBusyPhotoTab(id){
   state.busyPictures = state.busyPictures.filter(p=>p.id!==id);
   await saveData();
   renderLibraryTabBusy(document.getElementById('libraryTabBody'));
-}
-function addToBusyPicturesTab(){
-  const fileInput = document.getElementById('libTabBusyUpload');
-  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
-  const label = document.getElementById('libTabBusyLabel').value.trim();
-  const category = readCategorySelectValue('libTabBusyCategory');
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    const img = new Image();
-    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
-    img.onload = async ()=>{
-      const canvas = document.createElement('canvas');
-      const maxW = 600;
-      const scale = Math.min(1, maxW/img.width);
-      canvas.width = img.width*scale; canvas.height = img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      const id = uid();
-      state.busyPictures.push({id, label, category: category||null, dataUrl});
-      await saveData();
-      libTabBusyFilter = null;
-      renderLibraryTabBusy(document.getElementById('libraryTabBody'));
-    };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(fileInput.files[0]);
 }
 let libTabLexicarryFilter = null;
 let editingLexicarryPhotoId = null;
@@ -5543,13 +5543,10 @@ function renderLibraryTabLexicarry(el){
   el.innerHTML = `
     <div class="empty" style="margin-bottom:6px;">Pictures from your Lexicarry resource — a separate collection from My Photo Library and Busy Pictures.</div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:14px;">
-      <h4 style="margin-top:0;">Add a new Lexicarry picture</h4>
-      <div class="field"><input type="file" id="libTabLexicarryUpload" accept="image/*"></div>
-      <div class="row">
-        <div class="field"><label>Label</label><input id="libTabLexicarryLabel" placeholder="e.g. page 12, market scene"></div>
-        <div class="field"><label>Category</label>${categorySelectHtml('libTabLexicarryCategory', cats, '')}</div>
-      </div>
-      <button class="ghost" onclick="addToLexicarryTab()">Add to Lexicarry</button>
+      <h4 style="margin-top:0;">Add new Lexicarry pictures</h4>
+      <div class="empty" style="margin-bottom:6px;">Select one or several at once — you'll label and categorize each one individually below before saving.</div>
+      <div class="field"><input type="file" id="libTabLexicarryUpload" accept="image/*" multiple onchange="handleBatchFileSelect('lexicarry')"></div>
+      ${batchStagingHTML('lexicarry', cats)}
     </div>
     <div class="field"><label>Filter by category</label>
       <select onchange="libTabLexicarryFilterByIndex(this.value)">
@@ -5610,32 +5607,6 @@ async function deleteLexicarryPhotoTab(id){
   state.lexicarryPictures = state.lexicarryPictures.filter(p=>p.id!==id);
   await saveData();
   renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
-}
-function addToLexicarryTab(){
-  const fileInput = document.getElementById('libTabLexicarryUpload');
-  if(!fileInput || !fileInput.files || !fileInput.files[0]) return;
-  const label = document.getElementById('libTabLexicarryLabel').value.trim();
-  const category = readCategorySelectValue('libTabLexicarryCategory');
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    const img = new Image();
-    img.onerror = ()=>{ console.error('Photo failed to load/decode.'); };
-    img.onload = async ()=>{
-      const canvas = document.createElement('canvas');
-      const maxW = 600;
-      const scale = Math.min(1, maxW/img.width);
-      canvas.width = img.width*scale; canvas.height = img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-      const id = uid();
-      state.lexicarryPictures.push({id, label, category: category||null, dataUrl});
-      await saveData();
-      libTabLexicarryFilter = null;
-      renderLibraryTabLexicarry(document.getElementById('libraryTabBody'));
-    };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(fileInput.files[0]);
 }
 function lessonPhotos(){
   return state.words.filter(w=>w.photo && (w.displayType==='camera'||w.displayType==='device'));
