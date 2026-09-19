@@ -2183,7 +2183,7 @@ function endLiveActivity(){
 // ---------- Solo (no-nurturer) activity mode ----------
 let pendingActivityKey = null;
 let soloSetup = null;
-let soloQuestionSelectedWordId = null;
+let soloQuestionSelectedWordIds = [];
 let soloPractice = null;
 function promptActivityMode(key){
   pendingActivityKey = key;
@@ -2218,16 +2218,18 @@ function chooseActionComboMode(key){
 let pendingInAppChoiceKey = null;
 function openSoloSetup(key){
   soloSetup = key;
-  soloQuestionSelectedWordId = null;
+  soloQuestionSelectedWordIds = [];
   render();
 }
 function closeSoloSetup(){
   soloSetup = null;
-  soloQuestionSelectedWordId = null;
+  soloQuestionSelectedWordIds = [];
   render();
 }
 function selectSoloQuestionWord(wordId){
-  soloQuestionSelectedWordId = wordId;
+  const idx = soloQuestionSelectedWordIds.indexOf(wordId);
+  if(idx>=0) soloQuestionSelectedWordIds.splice(idx,1);
+  else soloQuestionSelectedWordIds.push(wordId);
   renderSoloSetup(document.getElementById('content'));
 }
 function soloReadiness(key){
@@ -2240,7 +2242,7 @@ function soloReadiness(key){
     const articlesReady = p.noArticle || (artDefW && artDefW.hasAudio && artIndefW && artIndefW.hasAudio);
     return coreReady && articlesReady;
   });
-  const questionsReady = pics.length>0 && pics.every(p=>questions.some(q=>q.libId===p.libId));
+  const questionsReady = pics.length>0 && pics.every(p=>questions.some(q=>q.libId===p.libId || (q.altLibIds||[]).includes(p.libId)));
   return {pics, questions, picsReady, questionsReady, ready: picsReady && questionsReady};
 }
 function playStoredAudio(key){
@@ -2286,26 +2288,28 @@ function renderSoloSetup(c){
     `;
     }).join('')}
     <h4 style="margin-top:16px;">Questions</h4>
-    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and tap the picture each one is asking about. You can record more than one phrasing per picture.</div>
+    <div class="empty" style="margin-bottom:6px;">Record the question(s) this activity uses — e.g. "Where is the man?" — and tap every picture that counts as a correct answer. Tap more than one to accept several answers for the same question — e.g. "Where is the glass or the cup?" is correct if either is tapped. You can record more than one phrasing per picture.</div>
     <div id="soloQuestionList">${pics.length===0 ? '' : (questions.length ? questions.map(q=>{
-      const p = pics.find(p=>p.libId===q.libId);
+      const allIds = [q.libId, ...(q.altLibIds||[])];
+      const qPics = allIds.map(id=>pics.find(p=>p.libId===id)).filter(Boolean);
       return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-        <span style="flex:1;display:flex;align-items:center;gap:6px;">Asks about: ${p && p.src ? `<img src="${p.src}" style="width:28px;height:28px;object-fit:contain;border-radius:3px;">` : (p?escapeHtml(p.code):'(removed)')}</span>
+        <span style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">Asks about: ${qPics.length ? qPics.map(p=>p.src ? `<img src="${p.src}" style="width:28px;height:28px;object-fit:contain;border-radius:3px;">` : escapeHtml(p.code)).join(' <span class="tm">or</span> ') : '(removed)'}</span>
         <div id="soloQAudio-${q.id}"></div>
         <button class="ghost danger" style="font-size:.7rem;" onclick="deleteSoloQuestion('${soloKeyStr}','${q.id}')">Remove</button>
       </div>`;
     }).join('') : `<div class="empty">No questions recorded yet.</div>`)}</div>
     ${pics.length ? `
-    <div class="field"><label>This question is asking about — tap a picture</label>
+    <div class="field"><label>This question is asking about — tap every picture that's a correct answer</label>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-width:400px;">
         ${pics.map(p=>`<div onclick="selectSoloQuestionWord('${p.libId}')" style="cursor:pointer;text-align:center;">
-          <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordId===p.libId?'var(--teal)':'var(--paper-line)'};background:#fff;">
+          <div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:3px solid ${soloQuestionSelectedWordIds.includes(p.libId)?'var(--teal)':'var(--paper-line)'};background:#fff;">
             ${p.src ? `<img src="${p.src}" style="width:100%;height:100%;object-fit:contain;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--ink-soft);padding:4px;">${p.code?escapeHtml(p.code):'(no picture)'}</div>`}
           </div>
         </div>`).join('')}
       </div>
+      ${soloQuestionSelectedWordIds.length>1 ? `<div class="tm" style="margin-top:4px;">${soloQuestionSelectedWordIds.length} pictures selected — any one of them will count as correct for this question.</div>` : ''}
     </div>
-    <button class="record" onclick="recordSoloQuestion('${key}')" ${soloQuestionSelectedWordId?'':'disabled'}>Record new question/command</button>
+    <button class="record" onclick="recordSoloQuestion('${key}')" ${soloQuestionSelectedWordIds.length?'':'disabled'}>Record new question/command</button>
     <div id="soloQuestionRecordStatus" class="meta" style="margin-top:6px;"></div>
     ` : ''}
     <div style="margin-top:16px;">
@@ -2359,14 +2363,15 @@ function recordActivitySlot(key, libId, slot){
 }
 function recordSoloQuestion(key){
   if(activeRecorder && activeRecorder.state==='recording') return;
-  if(!soloQuestionSelectedWordId) return;
+  if(!soloQuestionSelectedWordIds.length) return;
   const id = uid();
   const soloKeyStr = soloKeyFor(key);
-  const libId = soloQuestionSelectedWordId;
+  const [libId, ...altLibIds] = soloQuestionSelectedWordIds;
   startWordRecording(id, 'soloQuestionRecordStatus', ()=>{
     state.activityQuestions[soloKeyStr] = state.activityQuestions[soloKeyStr] || [];
-    state.activityQuestions[soloKeyStr].push({id, libId});
+    state.activityQuestions[soloKeyStr].push({id, libId, altLibIds});
     saveData();
+    soloQuestionSelectedWordIds = [];
     const statusEl = document.getElementById('soloQuestionRecordStatus');
     if(statusEl) statusEl.innerHTML = '';
     renderSoloSetup(document.getElementById('content'));
@@ -2478,8 +2483,8 @@ function soloIntroduceNext(){
 function handleSoloPick(libId){
   const sp = soloPractice;
   if(!sp || sp.phase!=='quiz' || !sp.currentQuestion) return;
-  const correct = sp.currentQuestion.libId;
-  if(libId===correct){
+  const acceptable = [sp.currentQuestion.libId, ...(sp.currentQuestion.altLibIds||[])];
+  if(acceptable.includes(libId)){
     sp.stats.seen++;
     const knewIt = !sp.wrongAttempt;
     if(knewIt) sp.stats.known++;
