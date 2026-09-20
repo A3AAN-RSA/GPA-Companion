@@ -6001,8 +6001,15 @@ let reviewActivityMPIndex = 0;
 let reviewActivitySelectedSubs = new Set();
 function renderReviewSetup(c){
   const groups = reviewGroups();
+  const answerRecorderSection = `
+    <div style="margin-top:24px;">
+      <button class="ghost" onclick="toggleAnswerRecorderPanel()">${answerRecorderPanelOpen?'Hide':'Set up'} Answer Recorder</button>
+      <div id="answerRecorderPanel" style="margin-top:10px;"></div>
+    </div>
+  `;
   if(groups.length===0){
-    c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or from inside a Meeting Plan's activity — then they'll show up here to review.</div>`;
+    c.innerHTML = `<div class="empty">No word recordings yet. Record audio for words in the Word Log tab, or from inside a Meeting Plan's activity — then they'll show up here to review.</div>${answerRecorderSection}`;
+    if(answerRecorderPanelOpen) renderAnswerRecorder(document.getElementById('answerRecorderPanel'));
     return;
   }
   c.innerHTML = `
@@ -6031,10 +6038,7 @@ function renderReviewSetup(c){
     </div>
     <div id="reviewModeBody"></div>
     <button class="primary" style="margin-top:12px;" onclick="startReview()">Start review</button>
-    <div style="margin-top:24px;">
-      <button class="ghost" onclick="toggleAnswerRecorderPanel()">${answerRecorderPanelOpen?'Hide':'Set up'} Answer Recorder</button>
-      <div id="answerRecorderPanel" style="margin-top:10px;"></div>
-    </div>
+    ${answerRecorderSection}
   `;
   if(answerRecorderPanelOpen) renderAnswerRecorder(document.getElementById('answerRecorderPanel'));
   renderReviewModeBody();
