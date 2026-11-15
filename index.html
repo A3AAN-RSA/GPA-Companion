@@ -2,95 +2,208 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3F5FA">
 <title>GPA Companion</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* ---------- Design tokens ----------
+   Older screens still reference these names (--teal = the primary accent, --paper = page
+   background, --paper-line = hairline borders), so changing the values here restyles them too. */
 :root{
-  --paper:#4A9BE8; --paper-line:#B9D8F5; --panel:#FFFFFF;
-  --ink:#123B68; --ink-soft:#557493;
-  --teal:#1769D5; --teal-dim:#E8F3FF;
-  --ochre:#15549A; --ochre-bg:#E8F3FF;
-  --red:#15549A; --radius:3px;
+  --paper:#F3F5FA; --paper-line:#E3E8F2; --panel:#FFFFFF;
+  --ink:#141B2D; --ink-soft:#66718C;
+  --teal:#3559E0; --teal-dim:#EAEFFE;
+  --ochre:#A96A0C; --ochre-bg:#FFF4DF;
+  --red:#D64550;
+  --radius:12px; --radius-lg:20px;
+  --shadow-sm:0 1px 2px rgba(20,27,45,.06),0 1px 3px rgba(20,27,45,.05);
+  --shadow-md:0 10px 30px rgba(20,27,45,.08);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --nav-w:252px; --bottom-h:64px;
 }
 *{box-sizing:border-box;}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:'Work Sans',sans-serif;-webkit-font-smoothing:antialiased;}
-h1,h2,h3{font-family:'Lora',serif;font-weight:600;margin:0 0 .3em 0;}
-#app{max-width:820px;margin:0 auto;padding:26px 18px 80px;}
-header.top{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--paper-line);padding-bottom:14px;margin-bottom:16px;}
-header.top h1{font-size:1.4rem;color:#fff;}
-header.top .sub{color:rgba(255,255,255,.85);font-size:.82rem;}
-.tabs{display:flex;gap:2px;flex-wrap:wrap;}
-#tabs{margin-bottom:16px;}
-.tabs button{font-family:'Work Sans',sans-serif;font-size:.82rem;padding:8px 13px 7px;border:1px solid var(--paper-line);border-bottom:none;background:var(--paper);color:#fff;cursor:pointer;border-radius:var(--radius) var(--radius) 0 0;position:relative;top:1px;}
-.tabs button.active{background:var(--panel);color:var(--ink);border-bottom:1px solid var(--panel);font-weight:600;}
-.panel{background:var(--panel);border:1px solid var(--paper-line);border-radius:0 var(--radius) var(--radius) var(--radius);padding:20px;}
-.field{margin-bottom:12px;}
-.field label{display:block;font-size:.78rem;color:var(--ink-soft);margin-bottom:4px;}
-.field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:.9rem;padding:8px 10px;border:1px solid var(--paper-line);border-radius:var(--radius);background:#fff;color:var(--ink);}
-.field textarea{min-height:56px;resize:vertical;}
+html{-webkit-text-size-adjust:100%;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{font-family:var(--font);font-weight:650;letter-spacing:-.012em;margin:0 0 .4em 0;color:var(--ink);}
+h3{font-size:1.15rem;} h4{font-size:.95rem;}
+a{color:var(--teal);}
+audio{width:100%;margin-top:6px;height:34px;}
+img.thumb{max-width:100%;border-radius:var(--radius);margin-top:6px;}
+
+/* ---------- App shell: sidebar on desktop, bottom bar on phones ---------- */
+#shell{display:flex;min-height:100vh;}
+#sidebar{width:var(--nav-w);flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:#fff;border-right:1px solid var(--paper-line);padding:22px 14px 24px;display:flex;flex-direction:column;gap:2px;}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 10px 16px;}
+.brand-mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#4F73F5,#7A4FE0);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.78rem;letter-spacing:.02em;box-shadow:0 4px 12px rgba(79,115,245,.35);}
+.brand-name{font-weight:700;font-size:1rem;letter-spacing:-.01em;}
+.brand-sub{font-size:.72rem;color:var(--ink-soft);}
+.nav-group{font-size:.66rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);padding:16px 12px 6px;font-weight:600;}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:12px;border:none;background:none;color:var(--ink-soft);font-family:inherit;font-size:.9rem;font-weight:500;cursor:pointer;text-align:left;transition:background .15s,color .15s;}
+.nav-item svg{width:20px;height:20px;flex-shrink:0;}
+.nav-item:hover{background:var(--paper);color:var(--ink);}
+.nav-item.active{background:var(--teal-dim);color:var(--teal);font-weight:600;}
+#main{flex:1;min-width:0;padding:34px 44px 70px;}
+.page{max-width:940px;margin:0 auto;}
+.page-head{margin-bottom:20px;}
+.page-head h1{font-size:1.65rem;margin:0;}
+#content.panel{background:var(--panel);border:1px solid var(--paper-line);border-radius:var(--radius-lg);padding:28px;box-shadow:var(--shadow-sm);}
+.panel{background:var(--panel);border:1px solid var(--paper-line);border-radius:var(--radius-lg);}
+.footer-note{font-size:.72rem;color:var(--ink-soft);margin-top:26px;text-align:center;}
+#bottombar{display:none;}
+#moreSheet{display:none;position:fixed;inset:0;z-index:950;background:rgba(20,27,45,.42);align-items:flex-end;}
+#moreSheet.open{display:flex;}
+.sheet{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:10px 16px calc(26px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.sheet-handle{grid-column:1/-1;width:40px;height:4px;border-radius:99px;background:var(--paper-line);margin:0 auto 8px;}
+.sheet-item{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 6px;border-radius:16px;background:var(--paper);border:none;font-family:inherit;font-size:.78rem;font-weight:600;color:var(--ink);cursor:pointer;}
+.sheet-item svg{width:24px;height:24px;color:var(--teal);}
+.sheet-item.active{background:var(--teal-dim);color:var(--teal);}
+@media (max-width:860px){
+  #sidebar{display:none;}
+  #main{padding:16px 14px calc(var(--bottom-h) + env(safe-area-inset-bottom) + 30px);}
+  .page-head{margin-bottom:14px;} .page-head h1{font-size:1.4rem;}
+  #content.panel{padding:18px 16px;border-radius:18px;}
+  #bottombar{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(var(--bottom-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:#fff;border-top:1px solid var(--paper-line);z-index:900;box-shadow:0 -4px 16px rgba(20,27,45,.05);}
+  .bb-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--ink-soft);font-family:inherit;font-size:.66rem;font-weight:600;cursor:pointer;}
+  .bb-item svg{width:22px;height:22px;}
+  .bb-item.active{color:var(--teal);}
+}
+/* While an activity is running the chrome gets out of the way completely */
+body.in-practice #sidebar,body.in-practice #bottombar,body.in-practice .page-head,body.in-practice .footer-note{display:none;}
+body.in-practice #main{padding:16px 16px 28px;}
+body.in-practice #content.panel{background:transparent;border:none;box-shadow:none;padding:0;}
+
+/* ---------- Form controls ---------- */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:.78rem;font-weight:500;color:var(--ink-soft);margin-bottom:5px;}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea{font-family:inherit;font-size:.9rem;color:var(--ink);padding:9px 12px;border:1px solid var(--paper-line);border-radius:10px;background:#fff;transition:border-color .15s,box-shadow .15s;}
+.field input,.field select,.field textarea{width:100%;}
+.field textarea{min-height:64px;resize:vertical;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-dim);}
 .row{display:flex;gap:12px;flex-wrap:wrap;}
-.row > .field{flex:1;min-width:140px;}
-button.primary{background:var(--teal);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
-button.primary:hover{opacity:.9;}
-button.ghost{background:none;border:1px solid var(--paper-line);color:var(--ink-soft);padding:6px 11px;border-radius:var(--radius);font-size:.76rem;cursor:pointer;font-family:inherit;}
-button.danger{color:var(--red);border-color:var(--red);}
-button.record{background:var(--red);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:.85rem;font-weight:600;cursor:pointer;}
+.row > .field{flex:1;min-width:150px;}
+button{font-family:inherit;}
+button.primary{background:var(--teal);color:#fff;border:none;padding:10px 18px;border-radius:12px;font-size:.88rem;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(53,89,224,.35);transition:background .15s,transform .05s;}
+button.primary:hover{background:#2b4ccb;} button.primary:active{transform:translateY(1px);}
+button.ghost{background:#fff;border:1px solid var(--paper-line);color:var(--ink);padding:7px 12px;border-radius:10px;font-size:.78rem;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s;}
+button.ghost:hover{background:var(--paper);border-color:#cdd5ea;}
+button.danger{color:var(--red);border-color:#F1CDD1;}
+button.danger:hover{background:#FFF3F4;}
+button.record{background:var(--red);color:#fff;border:none;padding:10px 18px;border-radius:12px;font-size:.88rem;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(214,69,80,.35);}
 button.record.recording{background:var(--ink);}
-button:disabled{background:#cbd5e1 !important;color:#64748b !important;cursor:not-allowed !important;opacity:.7;}
-.entry{border-top:1px solid var(--paper-line);padding:12px 0;}
+button:disabled{background:#cbd5e1 !important;color:#64748b !important;cursor:not-allowed !important;opacity:.7;border-color:transparent !important;box-shadow:none !important;}
+.icon-btn{width:42px;height:42px;padding:0;border-radius:13px;border:1px solid var(--paper-line);background:#fff;display:inline-flex;align-items:center;justify-content:center;color:var(--ink);cursor:pointer;transition:background .15s,border-color .15s;}
+.icon-btn:hover{background:var(--paper);border-color:#cdd5ea;}
+.icon-btn svg{width:20px;height:20px;}
+
+/* ---------- Content pieces ---------- */
+.entry{border-top:1px solid var(--paper-line);padding:14px 0;}
 .entry:first-child{border-top:none;}
 .entry-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 .entry-top .title{font-weight:600;}
 .entry-top .date{font-size:.73rem;color:var(--ink-soft);white-space:nowrap;}
-.entry .meta{font-size:.77rem;color:var(--ink-soft);margin-top:2px;}
+.entry .meta{font-size:.78rem;color:var(--ink-soft);margin-top:2px;}
 .entry .notes{font-size:.84rem;margin-top:6px;}
-.entry .actions{margin-top:7px;}
-.tag{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:10px;background:var(--teal-dim);color:var(--teal);margin-right:5px;}
+.entry .actions{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+.tm{font-size:.74rem;color:var(--ink-soft);}
+.meta{font-size:.8rem;color:var(--ink-soft);}
+.tag{display:inline-block;font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--teal-dim);color:var(--teal);margin-right:5px;}
 .tag.ochre{background:var(--ochre-bg);color:var(--ochre);}
-.gap-item{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--ochre-bg);border-left:3px solid var(--ochre);border-radius:0 var(--radius) var(--radius) 0;margin-bottom:7px;font-size:.87rem;}
+.gap-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--ochre-bg);border-radius:12px;margin-bottom:8px;font-size:.87rem;}
 .gap-item .days{font-size:.73rem;color:var(--ink-soft);}
-.empty{color:var(--ink-soft);font-size:.84rem;font-style:italic;padding:6px 0;}
-.stat-row{display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
-.stat{flex:1;min-width:100px;}
-.stat .num{font-family:'Lora',serif;font-size:1.6rem;font-weight:600;}
-.stat .label{font-size:.72rem;color:var(--ink-soft);}
-audio{width:100%;margin-top:6px;height:32px;}
-.footer-note{font-size:.7rem;color:var(--ink-soft);margin-top:26px;text-align:center;}
-.mp-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--paper-line);cursor:pointer;}
-.mp-row:first-child{border-top:none;}
-.mp-row .num{width:28px;height:28px;border-radius:50%;background:var(--teal-dim);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600;flex-shrink:0;}
+.empty{color:var(--ink-soft);font-size:.86rem;padding:4px 0;line-height:1.55;}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+.stat{background:var(--paper);border-radius:16px;padding:16px 18px;}
+.stat .num{font-size:1.55rem;font-weight:700;letter-spacing:-.02em;}
+.stat .label{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+.mp-row{display:flex;align-items:center;gap:14px;padding:12px 14px;margin-top:8px;background:#fff;border:1px solid var(--paper-line);border-radius:14px;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+.mp-row:hover{box-shadow:var(--shadow-sm);border-color:#d3dbee;}
+.mp-row .num{width:34px;height:34px;border-radius:11px;background:var(--teal-dim);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;}
 .mp-row.done .num{background:var(--teal);color:#fff;}
-.mp-row .info{flex:1;}
-.mp-row .info .t{font-weight:600;font-size:.88rem;}
-.mp-row .info .topics{font-size:.76rem;color:var(--ink-soft);}
-.mp-detail{background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);padding:14px;margin:6px 0 14px;font-size:.85rem;}
-.mp-detail h4{font-size:.85rem;margin:10px 0 4px;}
+.mp-row .info{flex:1;min-width:0;}
+.mp-row .info .t{font-weight:600;font-size:.92rem;}
+.mp-row .info .topics{font-size:.78rem;color:var(--ink-soft);}
+.mp-detail{background:var(--paper);border:1px solid var(--paper-line);border-radius:16px;padding:16px;margin:8px 0 16px;font-size:.86rem;}
+.mp-detail h4{font-size:.86rem;margin:12px 0 4px;}
 .mp-detail ol,.mp-detail ul{margin:4px 0;padding-left:20px;}
-.phase-divider{font-size:.76rem;text-transform:none;color:var(--ink-soft);padding:10px 0 4px;border-top:2px solid var(--paper-line);margin-top:6px;}
+.phase-divider{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);padding:18px 2px 2px;}
 .iceberg{display:flex;gap:4px;margin-top:2px;}
-.iceberg button{flex:1;font-size:.7rem;padding:5px 4px;border:1px solid var(--paper-line);background:#fff;border-radius:var(--radius);cursor:pointer;color:var(--ink-soft);}
+.iceberg button{flex:1;font-size:.7rem;padding:6px 4px;border:1px solid var(--paper-line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink-soft);}
 .iceberg button.on{background:var(--teal);color:#fff;border-color:var(--teal);}
-.task-item{border-top:1px solid var(--paper-line);padding:10px 0;display:flex;gap:10px;}
+.task-item{border-top:1px solid var(--paper-line);padding:12px 0;display:flex;gap:12px;}
 .task-item:first-child{border-top:none;}
-.task-item input[type=checkbox]{margin-top:3px;}
-.task-item .tt{font-weight:600;font-size:.87rem;}
-.task-item .tm{font-size:.72rem;color:var(--ink-soft);}
-.task-item .tp{font-size:.82rem;margin-top:3px;}
-.section-label{font-size:.76rem;color:var(--ink-soft);margin:16px 0 4px;}
+.task-item input[type=checkbox]{margin-top:4px;}
+.task-item .tt{font-weight:600;font-size:.9rem;}
+.task-item .tm{font-size:.74rem;color:var(--ink-soft);}
+.task-item .tp{font-size:.83rem;margin-top:3px;color:var(--ink-soft);}
+.section-label{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:22px 0 6px;}
 .section-label:first-child{margin-top:0;}
-img.thumb{max-width:100%;border-radius:var(--radius);margin-top:6px;}
+
+/* ---------- Practice mode (all three solo activity types + the with-nurturer mode) ---------- */
+.pr{--tile:152px;--tray:88px;--scene-vh:56;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:16px;min-height:calc(100vh - 44px);}
+.pr.zoom{--tile:230px;--tray:120px;--scene-vh:70;}
+.pr-top{display:flex;align-items:center;gap:14px;}
+.pr-timer{font-variant-numeric:tabular-nums;font-weight:600;font-size:1rem;color:var(--ink);min-width:54px;}
+.pr-progress{flex:1;height:8px;background:#DDE3F1;border-radius:99px;overflow:hidden;}
+.pr-progress > i{display:block;height:100%;background:var(--teal);border-radius:99px;transition:width .35s ease;}
+.pr-actions{display:flex;gap:8px;}
+.pr-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--ink-soft);font-size:.8rem;}
+.pr-meta strong{color:var(--ink);}
+.pr-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:8px 0;}
+.pr-bottom{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding-bottom:6px;}
+.pr-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;width:100%;max-width:1020px;}
+.pr-grid .tile{width:var(--tile);}
+.tile{aspect-ratio:1;background:#fff;border-radius:20px;border:2px solid transparent;box-shadow:var(--shadow-sm);overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:10px;transition:transform .12s,box-shadow .12s,border-color .12s;}
+.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.tile.sel{border-color:var(--teal);box-shadow:0 0 0 4px var(--teal-dim);}
+.tile img{width:100%;height:100%;object-fit:contain;display:block;}
+.tray{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+.tray .tile{width:var(--tray);height:var(--tray);aspect-ratio:auto;border-radius:18px;padding:8px;}
+.tray.big .tile{width:var(--tile);height:var(--tile);border-radius:22px;padding:10px;}
+.tray-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);text-align:center;margin-bottom:8px;}
+.pr-hero{background:#fff;border-radius:28px;box-shadow:var(--shadow-md);padding:22px;display:flex;align-items:center;justify-content:center;width:min(100%,360px);aspect-ratio:1;}
+.pr.zoom .pr-hero{width:min(100%,560px);}
+.pr-hero img{width:100%;height:100%;object-fit:contain;}
+.pr-duo{display:flex;gap:18px;align-items:center;justify-content:center;flex-wrap:wrap;}
+.pr-duo .pr-hero{width:min(42vw,240px);border-radius:24px;}
+.pr.zoom .pr-duo .pr-hero{width:min(44vw,340px);}
+.pr-scene{position:relative;display:block;width:min(100%,640px);border-radius:20px;overflow:visible;box-shadow:var(--shadow-md);background:#fff;}
+.pr-scene > img.pr-base{display:block;width:100%;height:auto;border-radius:20px;}
+.pr-scene .obj{position:absolute;width:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:10px;background:#fff;border:2px solid #fff;box-shadow:0 5px 14px rgba(20,27,45,.32);}
+.pr-scene .obj.clickable{cursor:pointer;transition:transform .12s;}
+.pr-scene .obj.clickable:hover{transform:translate(-50%,-104%);}
+.wave{display:flex;align-items:flex-end;gap:5px;height:28px;}
+.wave i{width:5px;border-radius:3px;background:var(--teal);animation:wave 1s ease-in-out infinite;height:8px;}
+.wave i:nth-child(2){animation-delay:.12s;} .wave i:nth-child(3){animation-delay:.24s;} .wave i:nth-child(4){animation-delay:.36s;} .wave i:nth-child(5){animation-delay:.48s;}
+@keyframes wave{0%,100%{height:8px;opacity:.45;}50%{height:28px;opacity:1;}}
+@media (max-width:860px){ .pr{--tile:104px;--tray:70px;--scene-vh:46;} .pr.zoom{--tile:150px;--tray:92px;--scene-vh:58;} .pr-grid{gap:12px;} .pr-hero{width:min(100%,300px);} }
+@media (max-width:860px){
+  .stat-row{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .stat{padding:12px 14px;border-radius:14px;}
+  .stat .num{font-size:1.25rem;}
+  .stat .label{font-size:.72rem;}
+  .stat:last-child:nth-child(odd){grid-column:1/-1;}
+}
 </style>
 </head>
 <body>
-<div id="app">
-  <header class="top">
-    <div><h1>GPA Companion</h1><div class="sub">your whole Phase 1 journey, one place</div></div>
-  </header>
-  <nav id="tabs"></nav>
-  <div class="panel" id="content"></div>
-  <div class="footer-note">Data saves automatically to your account. Use Export in Profile to back it up.</div>
+<div id="shell">
+  <aside id="sidebar"></aside>
+  <main id="main">
+    <div class="page">
+      <div class="page-head"><h1 id="pageTitle">GPA Companion</h1></div>
+      <div class="panel" id="content"></div>
+      <div class="footer-note">Data saves automatically to your account. Use Export in Profile to back it up.</div>
+    </div>
+  </main>
+</div>
+<nav id="bottombar"></nav>
+<div id="moreSheet" onclick="closeMoreSheet(event)"><div class="sheet" id="moreSheetBody"></div></div>
+<div id="pauseOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,30,60,.94);z-index:3000;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:#fff;">
+  <div style="font-family:var(--font);font-size:1.9rem;">Paused</div>
+  <button class="primary" style="font-size:1.05rem;padding:14px 38px;" onclick="resumeActivity()">Resume</button>
+  <button class="ghost" style="color:#fff;border-color:rgba(255,255,255,.5);" onclick="endActivityFromPause()">End practice</button>
 </div>
 <div id="imageOverlay" onclick="hideEnlargedImage()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:1000;align-items:center;justify-content:center;cursor:pointer;padding:20px;">
   <img id="imageOverlayImg" src="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:4px;">
@@ -481,6 +594,62 @@ const TABS_ROW2 = [
   {id:'alphabet', label:'Alphabet'},
 ];
 const TABS = [...TABS_ROW1, ...TABS_ROW2];
+
+// ---------- Icons + navigation ----------
+const ic = (paths)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const ICON = {
+  home: ic('<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'),
+  plans: ic('<rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/>'),
+  review: ic('<path d="M3 14v-2a9 9 0 0 1 18 0v2"/><path d="M21 16a2 2 0 0 1-2 2h-1v-6h3zM3 16a2 2 0 0 0 2 2h1v-6H3z"/>'),
+  words: ic('<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>'),
+  alphabet: ic('<path d="M4 19 9 5l5 14"/><path d="M5.8 14.5h6.4"/><path d="M15 19v-7a2.5 2.5 0 0 1 5 0v7"/><path d="M15 15.5h5"/>'),
+  suggestions: ic('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>'),
+  orientation: ic('<circle cx="12" cy="12" r="9"/><path d="m16 8-2 6-6 2 2-6z"/>'),
+  assign: ic('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>'),
+  library: ic('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+  profile: ic('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+  more: ic('<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>'),
+  repeat: ic('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>'),
+  pause: ic('<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>'),
+  expand: ic('<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>'),
+  shrink: ic('<path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="M14 10l7-7"/><path d="M3 21l7-7"/>')
+};
+const NAV_META = {
+  dashboard:{label:'Dashboard',icon:'home'}, meetings:{label:'Meeting Plans',icon:'plans'},
+  review:{label:'Review',icon:'review'}, words:{label:'Word Log',icon:'words'},
+  alphabet:{label:'Alphabet',icon:'alphabet'}, suggestions:{label:'Suggestions',icon:'suggestions'},
+  orientation:{label:'Orientation',icon:'orientation'}, assign:{label:'Assign Pictures',icon:'assign'},
+  library:{label:'Picture Library',icon:'library'}, profile:{label:'Profile',icon:'profile'}
+};
+const NAV_GROUPS = [
+  {label:'Learn', items:['dashboard','meetings','review','words','alphabet','suggestions']},
+  {label:'Set up', items:['orientation','assign','library','profile']}
+];
+const BOTTOM_TABS = ['dashboard','meetings','review','words'];
+function renderNav(){
+  const side = document.getElementById('sidebar');
+  const bar = document.getElementById('bottombar');
+  const sheet = document.getElementById('moreSheetBody');
+  if(!side || !bar || !sheet) return;
+  side.innerHTML = `<div class="brand"><div class="brand-mark">GPA</div><div><div class="brand-name">GPA Companion</div><div class="brand-sub">Your Phase 1 journey</div></div></div>`
+    + NAV_GROUPS.map(g=>`<div class="nav-group">${g.label}</div>`+g.items.map(id=>
+      `<button class="nav-item${id===activeTab?' active':''}" onclick="setTab('${id}')">${ICON[NAV_META[id].icon]}<span>${NAV_META[id].label}</span></button>`).join('')).join('');
+  const moreIds = Object.keys(NAV_META).filter(id=>!BOTTOM_TABS.includes(id));
+  bar.innerHTML = BOTTOM_TABS.map(id=>
+      `<button class="bb-item${id===activeTab?' active':''}" onclick="setTab('${id}')">${ICON[NAV_META[id].icon]}<span>${NAV_META[id].label==='Meeting Plans'?'Plans':NAV_META[id].label==='Dashboard'?'Home':NAV_META[id].label}</span></button>`).join('')
+    + `<button class="bb-item${moreIds.includes(activeTab)?' active':''}" onclick="openMoreSheet()">${ICON.more}<span>More</span></button>`;
+  sheet.innerHTML = `<div class="sheet-handle"></div>` + moreIds.map(id=>
+      `<button class="sheet-item${id===activeTab?' active':''}" onclick="setTab('${id}')">${ICON[NAV_META[id].icon]}<span>${NAV_META[id].label}</span></button>`).join('');
+  const title = document.getElementById('pageTitle');
+  if(title) title.textContent = (NAV_META[activeTab]||{}).label || 'GPA Companion';
+  document.body.classList.toggle('in-practice', !!(liveActivity||soloPractice||positionPractice||actionComboPractice));
+}
+function openMoreSheet(){ const el=document.getElementById('moreSheet'); if(el) el.classList.add('open'); }
+function closeMoreSheet(ev){
+  if(ev && ev.target && ev.target.id!=='moreSheet') return;
+  const el=document.getElementById('moreSheet'); if(el) el.classList.remove('open');
+}
+
 
 // ---- Real data from Greg Thomson's Growing Participator Approach / Six-Phase Program materials ----
 const PHASE_TARGETS = [
@@ -1051,8 +1220,7 @@ function currentPhaseInfo(){
   return {phase, info, startH, endH, hoursIntoPhase: h-startH};
 }
 function render(){
-  const tabsEl = document.getElementById('tabs');
-  tabsEl.innerHTML = `<div class="tabs">${TABS_ROW1.map(t=>`<button class="${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join('')}</div><div class="tabs" style="margin-top:2px;">${TABS_ROW2.map(t=>`<button class="${t.id===activeTab?'active':''}" onclick="setTab('${t.id}')">${t.label}</button>`).join('')}</div>`;
+  renderNav();
   const c = document.getElementById('content');
   if(!loaded){ c.innerHTML='<div class="empty">Loading…</div>'; return; }
   if(activeTab==='dashboard') renderDashboard(c);
@@ -1081,13 +1249,14 @@ function activeSessionBlockReason(){
   return null;
 }
 function setTab(id){
+  closeMoreSheet();
   if(id===activeTab) return;
   const reason = activeSessionBlockReason();
   if(reason){
     alert(`Please stop or end ${reason} first — use its own Stop/End button — before switching tabs.`);
     return;
   }
-  activeTab=id; render();
+  activeTab=id; render(); window.scrollTo(0,0);
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 function entryTypeTag(w){
@@ -1274,7 +1443,7 @@ function renderMeetings(c){
     <h4 style="margin-top:0;">Review</h4>
     <div class="empty" style="margin-bottom:6px;">Start each session with review before picking up wherever you are in the meeting plans — this time counts as revision hours, not toward a specific meeting, since you may not finish a meeting plan in one sitting. You can also use this on your own, outside a session with your nurturer.</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="revisionTimerDisp" style="font-family:'Lora',serif;font-size:1.3rem;min-width:56px;">${revDisplay}</span>
+      <span id="revisionTimerDisp" style="font-family:var(--font);font-size:1.3rem;min-width:56px;">${revDisplay}</span>
       <button class="ghost" onclick="startRevisionTimer()" ${revRunning?'disabled':''}>${revisionTimer.ms>0&&!revRunning?'Resume':'Start'}</button>
       <button class="ghost" onclick="pauseRevisionTimer()" ${revRunning?'':'disabled'}>Pause</button>
       <button class="ghost" onclick="stopRevisionTimer()">Stop</button>
@@ -1328,7 +1497,7 @@ function renderMeetings(c){
               <span><strong>${i+1}. ${escapeHtml(s.name)}</strong> <span class="tm">(~${perStepEst} min)</span><br><span style="display:block;margin-top:3px;line-height:1.5;">${s.description}</span></span>
             </label>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 0 24px;">
-              <span id="stepTimerDisp-${key}" style="font-family:'Lora',serif;font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
+              <span id="stepTimerDisp-${key}" style="font-family:var(--font);font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
               <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},${i})">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
               <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},${i})" ${running?'':'disabled'}>Pause</button>
               <button class="ghost" onclick="stopStepTimer(${mp.n},${i})">Stop</button>
@@ -1377,7 +1546,7 @@ function renderMeetings(c){
         const initialDisplay = isActive ? formatTimer(activeTimer.ms) : '00:00';
         html += `<div class="empty">Full activity script not yet added for this meeting plan. Time it as one block for now — once it's broken into activities you'll get per-activity pacing like Meeting Plan 1.</div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;">
-            <span id="stepTimerDisp-${key}" style="font-family:'Lora',serif;font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
+            <span id="stepTimerDisp-${key}" style="font-family:var(--font);font-size:1.05rem;min-width:50px;">${initialDisplay}</span>
             <button class="ghost" id="stepStart-${key}" onclick="startStepTimer(${mp.n},'whole')">${running?'Running…':(isActive&&activeTimer.ms>0?'Resume':'Start')}</button>
             <button class="ghost" id="stepPause-${key}" onclick="pauseStepTimer(${mp.n},'whole')" ${running?'':'disabled'}>Pause</button>
             <button class="ghost" onclick="stopStepTimer(${mp.n},'whole')">Stop &amp; fill minutes</button>
@@ -2112,6 +2281,7 @@ function shuffleArray(arr){
   return a;
 }
 function startLiveActivity(key){
+  rememberMeetingScroll();
   const gameKeys = gameKeysFor(key);
   const pool = [];
   gameKeys.forEach(k=>{
@@ -2178,6 +2348,7 @@ function endLiveActivity(){
   }
   liveActivity = null;
   render();
+  restoreMeetingScroll();
 }
 
 // ---------- Solo (no-nurturer) activity mode ----------
@@ -2217,6 +2388,7 @@ function chooseActionComboMode(key){
 }
 let pendingInAppChoiceKey = null;
 function openSoloSetup(key){
+  rememberMeetingScroll();
   soloSetup = key;
   soloQuestionSelectedWordIds = [];
   render();
@@ -2225,6 +2397,7 @@ function closeSoloSetup(){
   soloSetup = null;
   soloQuestionSelectedWordIds = [];
   render();
+  restoreMeetingScroll();
 }
 function selectSoloQuestionWord(wordId){
   const idx = soloQuestionSelectedWordIds.indexOf(wordId);
@@ -2245,19 +2418,124 @@ function soloReadiness(key){
   const questionsReady = pics.length>0 && pics.every(p=>questions.some(q=>q.libId===p.libId || (q.altLibIds||[]).includes(p.libId)));
   return {pics, questions, picsReady, questionsReady, ready: picsReady && questionsReady};
 }
-function playStoredAudio(key){
+// ---------- Remember scroll position across an activity ----------
+let meetingScrollPos = null;
+function anyActivityScreenOpen(){
+  return !!(liveActivity||soloSetup||soloPractice||positionSetup||positionPractice||actionComboSetup||actionComboPractice);
+}
+function rememberMeetingScroll(){
+  if(!anyActivityScreenOpen() && activeTab==='meetings') meetingScrollPos = window.scrollY;
+}
+function restoreMeetingScroll(){
+  if(meetingScrollPos==null || anyActivityScreenOpen()) return;
+  const y = meetingScrollPos;
+  meetingScrollPos = null;
+  window.scrollTo(0,y);
+  requestAnimationFrame(()=>window.scrollTo(0,y));
+}
+// ---------- Activity audio control: repeat & pause ----------
+let activeAudio = null;
+let lastPromptKey = null;
+let activityPaused = false;
+let activityPausedTimer = false;
+let pauseWaiters = [];
+function waitWhilePaused(){
+  if(!activityPaused) return Promise.resolve();
+  return new Promise(res=>pauseWaiters.push(res));
+}
+function playStoredAudio(key, isPrompt){
+  if(isPrompt) lastPromptKey = key;
   return new Promise(async (resolve)=>{
     try{
+      await waitWhilePaused();
       const res = await window.storage.get(key, false);
       if(res && res.value){
+        await waitWhilePaused();
         const audio = new Audio(JSON.parse(res.value).dataUrl);
-        audio.onended = ()=>resolve();
-        audio.onerror = ()=>resolve();
-        audio.play().catch(()=>resolve());
+        audio._isPrompt = !!isPrompt;
+        activeAudio = audio;
+        const done = ()=>{ if(activeAudio===audio) activeAudio = null; resolve(); };
+        audio.onended = done;
+        audio.onerror = done;
+        const pr = audio.play();
+        if(pr && pr.catch) pr.catch(done);
       } else resolve();
     }catch(e){ resolve(); }
   });
 }
+function repeatPrompt(){
+  if(activityPaused) return;
+  if(activeAudio && activeAudio._isPrompt){
+    try{ activeAudio.currentTime = 0; const pr = activeAudio.play(); if(pr && pr.catch) pr.catch(()=>{}); }catch(e){}
+    return;
+  }
+  if(activeAudio) return; // an answer sound is mid-play; the next question follows on its own
+  if(lastPromptKey) playStoredAudio(lastPromptKey, true);
+}
+function showPauseOverlay(show){
+  const el = document.getElementById('pauseOverlay');
+  if(el) el.style.display = show ? 'flex' : 'none';
+}
+function pauseActivity(){
+  if(activityPaused) return;
+  activityPaused = true;
+  if(activeAudio && activeAudio.pause) activeAudio.pause();
+  if(activeTimer.running){
+    activeTimer.ms += Date.now()-activeTimer.startedAt;
+    activeTimer.running = false;
+    activityPausedTimer = true;
+  }
+  showPauseOverlay(true);
+}
+function resumeActivity(){
+  if(!activityPaused) return;
+  activityPaused = false;
+  showPauseOverlay(false);
+  if(activityPausedTimer){
+    activeTimer.running = true;
+    activeTimer.startedAt = Date.now();
+    activityPausedTimer = false;
+  }
+  if(activeAudio){
+    const a = activeAudio;
+    const pr = a.play();
+    if(pr && pr.catch) pr.catch(()=>{ if(a.onended) a.onended(); });
+  }
+  const waiters = pauseWaiters; pauseWaiters = [];
+  waiters.forEach(f=>f());
+}
+function resetPauseState(){
+  activityPaused = false;
+  activityPausedTimer = false;
+  showPauseOverlay(false);
+  if(activeAudio && activeAudio.pause) activeAudio.pause();
+  activeAudio = null;
+  lastPromptKey = null;
+  const waiters = pauseWaiters; pauseWaiters = [];
+  waiters.forEach(f=>f());
+}
+function endActivityFromPause(){
+  if(soloPractice) endSoloPractice();
+  else if(positionPractice) endPositionPractice();
+  else if(actionComboPractice) endActionComboPractice();
+  else resetPauseState();
+}
+function practiceControlsHTML(){
+  return `<button class="icon-btn" onclick="repeatPrompt()" title="Repeat" aria-label="Repeat">${ICON.repeat}</button><button class="icon-btn" onclick="pauseActivity()" title="Pause" aria-label="Pause">${ICON.pause}</button>`;
+}
+// One shared top bar for every practice screen: timer, progress, repeat / pause / zoom, then a
+// quiet status line. The timer keeps the id the step-timer ticker looks for.
+function practiceHeaderHTML(o){
+  const pct = o.total>0 ? Math.min(100, Math.round(o.done/o.total*100)) : 0;
+  return `
+    <div class="pr-top">
+      <span id="${o.timerId}" class="pr-timer">00:00</span>
+      <div class="pr-progress"><i style="width:${pct}%"></i></div>
+      <div class="pr-actions">${practiceControlsHTML()}<button class="icon-btn" onclick="${o.zoomFn}()" title="${o.zoom?'Smaller':'Zoom in'}" aria-label="Zoom">${o.zoom?ICON.shrink:ICON.expand}</button></div>
+    </div>
+    <div class="pr-meta"><span><strong>${o.title}</strong> · ${o.phaseLabel}</span><span>${o.meta}</span></div>`;
+}
+const WAVE_HTML = '<div class="wave"><i></i><i></i><i></i><i></i><i></i></div>';
 function soloSlotStatusHTML(key, libId, slot, word){
   if(word && word.hasAudio){
     return `<div id="soloSlotAudio-${libId}-${slot}"></div><button class="ghost" style="font-size:.65rem;" onclick="recordActivitySlot('${key}','${libId}','${slot}')">Re-record</button>`;
@@ -2401,6 +2679,7 @@ async function deleteSoloQuestion(soloKeyStr, id){
   renderSoloSetup(document.getElementById('content'));
 }
 async function startSoloPractice(key){
+  resetPauseState();
   await preloadAnswerSounds();
   const {pics, questions} = soloReadiness(key);
   soloSetup = null;
@@ -2440,6 +2719,7 @@ function introduceSoloPicture(){
   if(!sp || sp.remaining.length===0) return;
   const libId = sp.remaining.shift();
   sp.introduced.push(libId);
+  (sp.newQueue = sp.newQueue || []).push(libId);
   sp.phase = 'intro';
   sp.introducingLibId = libId;
   const pic = sp.pics.find(p=>p.libId===libId);
@@ -2453,7 +2733,7 @@ async function runSoloIntroStep(){
   const words = wordsForPicture(sp.introducingLibId);
   const slotWord = words[SOLO_WORD_SLOTS.indexOf(sp.introSlot)];
   render();
-  if(slotWord) await playStoredAudio('wordaudio:'+slotWord.id);
+  if(slotWord) await playStoredAudio('wordaudio:'+slotWord.id, true);
   if(!soloPractice || soloPractice.phase!=='intro') return;
   sp.introRepeatsLeft--;
   if(sp.introRepeatsLeft<=0){
@@ -2486,12 +2766,21 @@ function pickSoloQuestion(){
   if(!sp) return;
   const eligible = sp.questions.filter(q=>sp.introduced.includes(q.libId));
   if(eligible.length===0) return;
-  sp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  // Words introduced since the last question are asked about first, before falling back to a
+  // random pick across everything learned so far.
+  let pool = eligible;
+  sp.newQueue = sp.newQueue || [];
+  while(sp.newQueue.length){
+    const id = sp.newQueue.shift();
+    const forNew = eligible.filter(q=>q.libId===id || (q.altLibIds||[]).includes(id));
+    if(forNew.length){ pool = forNew; break; }
+  }
+  sp.currentQuestion = pool[Math.floor(Math.random()*pool.length)];
   sp.currentGrid = shuffleArray(sp.introduced.slice());
   sp.wrongAttempt = false;
   sp.feedback = null;
   render();
-  playStoredAudio('wordaudio:'+sp.currentQuestion.id);
+  playStoredAudio('wordaudio:'+sp.currentQuestion.id, true);
 }
 function soloIntroduceNext(){
   const sp = soloPractice;
@@ -2522,11 +2811,12 @@ function handleSoloPick(libId){
     sp.wrongAttempt = true;
     render();
     playRandomAnswerSound('no').then(()=>{
-      if(soloPractice && soloPractice.currentQuestion) playStoredAudio('wordaudio:'+soloPractice.currentQuestion.id);
+      if(soloPractice && soloPractice.currentQuestion) playStoredAudio('wordaudio:'+soloPractice.currentQuestion.id, true);
     });
   }
 }
 function endSoloPractice(){
+  resetPauseState();
   if(soloPractice && soloPractice.key){
     const parts = soloPractice.key.split('-');
     stopStepTimer(Number(parts[0]), Number(parts[1]));
@@ -2534,6 +2824,7 @@ function endSoloPractice(){
   soloPractice = null;
   soloPracticeFullScreen = false;
   render();
+  restoreMeetingScroll();
 }
 let soloPracticeFullScreen = false;
 function toggleSoloFullScreen(){
@@ -2543,50 +2834,36 @@ function toggleSoloFullScreen(){
 function renderSoloPractice(c){
   const sp = soloPractice;
   if(!sp){ renderMeetings(c); return; }
-  const timerId = 'stepTimerDisp-'+sp.key;
   const est = estimateForKey(sp.key);
-  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
   const fs = soloPracticeFullScreen;
-  const fsToggleBtn = `<button class="ghost" onclick="toggleSoloFullScreen()" style="font-size:.75rem;">${fs?'&times; Exit full screen':'&#10021; Full screen'}</button>`;
+  const header = practiceHeaderHTML({
+    timerId:'stepTimerDisp-'+sp.key, title:'Word Introduction', phaseLabel: sp.phase==='intro' ? 'Listening' : 'Quiz',
+    done: sp.introduced.length, total: sp.pics.length,
+    meta: `${sp.introduced.length} of ${sp.pics.length} introduced${sp.phase==='quiz' ? ` · knew ${sp.stats.known} of ${sp.stats.seen}` : ''}${est!=null ? ` · ~${est} min planned` : ''}`,
+    zoom: fs, zoomFn:'toggleSoloFullScreen'
+  });
   if(sp.phase==='intro'){
     const pic = sp.pics.find(p=>p.libId===sp.introducingLibId);
-    const introInner = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-        <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
+    c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+      <div class="pr-stage">
+        ${pic ? `<div class="pr-hero">${pic.src?`<img src="${pic.src}" alt="">`:''}</div>${WAVE_HTML}` : `<div class="empty">Finishing up…</div>`}
       </div>
-      <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;">Introducing a new picture — listening only for now.</div>
-      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-        ${pic ? `
-          ${pic.src?`<img class="thumb" src="${pic.src}" style="max-width:${fs?'70vw':'180px'};max-height:${fs?'60vh':'none'};">`:''}
-          <div class="tm" style="margin-top:10px;">${sp.introSlot==='bare' ? 'saying the word' : sp.introSlot==='article_definite' ? 'saying it with the definite article' : sp.introSlot==='article_indefinite' ? 'saying it with the indefinite article' : 'saying it in a sentence'}</div>
-        ` : `<div class="empty">Finishing up…</div>`}
-      </div>
-      <button class="ghost danger" style="margin-top:14px;" onclick="endSoloPractice()">End practice</button>
-    `;
-    c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:900px;margin:0 auto;">${introInner}</div></div>` : introInner;
+      <div class="pr-bottom"><button class="ghost danger" onclick="endSoloPractice()">End practice</button></div>
+    </div>`;
     return;
   }
   const gridPics = sp.currentGrid.map(libId=>sp.pics.find(p=>p.libId===libId)).filter(Boolean);
-  const quizInner = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-      <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
+  c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+    <div class="pr-stage">
+      <div class="pr-grid">
+        ${gridPics.map(p=>`<div class="tile" onclick="handleSoloPick('${p.libId}')"><img src="${p.src}" alt=""></div>`).join('')}
+      </div>
     </div>
-    <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${sp.stats.seen} · knew ${sp.stats.known} this session · ${sp.introduced.length}/${sp.pics.length} introduced</div>
-    ${sp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
-    ${sp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:${fs?'16px':'10px'};max-width:${fs?'94vw':'520px'};margin:0 auto 20px;">
-      ${gridPics.map(p=>`<div onclick="handleSoloPick('${p.libId}')" style="cursor:pointer;aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid var(--paper-line);background:#fff;"><img src="${p.src}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce Next</button>` : ''}
+    <div class="pr-bottom">
+      ${sp.remaining.length>0 ? `<button class="primary" onclick="soloIntroduceNext()">Introduce next</button>` : ''}
       <button class="ghost danger" onclick="endSoloPractice()">End practice</button>
     </div>
-  `;
-  c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:1000px;margin:0 auto;">${quizInner}</div></div>` : quizInner;
+  </div>`;
 }
 
 // ---------- Type 2 solo practice: position combinations ----------
@@ -2601,6 +2878,7 @@ let posComboActionLibId = null;
 let posQuestionComboId = null;
 let posQuestionMode = 'identify';
 function openPositionSetup(key){
+  rememberMeetingScroll();
   state.positionActivities[key] = state.positionActivities[key] || {baseImage:null, zones:[], objects:[], actions:[], combinations:[], questions:[]};
   if(!state.positionActivities[key].actions) state.positionActivities[key].actions = [];
   positionSetup = key;
@@ -2621,6 +2899,7 @@ function setPosQuestionMode(mode){
 function closePositionSetup(){
   positionSetup = null;
   render();
+  restoreMeetingScroll();
 }
 function posData(key){
   return state.positionActivities[key || positionSetup];
@@ -3147,6 +3426,7 @@ function togglePosFullScreen(){
   renderPositionPractice(document.getElementById('content'));
 }
 async function startPositionPractice(key){
+  resetPauseState();
   await preloadAnswerSounds();
   const data = posData(key);
   const r = posReadiness(key);
@@ -3175,6 +3455,7 @@ function posIntroduceCombo(){
   if(!pp || pp.remaining.length===0) return;
   const comboId = pp.remaining.shift();
   pp.introduced.push(comboId);
+  (pp.newQueue = pp.newQueue || []).push(comboId);
   pp.phase = 'intro';
   pp.introducingComboId = comboId;
   runPosIntroStep();
@@ -3184,7 +3465,7 @@ async function runPosIntroStep(){
   if(!pp || pp.phase!=='intro') return;
   const combo = pp.data.combinations.find(c=>c.id===pp.introducingComboId);
   render();
-  if(combo) await playStoredAudio('wordaudio:'+combo.wordId);
+  if(combo) await playStoredAudio('wordaudio:'+combo.wordId, true);
   if(!positionPractice || positionPractice.phase!=='intro') return;
   if(pp.introduced.length < 2 && pp.remaining.length > 0){
     posIntroduceCombo();
@@ -3203,13 +3484,20 @@ function pickPosQuestion(){
   if(!pp) return;
   const eligible = pp.data.questions.filter(q=>pp.introduced.includes(q.comboId));
   if(eligible.length===0) return;
-  pp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  let pool = eligible;
+  pp.newQueue = pp.newQueue || [];
+  while(pp.newQueue.length){
+    const id = pp.newQueue.shift();
+    const forNew = eligible.filter(q=>q.comboId===id);
+    if(forNew.length){ pool = forNew; break; }
+  }
+  pp.currentQuestion = pool[Math.floor(Math.random()*pool.length)];
   pp.wrongAttempt = false;
   pp.feedback = null;
   pp.selectedObjLibId = null;
   pp.selectedActionLibId = null;
   render();
-  playStoredAudio('wordaudio:'+pp.currentQuestion.id);
+  playStoredAudio('wordaudio:'+pp.currentQuestion.id, true);
 }
 function posIntroduceNext(){
   const pp = positionPractice;
@@ -3272,7 +3560,7 @@ function posAttemptPlace(ev){
     pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('no').then(()=>{
-      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
+      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id, true);
     });
   }
 }
@@ -3306,11 +3594,12 @@ function handlePosPick(comboId){
     pp.selectedActionLibId = null;
     render();
     playRandomAnswerSound('no').then(()=>{
-      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id);
+      if(positionPractice && positionPractice.currentQuestion) playStoredAudio('wordaudio:'+positionPractice.currentQuestion.id, true);
     });
   }
 }
 function endPositionPractice(){
+  resetPauseState();
   if(positionPractice && positionPractice.key){
     const parts = positionPractice.key.split('-');
     stopStepTimer(Number(parts[0]), Number(parts[1]));
@@ -3318,6 +3607,7 @@ function endPositionPractice(){
   positionPractice = null;
   posPracticeFullScreen = false;
   render();
+  restoreMeetingScroll();
 }
 function computeFannedPositions(items){
   // items: [{key, x, y}]. When multiple objects land close enough together to visually collide,
@@ -3352,99 +3642,103 @@ function computeFannedPositions(items){
   });
   return result;
 }
+// Sizes a scene picture to fill as much of the screen as it can without ever being cropped,
+// stretched, or pushed past the bottom edge. The width is worked out from the photo's real
+// proportions and the space available, and the objects laid over it are positioned as
+// percentages of that same box, so they stay lined up at every size.
+function fitScenes(){
+  document.querySelectorAll('.pr-scene').forEach(sc=>{
+    const img = sc.querySelector('img.pr-base');
+    const pr = sc.closest('.pr');
+    if(!img || !pr) return;
+    const apply = ()=>{
+      const vh = parseFloat(getComputedStyle(pr).getPropertyValue('--scene-vh')) || 55;
+      const ratio = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth/img.naturalHeight : 4/3;
+      const share = (sc.parentElement.classList.contains('pr-duo') && sc.parentElement.children.length>1) ? .6 : 1;
+      const maxW = Math.max(120, pr.clientWidth*share);
+      const maxH = window.innerHeight*vh/100;
+      sc.style.width = Math.round(Math.min(maxW, maxH*ratio))+'px';
+    };
+    if(img.complete) apply(); else img.addEventListener('load', apply, {once:true});
+  });
+}
+window.addEventListener('resize', fitScenes);
 function renderPositionPractice(c){
   const pp = positionPractice;
   if(!pp){ renderMeetings(c); return; }
-  const timerId = 'stepTimerDisp-'+pp.key;
   const est = estimateForKey(pp.key);
-  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
   const data = pp.data;
   const fs = posPracticeFullScreen;
-  // Full-screen constrains BOTH width and height (with width:auto so the image scales down to
-  // whichever dimension is the tighter fit) — constraining only width, as the normal in-page
-  // view does, is exactly what caused the image to overflow taller than the viewport and force
-  // scrolling on tall images or narrow phone screens.
-  const imgContainerStyle = fs ? 'position:relative;display:inline-block;max-width:94vw;max-height:60vh;' : 'position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;';
-  const imgTagStyle = fs ? 'max-width:94vw;max-height:60vh;width:auto;height:auto;display:block;border-radius:6px;border:1px solid var(--paper-line);' : 'width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);';
-  const fsToggleBtn = `<button class="ghost" onclick="togglePosFullScreen()" style="font-size:.75rem;">${fs?'&times; Exit full screen':'&#10021; Full screen'}</button>`;
+  const header = practiceHeaderHTML({
+    timerId:'stepTimerDisp-'+pp.key, title:'Position Combinations', phaseLabel: pp.phase==='intro' ? 'Listening' : 'Quiz',
+    done: pp.introduced.length, total: data.combinations.length,
+    meta: `${pp.introduced.length} of ${data.combinations.length} introduced${pp.phase==='quiz' ? ` · knew ${pp.stats.known} of ${pp.stats.seen}` : ''}${est!=null ? ` · ~${est} min planned` : ''}`,
+    zoom: fs, zoomFn:'togglePosFullScreen'
+  });
   if(pp.phase==='intro'){
     const combo = data.combinations.find(c=>c.id===pp.introducingComboId);
     const zone = combo ? data.zones.find(z=>z.id===combo.zoneId) : null;
     const obj = combo ? data.objects.find(o=>o.libId===combo.objLibId) : null;
     const action = combo && combo.actionLibId ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
-    const introInner = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-        <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
-      </div>
-      <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;">Introducing a new combination — listening only for now.</div>
-      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-        <div style="display:flex;gap:16px;align-items:center;justify-content:center;flex-wrap:wrap;">
-          ${action ? `<img src="${action.src}" style="max-width:${fs?'140px':'80px'};max-height:${fs?'140px':'80px'};object-fit:contain;">` : ''}
-          <div style="${fs ? imgContainerStyle : 'position:relative;display:inline-block;max-width:260px;'}">
-            ${data.baseImage?`<img src="${data.baseImage.src}" style="${fs ? imgTagStyle : 'width:100%;display:block;border-radius:4px;'}">`:''}
-            ${zone && obj ? `<img src="${obj.src}" style="position:absolute;left:${zone.x}%;top:${zone.y}%;width:11%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:1px solid var(--paper-line);">` : ''}
+    c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+      <div class="pr-stage">
+        <div class="pr-duo">
+          ${action ? `<div class="pr-hero"><img src="${action.src}" alt=""></div>` : ''}
+          <div class="pr-scene">
+            ${data.baseImage ? `<img class="pr-base" src="${data.baseImage.src}" alt="">` : ''}
+            ${zone && obj ? `<img class="obj" src="${obj.src}" alt="" style="left:${zone.x}%;top:${zone.y}%;">` : ''}
           </div>
         </div>
+        ${WAVE_HTML}
       </div>
-      <button class="ghost danger" style="margin-top:14px;" onclick="endPositionPractice()">End practice</button>
-    `;
-    c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:900px;margin:0 auto;">${introInner}</div></div>` : introInner;
+      <div class="pr-bottom"><button class="ghost danger" onclick="endPositionPractice()">End practice</button></div>
+    </div>`;
+    fitScenes();
     return;
   }
   const isPlaceMode = pp.currentQuestion && pp.currentQuestion.mode==='place';
   const needsAction = pp.currentQuestion && comboNeedsAction(pp);
   const introducedCombos = pp.introduced.map(id=>data.combinations.find(c=>c.id===id)).filter(Boolean);
   const actionTrayHtml = needsAction ? `
-    <div class="tm" style="margin-bottom:4px;">Tap the action:</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+    <div><div class="tray-label">Action</div><div class="tray">
       ${[...new Set(introducedCombos.filter(c=>c.actionLibId).map(c=>c.actionLibId))].map(libId=>{
         const action = data.actions.find(a=>a.libId===libId);
         if(!action) return '';
-        return `<img src="${action.src}" onclick="posSelectQuizAction('${libId}')" style="width:${fs?'70px':'50px'};height:${fs?'70px':'50px'};object-fit:contain;border-radius:6px;border:2px solid ${pp.selectedActionLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+        return `<div class="tile${pp.selectedActionLibId===libId?' sel':''}" onclick="posSelectQuizAction('${libId}')"><img src="${action.src}" alt=""></div>`;
       }).join('')}
-    </div>
-  ` : '';
-  const quizInner = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-      <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
-    </div>
-    <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${pp.stats.seen} · knew ${pp.stats.known} this session · ${pp.introduced.length}/${data.combinations.length} introduced${isPlaceMode?' · tap an object below, then tap where it goes':''}${needsAction?' · also tap the matching action':''}</div>
-    ${pp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
-    ${pp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
-    ${actionTrayHtml}
-    <div style="${fs ? imgContainerStyle : 'position:relative;display:inline-block;max-width:320px;margin:0 auto 16px;display:block;'}">
-      ${data.baseImage?`<img src="${data.baseImage.src}" ${isPlaceMode?`onclick="posAttemptPlace(event)"`:''} style="${fs ? imgTagStyle : 'width:100%;display:block;border-radius:6px;border:1px solid var(--paper-line);'}${isPlaceMode?'cursor:crosshair;':''}">`:''}
-      ${isPlaceMode ? '' : (()=>{
-        const items = introducedCombos.map(combo=>{
-          const zone = data.zones.find(z=>z.id===combo.zoneId);
-          const obj = data.objects.find(o=>o.libId===combo.objLibId);
-          if(!zone||!obj) return null;
-          return {comboId:combo.id, obj, x:zone.x, y:zone.y};
-        }).filter(Boolean);
-        const fanned = computeFannedPositions(items);
-        return fanned.map((it,idx)=>`<img src="${it.obj.src}" onclick="handlePosPick('${it.comboId}')" style="position:absolute;left:${it.x}%;top:${it.y}%;width:10%;object-fit:contain;transform:translate(-50%,-100%);border-radius:3px;background:#fff;border:2px solid var(--paper-line);cursor:pointer;z-index:${idx};box-shadow:1px 2px 4px rgba(0,0,0,.15);">`).join('');
-      })()}
-    </div>
-    ${isPlaceMode ? `
-    <div class="tm" style="margin-bottom:4px;">Tap the object to place:</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+    </div></div>` : '';
+  const sceneObjects = isPlaceMode ? '' : (()=>{
+    const items = introducedCombos.map(combo=>{
+      const zone = data.zones.find(z=>z.id===combo.zoneId);
+      const obj = data.objects.find(o=>o.libId===combo.objLibId);
+      if(!zone||!obj) return null;
+      return {comboId:combo.id, obj, x:zone.x, y:zone.y};
+    }).filter(Boolean);
+    return computeFannedPositions(items).map((it,idx)=>`<img class="obj clickable" src="${it.obj.src}" alt="" onclick="handlePosPick('${it.comboId}')" style="left:${it.x}%;top:${it.y}%;z-index:${idx};">`).join('');
+  })();
+  const placeTray = isPlaceMode ? `
+    <div><div class="tray-label">Object</div><div class="tray">
       ${[...new Set(introducedCombos.map(c=>c.objLibId))].map(libId=>{
         const obj = data.objects.find(o=>o.libId===libId);
         if(!obj) return '';
-        return `<img src="${obj.src}" onclick="posSelectPlaceObject('${libId}')" style="width:56px;height:56px;object-fit:contain;border-radius:6px;border:2px solid ${pp.selectedObjLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
+        return `<div class="tile${pp.selectedObjLibId===libId?' sel':''}" onclick="posSelectPlaceObject('${libId}')"><img src="${obj.src}" alt=""></div>`;
       }).join('')}
+    </div></div>` : '';
+  c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+    <div class="pr-stage">
+      ${actionTrayHtml}
+      <div class="pr-scene">
+        ${data.baseImage ? `<img class="pr-base" src="${data.baseImage.src}" alt="" ${isPlaceMode?`onclick="posAttemptPlace(event)" style="cursor:crosshair;"`:''}>` : ''}
+        ${sceneObjects}
+      </div>
+      ${placeTray}
     </div>
-    ` : ''}
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce Next</button>` : ''}
+    <div class="pr-bottom">
+      ${pp.remaining.length>0 ? `<button class="primary" onclick="posIntroduceNext()">Introduce next</button>` : ''}
       <button class="ghost danger" onclick="endPositionPractice()">End practice</button>
     </div>
-  `;
-  c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:900px;margin:0 auto;">${quizInner}</div></div>` : quizInner;
+  </div>`;
+  fitScenes();
 }
 
 // ---------- Type 3 solo practice: action + object combinations ----------
@@ -3456,6 +3750,7 @@ let acComboActionLibId = null;
 let acComboObjLibId = null;
 let acQuestionComboId = null;
 function openActionComboSetup(key){
+  rememberMeetingScroll();
   state.actionCombos[key] = state.actionCombos[key] || {actions:[], objects:[], combinations:[], questions:[]};
   actionComboSetup = key;
   acPickerSource = 'graphics';
@@ -3468,6 +3763,7 @@ function openActionComboSetup(key){
 function closeActionComboSetup(){
   actionComboSetup = null;
   render();
+  restoreMeetingScroll();
 }
 function acData(key){
   return state.actionCombos[key || actionComboSetup];
@@ -3816,6 +4112,7 @@ function renderActionComboSetup(c){
 
 let actionComboPractice = null;
 async function startActionComboPractice(key){
+  resetPauseState();
   await preloadAnswerSounds();
   const data = acData(key);
   const r = acReadiness(key);
@@ -3844,6 +4141,7 @@ function acIntroduceCombo(){
   if(!acp || acp.remaining.length===0) return;
   const comboId = acp.remaining.shift();
   acp.introduced.push(comboId);
+  (acp.newQueue = acp.newQueue || []).push(comboId);
   acp.phase = 'intro';
   acp.introducingComboId = comboId;
   runACIntroStep();
@@ -3853,7 +4151,7 @@ async function runACIntroStep(){
   if(!acp || acp.phase!=='intro') return;
   const combo = acp.data.combinations.find(c=>c.id===acp.introducingComboId);
   render();
-  if(combo) await playStoredAudio('wordaudio:'+combo.wordId);
+  if(combo) await playStoredAudio('wordaudio:'+combo.wordId, true);
   if(!actionComboPractice || actionComboPractice.phase!=='intro') return;
   if(acp.introduced.length < 2 && acp.remaining.length > 0){
     acIntroduceCombo();
@@ -3872,7 +4170,14 @@ function pickACQuestion(){
   if(!acp) return;
   const eligible = acp.data.questions.filter(q=>acp.introduced.includes(q.comboId));
   if(eligible.length===0) return;
-  acp.currentQuestion = eligible[Math.floor(Math.random()*eligible.length)];
+  let pool = eligible;
+  acp.newQueue = acp.newQueue || [];
+  while(acp.newQueue.length){
+    const id = acp.newQueue.shift();
+    const forNew = eligible.filter(q=>q.comboId===id);
+    if(forNew.length){ pool = forNew; break; }
+  }
+  acp.currentQuestion = pool[Math.floor(Math.random()*pool.length)];
   acp.selectedActionLibId = null;
   acp.selectedObjLibId = null;
   acp.wrongAttempt = false;
@@ -3883,7 +4188,7 @@ function pickACQuestion(){
   acp.actionOrder = shuffleArray([...new Set(introducedCombos.map(c=>c.actionLibId))]);
   acp.objOrder = shuffleArray([...new Set(introducedCombos.map(c=>c.objLibId))]);
   render();
-  playStoredAudio('wordaudio:'+acp.currentQuestion.id);
+  playStoredAudio('wordaudio:'+acp.currentQuestion.id, true);
 }
 function acIntroduceNext(){
   const acp = actionComboPractice;
@@ -3930,11 +4235,12 @@ function handleACCheck(){
     acp.selectedObjLibId = null;
     render();
     playRandomAnswerSound('no').then(()=>{
-      if(actionComboPractice && actionComboPractice.currentQuestion) playStoredAudio('wordaudio:'+actionComboPractice.currentQuestion.id);
+      if(actionComboPractice && actionComboPractice.currentQuestion) playStoredAudio('wordaudio:'+actionComboPractice.currentQuestion.id, true);
     });
   }
 }
 function endActionComboPractice(){
+  resetPauseState();
   if(actionComboPractice && actionComboPractice.key){
     const parts = actionComboPractice.key.split('-');
     stopStepTimer(Number(parts[0]), Number(parts[1]));
@@ -3942,6 +4248,7 @@ function endActionComboPractice(){
   actionComboPractice = null;
   acPracticeFullScreen = false;
   render();
+  restoreMeetingScroll();
 }
 let acPracticeFullScreen = false;
 function toggleACFullScreen(){
@@ -3951,68 +4258,55 @@ function toggleACFullScreen(){
 function renderActionComboPractice(c){
   const acp = actionComboPractice;
   if(!acp){ renderMeetings(c); return; }
-  const timerId = 'stepTimerDisp-'+acp.key;
   const est = estimateForKey(acp.key);
-  const estHtml = est!=null ? `<span class="tm">~${est} min estimated</span>` : '';
   const data = acp.data;
   const fs = acPracticeFullScreen;
-  const tileSize = fs ? 130 : 60;
-  const fsToggleBtn = `<button class="ghost" onclick="toggleACFullScreen()" style="font-size:.75rem;">${fs?'&times; Exit full screen':'&#10021; Full screen'}</button>`;
+  const header = practiceHeaderHTML({
+    timerId:'stepTimerDisp-'+acp.key, title:'Action + Object', phaseLabel: acp.phase==='intro' ? 'Listening' : 'Quiz',
+    done: acp.introduced.length, total: data.combinations.length,
+    meta: `${acp.introduced.length} of ${data.combinations.length} introduced${acp.phase==='quiz' ? ` · knew ${acp.stats.known} of ${acp.stats.seen}` : ''}${est!=null ? ` · ~${est} min planned` : ''}`,
+    zoom: fs, zoomFn:'toggleACFullScreen'
+  });
   if(acp.phase==='intro'){
     const combo = data.combinations.find(c=>c.id===acp.introducingComboId);
     const action = combo ? data.actions.find(a=>a.libId===combo.actionLibId) : null;
     const obj = combo ? data.objects.find(o=>o.libId===combo.objLibId) : null;
-    const introInner = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-        <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
-      </div>
-      <h3>Solo Practice</h3>
-      <div class="empty" style="margin-bottom:10px;">Introducing a new combination — listening only for now.</div>
-      <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-        <div style="display:flex;gap:14px;justify-content:center;align-items:center;">
-          ${action?`<img src="${action.src}" style="max-width:${fs?220:100}px;max-height:${fs?220:100}px;object-fit:contain;">`:''}
-          ${obj?`<img src="${obj.src}" style="max-width:${fs?220:100}px;max-height:${fs?220:100}px;object-fit:contain;">`:''}
+    c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+      <div class="pr-stage">
+        <div class="pr-duo">
+          ${action ? `<div class="pr-hero"><img src="${action.src}" alt=""></div>` : ''}
+          ${obj ? `<div class="pr-hero"><img src="${obj.src}" alt=""></div>` : ''}
         </div>
+        ${WAVE_HTML}
       </div>
-      <button class="ghost danger" style="margin-top:14px;" onclick="endActionComboPractice()">End practice</button>
-    `;
-    c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:900px;margin:0 auto;">${introInner}</div></div>` : introInner;
+      <div class="pr-bottom"><button class="ghost danger" onclick="endActionComboPractice()">End practice</button></div>
+    </div>`;
     return;
   }
   const actionIds = acp.actionOrder || [];
   const objIds = acp.objOrder || [];
-  const quizInner = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span id="${timerId}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-      <div style="display:flex;gap:8px;align-items:center;">${estHtml}${fsToggleBtn}</div>
+  c.innerHTML = `<div class="pr${fs?' zoom':''}">${header}
+    <div class="pr-stage">
+      <div><div class="tray-label">Action</div><div class="tray big">
+        ${actionIds.map(libId=>{
+          const a = data.actions.find(x=>x.libId===libId);
+          if(!a) return '';
+          return `<div class="tile${acp.selectedActionLibId===libId?' sel':''}" onclick="acSelectQuizAction('${libId}')"><img src="${a.src}" alt=""></div>`;
+        }).join('')}
+      </div></div>
+      <div><div class="tray-label">Object</div><div class="tray big">
+        ${objIds.map(libId=>{
+          const o = data.objects.find(x=>x.libId===libId);
+          if(!o) return '';
+          return `<div class="tile${acp.selectedObjLibId===libId?' sel':''}" onclick="acSelectQuizObject('${libId}')"><img src="${o.src}" alt=""></div>`;
+        }).join('')}
+      </div></div>
     </div>
-    <h3>Solo Practice — Quiz</h3>
-    <div class="empty" style="margin-bottom:10px;">Reviewed ${acp.stats.seen} · knew ${acp.stats.known} this session · ${acp.introduced.length}/${data.combinations.length} introduced. Tap the matching action, then the matching object.</div>
-    ${acp.wrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — listen again and try once more.</div>` : ''}
-    ${acp.feedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
-    <div class="tm" style="margin-bottom:4px;">Action</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      ${actionIds.map(libId=>{
-        const a = data.actions.find(x=>x.libId===libId);
-        if(!a) return '';
-        return `<img src="${a.src}" onclick="acSelectQuizAction('${libId}')" style="width:${tileSize}px;height:${tileSize}px;object-fit:contain;border-radius:6px;border:2px solid ${acp.selectedActionLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
-      }).join('')}
-    </div>
-    <div class="tm" style="margin-bottom:4px;">Object</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      ${objIds.map(libId=>{
-        const o = data.objects.find(x=>x.libId===libId);
-        if(!o) return '';
-        return `<img src="${o.src}" onclick="acSelectQuizObject('${libId}')" style="width:${tileSize}px;height:${tileSize}px;object-fit:contain;border-radius:6px;border:2px solid ${acp.selectedObjLibId===libId?'var(--teal)':'var(--paper-line)'};cursor:pointer;background:#fff;">`;
-      }).join('')}
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      ${acp.remaining.length>0 ? `<button class="primary" onclick="acIntroduceNext()">Introduce Next</button>` : ''}
+    <div class="pr-bottom">
+      ${acp.remaining.length>0 ? `<button class="primary" onclick="acIntroduceNext()">Introduce next</button>` : ''}
       <button class="ghost danger" onclick="endActionComboPractice()">End practice</button>
     </div>
-  `;
-  c.innerHTML = fs ? `<div style="position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:2000;overflow-y:auto;padding:20px;"><div style="max-width:900px;margin:0 auto;">${quizInner}</div></div>` : quizInner;
+  </div>`;
 }
 
 function renderLiveActivity(c){
@@ -4021,24 +4315,25 @@ function renderLiveActivity(c){
   const gridItems = la.currentGrid.map(id=>la.pool.find(p=>p.id===id)).filter(Boolean);
   const modeLabel = la.mode==='new' ? 'New' : (la.mode==='quiz' ? 'Quiz' : '');
   const est = estimateForKey(la.startKey);
-  c.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span id="stepTimerDisp-${la.startKey}" class="tm" style="font-family:'Lora',serif;">00:00</span>
-      ${est!=null ? `<span class="tm">~${est} min estimated</span>` : ''}
+  const pct = la.pool.length>0 ? Math.round(la.introduced.length/la.pool.length*100) : 0;
+  c.innerHTML = `<div class="pr">
+    <div class="pr-top">
+      <span id="stepTimerDisp-${la.startKey}" class="pr-timer">00:00</span>
+      <div class="pr-progress"><i style="width:${pct}%"></i></div>
     </div>
-    <div style="text-align:center;margin-bottom:14px;">
-      ${modeLabel ? `<span class="tag ochre" style="font-size:1rem;padding:6px 18px;">${modeLabel}</span>` : `<div class="empty">Tap "Introduce Next" to begin.</div>`}
+    <div class="pr-meta"><span><strong>With your nurturer</strong>${modeLabel ? ` · ${modeLabel}` : ''}</span><span>${la.introduced.length} of ${la.pool.length} introduced${est!=null ? ` · ~${est} min planned` : ''}</span></div>
+    <div class="pr-stage">
+      ${modeLabel ? `<span class="tag ochre" style="font-size:.95rem;padding:7px 20px;margin:0;">${modeLabel}</span>` : `<div class="empty">Tap "Introduce next" to begin.</div>`}
+      <div class="pr-grid">
+        ${gridItems.map(it=>`<div class="tile" style="cursor:default;"><img src="${it.src}" alt=""></div>`).join('')}
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 22px;">
-      ${gridItems.map(it=>`<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;border:1px solid var(--paper-line);background:#fff;"><img src="${it.src}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
-    </div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
-      <button class="primary" onclick="liveIntroduceNext()" ${la.remaining.length===0?'disabled':''}>Introduce Next</button>
+    <div class="pr-bottom">
+      <button class="primary" onclick="liveIntroduceNext()" ${la.remaining.length===0?'disabled':''}>Introduce next</button>
       <button class="ghost" onclick="liveQuiz()" ${la.introduced.length===0?'disabled':''}>Quiz</button>
-      <button class="ghost danger" onclick="endLiveActivity()">End Activity</button>
+      <button class="ghost danger" onclick="endLiveActivity()">End activity</button>
     </div>
-    <div class="empty" style="text-align:center;">${la.introduced.length} of ${la.pool.length} introduced so far.${la.remaining.length===0 && la.pool.length>0 ? ' All pictures introduced — keep quizzing, then end the activity when ready.' : ''}</div>
-  `;
+  </div>`;
 }
 function isRecordingKey(key){
   const parts = key.split('-');
@@ -4162,6 +4457,21 @@ async function resetMeetingPlanTime(){
   if(statusEl) statusEl.textContent = `Meeting Plan ${n}'s logged time has been reset.`;
   render();
 }
+async function cleanOriginalLabels(){
+  const statusEl = document.getElementById('labelCleanStatus');
+  const used = new Set();
+  Object.values(state.activityMaterials||{}).forEach(list=>(list||[]).forEach(a=>{ if(a.libId) used.add(a.libId); }));
+  state.words.forEach(w=>{ if(w.sourceLibId) used.add(w.sourceLibId); });
+  const targets = state.photoLibrary.filter(p=>p.gender && !used.has(p.id));
+  if(targets.length===0){ if(statusEl) statusEl.textContent = 'Nothing to clean — no unused library pictures carry a Male/Female label.'; return; }
+  let done = 0;
+  for(const p of targets){
+    if(statusEl) statusEl.textContent = `Cleaning ${done+1} of ${targets.length}…`;
+    try{ await setEntryGender(p, null); done++; }catch(e){ console.error(e); }
+  }
+  await saveData();
+  if(statusEl) statusEl.textContent = `Done — removed the label from ${done} of ${targets.length} pictures.`;
+}
 async function repairOldAttachments(){
   const statusEl = document.getElementById('repairStatus');
   state.activityMaterials = state.activityMaterials || {};
@@ -4198,33 +4508,24 @@ async function saveAttachmentEdit(attKey, idx){
   const labelEl = document.getElementById('attEditLabel-'+attId);
   const label = labelEl ? labelEl.value.trim() : (a.code||'');
   const newGender = editingAttachmentGender || null;
-  const genderChanged = newGender !== (a.gender||null);
+  const entry = findLibraryLikeEntry(a);
+  const currentGender = entry ? (entry.gender||a.gender||null) : (a.gender||null);
+  const genderChanged = newGender !== currentGender;
   a.code = label;
   a.gender = newGender;
   if(genderChanged){
-    const rawSrc = resolveAttachedSrc(a);
-    const finalSrc = await resolveAndNormalizePicture(rawSrc, newGender);
-    if(a.libId && a.source==='library'){
-      const p = state.photoLibrary.find(p=>p.id===a.libId);
-      if(p){ p.dataUrl = finalSrc; p.label = label; p.gender = newGender||undefined; }
-    } else if(a.libId && a.source==='busy'){
-      const p = state.busyPictures.find(p=>p.id===a.libId);
-      if(p){ p.dataUrl = finalSrc; p.label = label; }
-    } else if(a.libId && a.source==='lexicarry'){
-      const p = state.lexicarryPictures.find(p=>p.id===a.libId);
-      if(p){ p.dataUrl = finalSrc; p.label = label; }
+    if(entry){
+      entry.label = label;
+      await setEntryGender(entry, newGender);
     } else {
       // graphics-pack-sourced (or no libId) — convert to an editable library copy
+      const rawSrc = resolveAttachedSrc(a);
+      const finalSrc = await resolveAndNormalizePicture(rawSrc, newGender);
       const newLibId = uid();
-      state.photoLibrary.push({id:newLibId, label, category:null, dataUrl:finalSrc, gender:newGender||undefined});
+      state.photoLibrary.push({id:newLibId, label, category:null, dataUrl:finalSrc, gender:newGender||undefined, originalDataUrl: newGender ? rawSrc : undefined});
       a.file = null;
       a.libId = newLibId;
       a.source = 'library';
-    }
-    // Propagate to any word(s) already recorded against this exact picture, so a gender
-    // change made here is reflected everywhere that picture and its words are used.
-    if(a.libId){
-      state.words.filter(w=>w.sourceLibId===a.libId).forEach(w=>{ w.photo = finalSrc; w.gender = newGender; });
     }
   }
   await saveData();
@@ -4358,6 +4659,48 @@ function resolveMaterialsPickSrc(source, fileOrId){
   if(source==='lexicarry') return (state.lexicarryPictures.find(p=>p.id===fileOrId)||{}).dataUrl || '';
   return '';
 }
+// ---------- Gender labels: always rebuilt from a clean copy ----------
+// A gender label is drawn straight into the picture's pixels, so it can't be taken back off by
+// drawing again on top. Each labeled picture therefore keeps a clean copy (originalDataUrl) and
+// every gender change is redrawn from that clean copy — which is what lets None, Male and Female
+// all be switched freely, in either direction, any number of times.
+function cropLabelStrip(src){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onerror = ()=> resolve(src);
+    img.onload = ()=>{
+      const barH = Math.max(20, img.height*0.13);
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = Math.max(1, Math.round(img.height-barH));
+      c.getContext('2d').drawImage(img, 0,0,img.width,c.height, 0,0,img.width,c.height);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.src = src;
+  });
+}
+async function unlabeledBaseFor(entry){
+  if(entry.originalDataUrl) return entry.originalDataUrl;
+  if(!entry.gender) return entry.dataUrl;
+  // Labeled before clean copies were kept: restore from the graphics pack if it came from there,
+  // otherwise trim the label strip off the bottom edge.
+  const g = GRAPHICS_MANIFEST.find(x=>x.code===entry.label);
+  if(g) return 'graphics/'+g.file;
+  return await cropLabelStrip(entry.dataUrl);
+}
+async function setEntryGender(entry, newGender){
+  const base = await unlabeledBaseFor(entry);
+  const finalSrc = await resolveAndNormalizePicture(base, newGender||null);
+  entry.dataUrl = finalSrc;
+  entry.gender = newGender||undefined;
+  if(newGender) entry.originalDataUrl = base; else delete entry.originalDataUrl;
+  state.words.filter(w=>w.sourceLibId===entry.id).forEach(w=>{ w.photo = finalSrc; w.gender = newGender||null; });
+  return finalSrc;
+}
+function findLibraryLikeEntry(a){
+  if(!a || !a.libId) return null;
+  const arr = a.source==='busy' ? state.busyPictures : a.source==='lexicarry' ? state.lexicarryPictures : state.photoLibrary;
+  return arr.find(p=>p.id===a.libId) || null;
+}
 function resolveAndNormalizePicture(src, gender){
   return new Promise((resolve)=>{
     const img = new Image();
@@ -4384,7 +4727,7 @@ async function addPictureToActivityAndWord(key){
   const finalSrc = await resolveAndNormalizePicture(rawSrc, gender);
 
   const libId = uid();
-  state.photoLibrary.push({id: libId, label, category: null, dataUrl: finalSrc, gender: gender||undefined});
+  state.photoLibrary.push({id: libId, label, category: null, dataUrl: finalSrc, gender: gender||undefined, originalDataUrl: gender ? rawSrc : undefined});
 
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
@@ -4736,7 +5079,7 @@ async function handleDropOnActivity(ev, key){
   // Pictures, and Lexicarry, though not Graphics Pack) meant editing this attachment's gender
   // later mutated the shared source picture itself, silently changing it everywhere else that
   // same picture was used, including the library view the person dragged it from.
-  let rawSrc = '', code = '';
+  let rawSrc = '', code = '', srcEntry = null;
   if(dragItem.source==='graphics'){
     const g = GRAPHICS_MANIFEST.find(x=>x.file===dragItem.fileOrId);
     code = g ? g.code : dragItem.fileOrId;
@@ -4751,22 +5094,24 @@ async function handleDropOnActivity(ev, key){
     rawSrc = p ? p.dataUrl : '';
   } else {
     const p = state.photoLibrary.find(x=>x.id===dragItem.fileOrId);
+    srcEntry = p || null;
     code = p ? (p.label||p.category||'') : '';
     rawSrc = p ? p.dataUrl : '';
   }
   if(rawSrc){
     const finalSrc = await resolveAndNormalizePicture(rawSrc, null);
     const libId = uid();
-    state.photoLibrary.push({id: libId, label: code, category: null, dataUrl: finalSrc});
-    addAssignment(key, null, code, libId, 'library');
+    const carriedGender = srcEntry && srcEntry.gender ? srcEntry.gender : undefined;
+    state.photoLibrary.push({id: libId, label: code, category: null, dataUrl: finalSrc, gender: carriedGender, originalDataUrl: carriedGender && srcEntry.originalDataUrl ? srcEntry.originalDataUrl : undefined});
+    addAssignment(key, null, code, libId, 'library', carriedGender||null);
   }
   dragItem = null;
 }
-async function addAssignment(key, file, code, libId, source){
+async function addAssignment(key, file, code, libId, source, gender){
   state.activityMaterials = state.activityMaterials || {};
   state.activityMaterials[key] = state.activityMaterials[key] || [];
   const exists = state.activityMaterials[key].some(a => libId ? a.libId===libId : a.file===file);
-  if(!exists) state.activityMaterials[key].push({file: file||null, code, libId: libId||null, source: source||(libId?'library':'graphics')});
+  if(!exists) state.activityMaterials[key].push({file: file||null, code, libId: libId||null, source: source||(libId?'library':'graphics'), gender: gender||null});
   await saveData();
   renderAssignZone();
 }
@@ -5099,6 +5444,17 @@ function libTabGraphicsJumpPage(val){
   renderLibraryTabGraphics(document.getElementById('libraryTabBody'));
 }
 let editingLibPhotoId = null;
+let editingLibGender = null;
+function setEditingLibGender(g){
+  // keep whatever was typed in the label field while switching
+  const p = state.photoLibrary.find(x=>x.id===editingLibPhotoId);
+  if(p){
+    const labelEl = document.getElementById('libEditLabel-'+p.id);
+    if(labelEl) p.label = labelEl.value;
+  }
+  editingLibGender = g;
+  renderLibraryTabMine(document.getElementById('libraryTabBody'));
+}
 function renderLibraryTabMine(el){
   const cats = libraryCategories();
   const items = libTabLibraryFilter ? state.photoLibrary.filter(p=>p.category===libTabLibraryFilter) : state.photoLibrary;
@@ -5123,6 +5479,13 @@ function renderLibraryTabMine(el){
             <img src="${p.dataUrl}" style="max-width:80px;border-radius:3px;border:1px solid var(--paper-line);"><br>
             <div class="field"><label>Label</label><input id="libEditLabel-${p.id}" value="${escapeHtml(p.label||'')}"></div>
             <div class="field"><label>Category</label>${categorySelectHtml('libEditCategory-'+p.id, cats, p.category||'')}</div>
+            <div class="field"><label>Male / Female label on the picture</label>
+              <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">
+                <button type="button" class="ghost" style="font-size:.65rem;${!editingLibGender?'font-weight:600;':''}" onclick="setEditingLibGender(null)">None</button>
+                <button type="button" class="ghost" style="font-size:.65rem;${editingLibGender==='M'?'font-weight:600;':''}" onclick="setEditingLibGender('M')">Male</button>
+                <button type="button" class="ghost" style="font-size:.65rem;${editingLibGender==='F'?'font-weight:600;':''}" onclick="setEditingLibGender('F')">Female</button>
+              </div>
+            </div>
             <button class="primary" style="font-size:.7rem;" onclick="saveEditLibraryPhotoTab('${p.id}')">Save</button>
             <button class="ghost" style="font-size:.7rem;" onclick="cancelEditLibraryPhotoTab()">Cancel</button>
           </div>`;
@@ -5142,6 +5505,8 @@ function renderLibraryTabMine(el){
 }
 function startEditLibraryPhotoTab(id){
   editingLibPhotoId = id;
+  const ep = state.photoLibrary.find(x=>x.id===id);
+  editingLibGender = ep ? (ep.gender||null) : null;
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
 }
 function cancelEditLibraryPhotoTab(){
@@ -5155,8 +5520,12 @@ async function saveEditLibraryPhotoTab(id){
   const cat = readCategorySelectValue('libEditCategory-'+id);
   p.label = labelEl ? labelEl.value.trim() : p.label;
   p.category = cat || null;
+  if((editingLibGender||null) !== (p.gender||null)){
+    await setEntryGender(p, editingLibGender||null);
+  }
   await saveData();
   editingLibPhotoId = null;
+  editingLibGender = null;
   renderLibraryTabMine(document.getElementById('libraryTabBody'));
 }
 function libTabLibraryFilterByIndex(val){
@@ -5700,7 +6069,7 @@ function renderWords(c){
       </div>
       <div class="iceberg-status meta" style="margin:4px 0;">Iceberg: Level ${w.iceberg} — ${ICEBERG_PERCENT[w.iceberg]} <span class="tm">(set only by Review, not editable here)</span></div>
       ${w.photo?`<img class="thumb" src="${w.photo}">`:''}
-      ${w.spelling && w.spelling.length ? `<div class="meta" style="font-size:1.3rem;font-family:'Lora',serif;margin:4px 0;">${w.spelling.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('')}</div>` : ''}
+      ${w.spelling && w.spelling.length ? `<div class="meta" style="font-size:1.3rem;font-family:var(--font);margin:4px 0;">${w.spelling.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('')}</div>` : ''}
       <div id="wAudio-${w.id}"></div>
       <div id="wPhotoEdit-${w.id}"></div>
       <div id="wEdit-${w.id}"></div>
@@ -5859,7 +6228,7 @@ function renderSpellBuilder(wordId){
   }
   el.innerHTML = `
     <div style="margin-top:8px;padding:8px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;">
-      <div style="font-size:1.4rem;font-family:'Lora',serif;min-height:1.8rem;margin-bottom:8px;">${seq.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('') || '<span class="empty" style="font-size:.85rem;">(tap characters below to spell it)</span>'}</div>
+      <div style="font-size:1.4rem;font-family:var(--font);min-height:1.8rem;margin-bottom:8px;">${seq.map(id=>{const a=state.alphabet.find(a=>a.id===id); return a?escapeHtml(a.char):'?';}).join('') || '<span class="empty" style="font-size:.85rem;">(tap characters below to spell it)</span>'}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
         ${state.alphabet.map(a=>`<button class="ghost" style="font-size:1.1rem;padding:4px 10px;" onclick="spellAppend('${wordId}','${a.id}')">${escapeHtml(a.char)}</button>`).join('')}
       </div>
@@ -6270,7 +6639,7 @@ function renderReview(c, autoplay){
         </div>
       ` : `
         ${w.photo?`<img class="thumb" src="${w.photo}" style="max-width:220px;">`:''}
-        <div style="margin-top:14px;font-family:'Lora',serif;font-size:1.3rem;">${escapeHtml(w.text)}</div>
+        <div style="margin-top:14px;font-family:var(--font);font-size:1.3rem;">${escapeHtml(w.text)}</div>
         <div class="empty" style="margin-top:4px;">${w.meetingPlan?'Meeting Plan '+w.meetingPlan:(w.category?escapeHtml(w.category):'Uncategorized')}${w.stepName?' — '+escapeHtml(w.stepName):''}</div>
         <button class="primary" style="margin-top:14px;" onclick="nextReview()">Next</button>
       `}
@@ -6511,8 +6880,6 @@ function renderGridReviewActive(c, autoplay){
     <div class="empty" style="margin-bottom:10px;">Reviewed ${gridReviewStats.seen} · knew ${gridReviewStats.known} this session · <span id="reviewSessionTimerDisp">00:00</span> elapsed${gridReviewMode==='rrd'?` · ${gridReviewIntroduced.length}/${gridReviewPool.length} introduced`:''}</div>
     ${isIntro ? `<div style="text-align:center;"><span class="tag ochre" style="font-size:1rem;padding:6px 18px;">New</span></div>` : ''}
     <div id="gridReviewPlayer" class="meta" style="text-align:center;margin:8px 0 10px;">Loading audio…</div>
-    ${gridReviewWrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — try again.</div>` : ''}
-    ${gridReviewFeedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
       ${gridWords.map(w=>`<div ${isIntro?'':`onclick="handleGridPick('${w.id}')"`} style="cursor:${isIntro?'default':'pointer'};aspect-ratio:1;overflow:hidden;border-radius:6px;border:2px solid ${isIntro && w.id===gridReviewCurrent.id?'var(--teal)':'var(--paper-line)'};background:#fff;"><img src="${w.photo}" style="width:100%;height:100%;object-fit:contain;"></div>`).join('')}
     </div>
@@ -6624,9 +6991,13 @@ function playRandomAnswerSound(category){
     if(list.length===0){ resolve(); return; }
     const pick = list[Math.floor(Math.random()*list.length)];
     const audio = new Audio(pick.dataUrl);
-    audio.onended = ()=>resolve();
-    audio.onerror = ()=>resolve();
-    audio.play().catch(()=>resolve());
+    audio._isPrompt = false;
+    activeAudio = audio;
+    const done = ()=>{ if(activeAudio===audio) activeAudio = null; resolve(); };
+    audio.onended = done;
+    audio.onerror = done;
+    const pr = audio.play();
+    if(pr && pr.catch) pr.catch(done);
   });
 }
 
@@ -6746,7 +7117,7 @@ function renderAlphaList(){
   }
   el.innerHTML = state.alphabet.map(a=>`
     <div class="entry" style="width:110px;text-align:center;">
-      <div style="font-size:1.8rem;font-family:'Lora',serif;">${escapeHtml(a.char)}</div>
+      <div style="font-size:1.8rem;font-family:var(--font);">${escapeHtml(a.char)}</div>
       <div id="alphaAudio-${a.id}" style="margin:4px 0;min-height:20px;"></div>
       <button class="ghost" style="font-size:.7rem;padding:2px 6px;width:100%;" onclick="startWordRecording('${a.id}', 'alphaAudio-${a.id}', ()=>onAlphaRecorded('${a.id}'))">${a.hasAudio?'Re-record':'Record'}</button>
       <button class="ghost danger" style="font-size:.7rem;padding:2px 6px;width:100%;margin-top:2px;" onclick="deleteAlphaChar('${a.id}')">Remove</button>
@@ -6884,7 +7255,7 @@ function renderAlphaReviewActive(el, autoplay){
     <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
       <div id="alphaReviewPlayer" class="meta">Loading audio…</div>
       ${!alphaReviewRevealed ? `<div style="margin-top:16px;"><button class="primary" onclick="answerAlphaReview()">Show character</button></div>`
-        : `<div style="font-size:2.4rem;font-family:'Lora',serif;margin-top:14px;">${escapeHtml(a.char)}</div>
+        : `<div style="font-size:2.4rem;font-family:var(--font);margin-top:14px;">${escapeHtml(a.char)}</div>
            <button class="primary" style="margin-top:14px;" onclick="nextAlphaReview()">Next</button>`}
     </div>
     <button class="ghost" style="margin-top:14px;" onclick="endAlphaReview()">End review</button>
@@ -7001,10 +7372,8 @@ function renderAlphaGridActive(el, autoplay){
     <div class="empty" style="margin-bottom:10px;">Reviewed ${alphaGridStats.seen} · knew ${alphaGridStats.known} this session · <span id="reviewSessionTimerDisp">00:00</span> elapsed${alphaGridMode==='rrd'?` · ${alphaGridIntroduced.length}/${alphaGridPool.length} introduced`:''}</div>
     ${isIntro ? `<div style="text-align:center;"><span class="tag ochre" style="font-size:1rem;padding:6px 18px;">New</span></div>` : ''}
     <div id="alphaGridPlayer" class="meta" style="text-align:center;margin:8px 0 10px;">Loading audio…</div>
-    ${alphaGridWrongAttempt ? `<div style="text-align:center;color:var(--red);font-weight:600;margin-bottom:8px;">Not quite — try again.</div>` : ''}
-    ${alphaGridFeedback==='correct' ? `<div style="text-align:center;color:var(--teal);font-weight:600;margin-bottom:8px;">Correct! 🎉</div>` : ''}
     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;max-width:520px;margin:0 auto 20px;">
-      ${gridChars.map(a=>`<div ${isIntro?'':`onclick="handleAlphaGridPick('${a.id}')"`} style="cursor:${isIntro?'default':'pointer'};aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-family:'Lora',serif;border-radius:6px;border:2px solid ${isIntro && a.id===alphaGridCurrent.id?'var(--teal)':'var(--paper-line)'};background:#fff;">${escapeHtml(a.char)}</div>`).join('')}
+      ${gridChars.map(a=>`<div ${isIntro?'':`onclick="handleAlphaGridPick('${a.id}')"`} style="cursor:${isIntro?'default':'pointer'};aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-family:var(--font);border-radius:6px;border:2px solid ${isIntro && a.id===alphaGridCurrent.id?'var(--teal)':'var(--paper-line)'};background:#fff;">${escapeHtml(a.char)}</div>`).join('')}
     </div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       ${alphaGridMode==='rrd' ? `
@@ -7066,7 +7435,7 @@ function renderReadingTestActive(el){
   el.innerHTML = `
     <div class="empty" style="margin-bottom:10px;"><span id="reviewSessionTimerDisp">00:00</span> elapsed</div>
     <div class="panel" style="background:#fff;border:1px solid var(--paper-line);padding:18px;text-align:center;">
-      <div style="display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font-size:2rem;font-family:'Lora',serif;">
+      <div style="display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font-size:2rem;font-family:var(--font);">
         ${spelledChars.map(a=>`<span>${escapeHtml(a.char)}</span>`).join('')}
       </div>
       <div class="meta" style="margin-top:10px;">Read it aloud yourself, then check your pronunciation.</div>
@@ -7136,6 +7505,10 @@ function renderProfile(c){
     <div class="empty" style="margin-bottom:8px;">Pictures attached to activities before the current picker existed are invisible to Solo Practice, even though they still show up correctly everywhere else. This converts every old-format attachment into the current format, in one pass, across every activity — nothing is removed, and this is safe to run more than once.</div>
     <button class="ghost" onclick="repairOldAttachments()">Repair old reference pictures</button>
     <div id="repairStatus" class="meta" style="margin-top:6px;"></div>
+    <h3 style="margin-top:26px;">Remove leftover Male/Female labels</h3>
+    <div class="empty" style="margin-bottom:8px;">If your original library pictures picked up a Male or Female label they shouldn't have, this strips it from every library picture that isn't currently attached to an activity, so the originals are clean again. Pictures attached to activities keep whatever label you gave them — change those from the picture's Edit button. Where the untouched original is gone it's restored from the graphics pack if the picture came from there, otherwise the label strip along the bottom edge is trimmed off.</div>
+    <button class="ghost" onclick="cleanOriginalLabels()">Clean up unused library pictures</button>
+    <div id="labelCleanStatus" class="meta" style="margin-top:6px;"></div>
     <h3 style="margin-top:26px;">Reset logged time</h3>
     <div class="empty" style="margin-bottom:8px;">Useful while you're still testing and setting things up before actually starting — this clears hours, revision time, checked-off steps, and meeting completion status, but never touches your pictures, recordings, or words.</div>
     <div style="padding:10px;background:#fff;border:1px solid var(--paper-line);border-radius:3px;margin-bottom:10px;">
